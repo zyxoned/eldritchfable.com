@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Storefront from './pages/Storefront.jsx';
 import { Account, AccountHome } from './pages/Account.jsx';
 import { AccountRecovery, EmailVerification } from './pages/AccountRecovery.jsx';
+import NewsletterAction from './pages/NewsletterAction.jsx';
 import './styles/accounts.css';
 const client = new QueryClient();
 createRoot(document.getElementById('root')).render(
@@ -16,6 +17,8 @@ createRoot(document.getElementById('root')).render(
     <Route path="/reset-password" element={<AccountRecovery mode="reset" />} />
     <Route path="/verify-email" element={<EmailVerification />} />
     <Route path="/admin" element={<AccountHome admin />} />
+    <Route path="/newsletter/confirm" element={<NewsletterAction action="confirm" />} />
+    <Route path="/newsletter/unsubscribe" element={<NewsletterAction action="unsubscribe" />} />
     <Route path="/*" element={<Storefront />} />
   </Routes></BrowserRouter></QueryClientProvider></React.StrictMode>
 );

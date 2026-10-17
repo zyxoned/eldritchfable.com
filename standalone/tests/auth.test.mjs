@@ -31,6 +31,12 @@ test('register, login, admin denied, logout', async () => {
     assert.equal((await request('/api/auth/register', credentials)).status, 409);
     assert.equal((await request('/api/auth/login', { ...credentials, password: 'incorrect-password' })).status, 401);
     assert.equal((await request('/api/auth/login', credentials, null, 'https://evil.example')).status, 403);
+    assert.equal((await request('/api/auth/login', credentials)).status, 403);
+    const queued = spawnSync('sqlite3', [dbPath, 'SELECT payload_json FROM email_outbox WHERE template="verify_email" LIMIT 1;'], { encoding: 'utf8' });
+    assert.equal(queued.status, 0, queued.stderr);
+    const verification = JSON.parse(queued.stdout.trim()).verification;
+    assert.equal((await request('/api/auth/verify-email', { token: verification })).status, 200);
+    assert.equal((await request('/api/auth/verify-email', { token: verification })).status, 400);
     const login = await request('/api/auth/login', credentials);
     assert.equal(login.status, 200);
     const cookie = login.headers.get('set-cookie')?.split(';')[0];

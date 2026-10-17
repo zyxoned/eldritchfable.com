@@ -1,0 +1,9 @@
+.ef-auth { min-height: 100vh; max-width: 32rem; margin: 0 auto; padding: 5rem 1.5rem; color: #eee5d9; font-family: system-ui, sans-serif; }
+body:has(.ef-auth) { background: #141018; }
+.ef-auth h1 { font-size: 2rem; margin-bottom: 1.5rem; }
+.ef-auth form { display: grid; gap: 1.25rem; }
+.ef-auth label { display: grid; gap: .4rem; }
+.ef-auth input { padding: .85rem; background: #26202c; color: #fff; border: 1px solid #756879; border-radius: .4rem; }
+.ef-auth button { background: #b79b6e; color: #17111c; border: 0; padding: .85rem 1.25rem; border-radius: .4rem; cursor: pointer; }
+.ef-auth a { color: #d6b883; }
+.ef-auth p { margin-top: 1.5rem; }

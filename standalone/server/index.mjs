@@ -1,10 +1,11 @@
+import { authRoute } from './auth.mjs';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 
 const port = Number(process.env.PORT || 3000);
 const databasePath = process.env.ELDRITCH_DB;
 if (!databasePath) throw new Error('ELDRITCH_DB is required');
-const db = new DatabaseSync(databasePath, { readOnly: true });
+const db = new DatabaseSync(databasePath, { readOnly: false });
 
 function reply(res, status, body) {
   const payload = JSON.stringify(body);
@@ -23,9 +24,11 @@ function catalog() {
   }));
   return { products, collections };
 }
-const server = createServer((req, res) => {
-  if (req.method !== 'GET') return reply(res, 405, { error: 'Method not allowed' });
+const server = createServer(async (req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
+  try { if (await authRoute(db, req, res, path)) return; }
+  catch (error) { console.error('Auth failure:', error.message); return reply(res, 500, { error: 'Request failed' }); }
+  if (req.method !== 'GET') return reply(res, 405, { error: 'Method not allowed' });
   if (path === '/api/health') return reply(res, 200, { status: 'online', application: 'Eldritch Fable independent API' });
   if (path !== '/api/catalog') return reply(res, 404, { error: 'Not found' });
   try { return reply(res, 200, catalog()); }

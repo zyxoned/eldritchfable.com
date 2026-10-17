@@ -1,0 +1,9 @@
+import { Link } from 'react-router-dom';
+import { Package, ShoppingBag, Trash2 } from 'lucide-react';
+import { useCart } from '@/lib/cartContext';
+import { money } from '@/lib/storefront-core';
+import QuantityControl from '@/components/storefront/QuantityControl';
+export default function Cart() {
+  const cart = useCart();
+  return <div className="ef-page"><p className="eyebrow">Your next adventure</p><h1>Your bag</h1>{cart.notice && <p role="status" className="ef-notice">{cart.notice}</p>}{!cart.ready ? <p role="status">Loading your bag…</p> : !cart.items.length ? <div className="ef-state"><ShoppingBag /><p>Your bag is empty.</p><Link className="ef-button" to="/shop">Explore the collection</Link></div> : <><div className="ef-cart-list">{cart.items.map(item => <div className="ef-cart-line" key={item.key}><Package aria-hidden="true" /><div><Link to={item.url}>{item.name}</Link><span>{item.option} · {money(item.priceCents)} each</span>{!item.available && <span role="alert">This quantity or product is unavailable. Adjust or remove it before checkout.</span>}</div><QuantityControl value={item.quantity} onChange={quantity => cart.updateQuantity(item.id, item.variantId, quantity)} label={`quantity for ${item.name}, ${item.option}`} /><strong>{money(item.priceCents * item.quantity)}</strong><button className="icon-button" onClick={() => cart.removeItem(item.id, item.variantId)} aria-label={`Remove ${item.name}, ${item.option}`}><Trash2 /></button></div>)}</div><div className="ef-cart-total"><span>Subtotal</span><strong>{money(cart.subtotalCents)}</strong></div><p className="ef-notice">Shipping and tax are confirmed at checkout. Prices and availability are checked again before payment.</p>{cart.hasUnavailable ? <button className="ef-button" disabled>Adjust your bag to continue</button> : <Link className="ef-button" to="/checkout">Continue to checkout</Link>}</>}</div>;
+}

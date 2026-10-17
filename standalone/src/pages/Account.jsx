@@ -30,6 +30,7 @@ export function Account({ mode = 'login' }) {
       <button disabled={busy} type="submit">{busy ? 'Working…' : mode === 'register' ? 'Create account' : 'Sign in'}</button></form>
     {message && <p role="status">{message}</p>}
     <p>{mode === 'register' ? <Link to="/login">Already have an account?</Link> : <Link to="/register">Create an account</Link>}</p>
+    {mode === 'login' && <p><Link to="/forgot-password">Forgot your password?</Link></p>}
   </main>;
 }
 export function AccountHome({ admin = false }) {

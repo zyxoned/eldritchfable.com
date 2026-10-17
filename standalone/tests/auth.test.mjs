@@ -43,6 +43,17 @@ test('register, login, admin denied, logout', async () => {
     assert.ok(cookie?.startsWith('ef_session='));
     assert.equal((await request('/api/admin/status', null, cookie)).status, 403);
     assert.equal((await request('/api/auth/me', null, cookie)).status, 200);
+    assert.equal((await request('/api/auth/request-password-reset', { email: 'unknown@example.org' })).status, 202);
+    assert.equal((await request('/api/auth/request-password-reset', { email: credentials.email })).status, 202);
+    const resetQueued = spawnSync('sqlite3', [dbPath, 'SELECT payload_json FROM email_outbox WHERE template="reset_password" ORDER BY created_at DESC LIMIT 1;'], { encoding: 'utf8' });
+    assert.equal(resetQueued.status, 0, resetQueued.stderr);
+    const reset = JSON.parse(resetQueued.stdout.trim()).reset;
+    assert.equal((await request('/api/auth/reset-password', { token: reset, password: 'new-secure-password-123' })).status, 200);
+    assert.equal((await request('/api/auth/reset-password', { token: reset, password: 'another-password-123' })).status, 400);
+    assert.equal((await request('/api/auth/login', credentials)).status, 401);
+    assert.equal((await request('/api/auth/login', { ...credentials, password: 'new-secure-password-123' })).status, 200);
+    const revoked = await (await request('/api/auth/me', null, cookie)).json();
+    assert.equal(revoked.user, null);
     assert.equal((await request('/api/auth/logout', {}, cookie)).status, 200);
     const after = await (await request('/api/auth/me', null, cookie)).json();
     assert.equal(after.user, null);

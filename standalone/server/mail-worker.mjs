@@ -45,7 +45,7 @@ try {
     if (!mail) continue;
     try {
       const result = await transport.sendMail({ from: process.env.SMTP_FROM, to: item.recipient, ...mail });
-      db.prepare("UPDATE email_outbox SET status='sent',sent_at=CURRENT_TIMESTAMP,attempts=attempts+1 WHERE id=?").run(item.id);
+      db.prepare("UPDATE email_outbox SET status='sent',sent_at=CURRENT_TIMESTAMP,attempts=attempts+1,payload_json='{}' WHERE id=?").run(item.id);
       console.log('Sent:', item.id, result.messageId);
     } catch (error) {
       db.prepare("UPDATE email_outbox SET status='failed',attempts=attempts+1 WHERE id=?").run(item.id);

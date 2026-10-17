@@ -3,7 +3,7 @@ import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-rou
 import { useQuery } from '@tanstack/react-query';
 import { Brush, Castle, ChevronRight, Compass, Dices, Hammer, Map as MapIcon, Menu, Package, Search, ShieldCheck, ShoppingBag, Sparkles, Sword, Trash2, WandSparkles, X } from 'lucide-react';
 import { loadCatalog } from '../api/catalog.js';
-import { PREVIEW_CART_KEY, lineKey, mapPreviewProduct, money, normalizeCart, readCart, serializeCart } from '../lib/storefront-preview-core.js';
+import { PREVIEW_CART_KEY, lineKey, money, normalizeCart, readCart, serializeCart } from '../lib/storefront-preview-core.js';
 import '../styles/storefront.css';
 import BagDrawer from '../components/storefront/BagDrawer.jsx';
 
@@ -90,7 +90,7 @@ function Catalog({ category = '', featured = false }) {
 }
 function Home() {
   const { collections } = usePreview();
-  return <><section className="hero"><img src="/hero-vault.svg" alt="Fantasy miniatures, dice, terrain and a battle map arranged in an arcane vault" fetchPriority="high" /><div className="hero-scrim" /><div className="hero-content"><p className="eyebrow">Curated gear for legendary tables</p><h1>Every campaign deserves <span>a little magic.</span></h1><p>Distinctive tools, terrain and treasures for game masters, makers and adventurers.</p><div className="hero-actions"><Link className="ef-button" data-slot="button" to={`${ROOT}/shop`}>Explore the collection <ChevronRight /></Link><a href="#categories">Browse by category</a></div></div></section>
+  return <><section className="hero"><div className="hero-illustration" role="img" aria-label="Dark fantasy vault atmosphere" /><div className="hero-scrim" /><div className="hero-content"><p className="eyebrow">Curated gear for legendary tables</p><h1>Every campaign deserves <span>a little magic.</span></h1><p>Distinctive tools, terrain and treasures for game masters, makers and adventurers.</p><div className="hero-actions"><Link className="ef-button" data-slot="button" to={`${ROOT}/shop`}>Explore the collection <ChevronRight /></Link><a href="#categories">Browse by category</a></div></div></section>
     <section className="category-strip" id="categories" aria-labelledby="ef-category-title"><div className="section-heading compact"><div><p className="eyebrow">Find your next artifact</p><h2 id="ef-category-title">Shop by category</h2></div></div><div className="category-grid">{collections.map(c => { const Icon = icons[c.icon] || Package; return <Link key={c.slug} to={`${ROOT}/collections/${c.slug}`}><span><Icon aria-hidden="true" /></span>{c.name}</Link>; })}</div></section>
     <Catalog featured /><section className="values" id="story"><div><ShieldCheck /><h3>Table-ready quality</h3><p>Our aim: durability, detail, and repeat adventures.</p></div><div><Compass /><h3>Made to discover</h3><p>Find the right piece for your next encounter.</p></div><div><Sparkles /><h3>Independent spirit</h3><p>A U.S.-focused shop built for the wider tabletop community.</p></div></section></>;
 }

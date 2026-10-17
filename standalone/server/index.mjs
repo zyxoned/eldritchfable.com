@@ -1,3 +1,4 @@
+import { newsletterRoute } from './newsletter.mjs';
 import { authRoute } from './auth.mjs';
 import { createServer } from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
@@ -26,7 +27,8 @@ function catalog() {
 }
 const server = createServer(async (req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
-  try { if (await authRoute(db, req, res, path)) return; }
+  try { if (await authRoute(db, req, res, path)) return;
+    if (await newsletterRoute(db, req, res, path)) return; }
   catch (error) { console.error('Auth failure:', error.message); return reply(res, 500, { error: 'Request failed' }); }
   if (req.method !== 'GET') return reply(res, 405, { error: 'Method not allowed' });
   if (path === '/api/health') return reply(res, 200, { status: 'online', application: 'Eldritch Fable independent API' });

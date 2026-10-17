@@ -94,15 +94,32 @@ export async function authRoute(db, req, res, pathname) {
     } catch {
       json(res, 409, { error: 'Account cannot be created with those details' }); return true;
     }
+    const verification = randomBytes(32).toString('hex');
+    db.prepare("INSERT INTO account_tokens(token_hash,user_id,purpose,expires_at) VALUES(?,?,'verify_email',?)").run(hash(verification), id, new Date(Date.now() + 24 * 3600_000).toISOString());
+    db.prepare("INSERT INTO email_outbox(id,recipient,template,payload_json) VALUES(?,?,?,?)").run(randomUUID(), email, 'verify_email', JSON.stringify({ verification }));
     json(res, 201, { ok: true, verificationRequired: true });
     return true;
+  }
+  if (pathname === '/api/auth/verify-email') {
+    const supplied = input.token;
+    if (typeof supplied !== 'string' || !/^[a-f0-9]{64}$/.test(supplied)) { json(res, 400, { error: 'Invalid token' }); return true; }
+    const record = db.prepare("SELECT user_id FROM account_tokens WHERE token_hash=? AND purpose='verify_email' AND used_at IS NULL AND expires_at>?").get(hash(supplied), new Date().toISOString());
+    if (!record) { json(res, 400, { error: 'Invalid or expired token' }); return true; }
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare('UPDATE account_users SET email_verified_at=? WHERE id=?').run(new Date().toISOString(), record.user_id);
+      db.prepare('UPDATE account_tokens SET used_at=? WHERE token_hash=?').run(new Date().toISOString(), hash(supplied));
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+    json(res, 200, { ok: true }); return true;
   }
   if (pathname === '/api/auth/login') {
     const email = String(input.email || '').trim().toLowerCase();
     const password = input.password;
-    const row = db.prepare('SELECT id,email,password_hash,role,disabled_at FROM account_users WHERE email=?').get(email);
+    const row = db.prepare('SELECT id,email,password_hash,role,disabled_at,email_verified_at FROM account_users WHERE email=?').get(email);
     const valid = typeof password === 'string' && row && !row.disabled_at && await verify(password, row.password_hash);
     if (!valid) { json(res, 401, { error: 'Invalid credentials' }); return true; }
+    if (!row.email_verified_at) { json(res, 403, { error: 'Email verification required' }); return true; }
     json(res, 200, { user: { id: row.id, email: row.email, role: row.role } }, session(db, res, row.id));
     return true;
   }

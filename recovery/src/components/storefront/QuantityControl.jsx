@@ -1,0 +1,3 @@
+export default function QuantityControl({ value, onChange, label, max = 99 }) {
+  return <div className="quantity-control"><button type="button" aria-label={`Decrease ${label}`} disabled={value <= 1} onClick={() => onChange(value - 1)}>−</button><input type="number" aria-label={label} min="1" max={max} value={value} onChange={event => { const quantity = Number(event.target.value); if (Number.isSafeInteger(quantity) && quantity >= 1 && quantity <= max) onChange(quantity); }} /><button type="button" aria-label={`Increase ${label}`} disabled={value >= max} onClick={() => onChange(value + 1)}>+</button></div>;
+}

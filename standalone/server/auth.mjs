@@ -123,6 +123,45 @@ export async function authRoute(db, req, res, pathname) {
     json(res, 200, { user: { id: row.id, email: row.email, role: row.role } }, session(db, res, row.id));
     return true;
   }
+  if (pathname === '/api/auth/request-password-reset') {
+    const email = String(input.email || '').trim().toLowerCase();
+    if (email.length > 254) { json(res, 400, { error: 'Invalid request' }); return true; }
+    const account = db.prepare('SELECT id FROM account_users WHERE email=? AND disabled_at IS NULL AND email_verified_at IS NOT NULL').get(email);
+    if (account) {
+      const reset = randomBytes(32).toString('hex');
+      const tokenHash = hash(reset);
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        db.prepare("DELETE FROM account_tokens WHERE user_id=? AND purpose='reset_password'").run(account.id);
+        db.prepare("INSERT INTO account_tokens(token_hash,user_id,purpose,expires_at) VALUES(?,?,'reset_password',?)").run(tokenHash, account.id, new Date(Date.now() + 30 * 60_000).toISOString());
+        db.prepare("INSERT INTO email_outbox(id,recipient,template,payload_json) VALUES(?,?,?,?)").run(randomUUID(), email, 'reset_password', JSON.stringify({ reset }));
+        db.exec('COMMIT');
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }
+    json(res, 202, { message: 'If this verified account exists, password reset instructions will be sent.' });
+    return true;
+  }
+  if (pathname === '/api/auth/reset-password') {
+    const supplied = input.token;
+    const password = input.password;
+    if (typeof supplied !== 'string' || !/^[a-f0-9]{64}$/.test(supplied) || typeof password !== 'string' || password.length < 12 || password.length > 256) {
+      json(res, 400, { error: 'Invalid reset token or password' }); return true;
+    }
+    const tokenHash = hash(supplied);
+    const record = db.prepare("SELECT user_id FROM account_tokens WHERE token_hash=? AND purpose='reset_password' AND used_at IS NULL AND expires_at>?").get(tokenHash, new Date().toISOString());
+    if (!record) { json(res, 400, { error: 'Invalid or expired token' }); return true; }
+    const stored = await passwordHash(password);
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const used = db.prepare("UPDATE account_tokens SET used_at=? WHERE token_hash=? AND used_at IS NULL").run(new Date().toISOString(), tokenHash);
+      if (used.changes !== 1) throw new Error('Reset token already used');
+      db.prepare('UPDATE account_users SET password_hash=? WHERE id=?').run(stored, record.user_id);
+      db.prepare('DELETE FROM account_sessions WHERE user_id=?').run(record.user_id);
+      db.prepare("DELETE FROM account_tokens WHERE user_id=? AND purpose='reset_password'").run(record.user_id);
+      db.exec('COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); throw error; }
+    json(res, 200, { ok: true }); return true;
+  }
   if (pathname === '/api/auth/logout') {
     const token = parseCookie(req);
     if (token) db.prepare('UPDATE account_sessions SET revoked_at=CURRENT_TIMESTAMP WHERE token_hash=?').run(hash(token));

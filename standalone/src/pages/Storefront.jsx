@@ -54,7 +54,7 @@ function Header() {
   const location = useLocation();
   useEffect(() => { setMenuOpen(false); cart.setBagOpen(false); }, [location.pathname, cart.setBagOpen]);
   const links = <><Link to={`${ROOT}/shop`}>Shop all</Link><Link to="/#categories">Collections</Link><Link to="/#story">Our story</Link></>;
-  return <><a className="skip-link" href="#ef-main">Skip to content</a><div className="announcement">Store preview · Sample products · Checkout disabled</div>
+  return <><a className="skip-link" href="#ef-main">Skip to content</a><div className="announcement">Store preview · Products coming soon · Checkout unavailable</div>
     <header className="site-header"><Brand /><nav className="desktop-nav" aria-label="Main navigation">{links}</nav><div className="header-actions">
       <button className="icon-button mobile-only" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} aria-controls="ef-mobile-menu">{menuOpen ? <X /> : <Menu />}</button>
       <button onClick={() => cart.setBagOpen(true)} className="cart-trigger ef-button outline" aria-label={`Shopping bag with ${count} items`}><ShoppingBag aria-hidden="true" /><span className="desktop-only">Bag</span><b>{count}</b></button>
@@ -84,7 +84,7 @@ function Catalog({ category = '', featured = false }) {
   return <section className={`shop-section${featured ? '' : ' listing-section'}`} id="shop" aria-label="Browse products"><div className="section-heading">{featured && <div><p className="eyebrow">The merchant&apos;s selection</p><h2>Featured wares</h2></div>}
     <div className="catalog-tools"><div className="search-wrap"><Search aria-hidden="true" /><input className="ef-input" value={query} onChange={e => setQuery(e.target.value)} aria-label="Search products" placeholder="Search products" /></div><select className="ef-sort" value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort products"><option value="featured">Featured</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="name">Name: A to Z</option></select></div></div>
     {!category && <div className="filter-row" aria-label="Product categories">{[{ slug: 'all', name: 'All' }, ...collections].map(c => <button key={c.slug} aria-pressed={activeCategory === c.slug} className={activeCategory === c.slug ? 'active' : ''} onClick={() => setActiveCategory(c.slug)}>{c.name}</button>)}</div>}
-    <p className="result-count" role="status" aria-live="polite">{filtered.length} sample {filtered.length === 1 ? 'product' : 'products'}</p>
+    <p className="result-count" role="status" aria-live="polite">{filtered.length} {filtered.length === 1 ? 'product' : 'products'}</p>
     {filtered.length ? <div className="product-grid">{filtered.map(p => <ProductCard product={p} key={p.id} />)}</div> : <div className="no-results"><Package /><h3>No artifacts found</h3><p>Try another search or collection.</p><button className="ef-button outline" onClick={() => { setQuery(''); if (!category) setActiveCategory('all'); }}>Clear filters</button></div>}
   </section>;
 }

@@ -40,16 +40,18 @@ try {
   }
   await transport.verify();
   for (const item of pending) {
-    const payload = JSON.parse(item.payload_json);
-    const mail = templates[item.template]?.(payload);
-    if (!mail) continue;
     try {
+      const template = templates[item.template];
+      if (!template) throw new Error('Unsupported email template');
+      const payload = JSON.parse(item.payload_json);
+      const mail = template(payload);
       const result = await transport.sendMail({ from: process.env.SMTP_FROM, to: item.recipient, ...mail });
       db.prepare("UPDATE email_outbox SET status='sent',sent_at=CURRENT_TIMESTAMP,attempts=attempts+1,payload_json='{}' WHERE id=?").run(item.id);
       console.log('Sent:', item.id, result.messageId);
     } catch (error) {
-      db.prepare("UPDATE email_outbox SET status='failed',attempts=attempts+1 WHERE id=?").run(item.id);
-      console.error('Delivery failed for queue item:', item.id, error.message);
+      const nextAttempt = Number(db.prepare('SELECT attempts FROM email_outbox WHERE id=?').get(item.id)?.attempts || 0) + 1;
+      db.prepare("UPDATE email_outbox SET status=?,attempts=? WHERE id=?").run(nextAttempt >= 5 ? 'failed' : 'pending', nextAttempt, item.id);
+      console.error('Delivery attempt failed for queue item:', item.id, error.message);
     }
   }
 } finally {

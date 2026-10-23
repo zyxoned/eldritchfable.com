@@ -53,7 +53,7 @@ function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   useEffect(() => { setMenuOpen(false); cart.setBagOpen(false); }, [location.pathname, cart.setBagOpen]);
-  const links = <><Link to={`${ROOT}/shop`}>Shop all</Link><Link to="/#categories">Collections</Link><Link to="/#story">Our story</Link></>;
+  const links = <><Link to={`${ROOT}/shop`}>Shop all</Link><Link to="/#categories">Collections</Link><Link to="/#story">Our story</Link><Link to="/account">Account</Link></>;
   return <><a className="skip-link" href="#ef-main">Skip to content</a><div className="announcement">Store preview · Products coming soon · Checkout unavailable</div>
     <header className="site-header"><Brand /><nav className="desktop-nav" aria-label="Main navigation">{links}</nav><div className="header-actions">
       <button className="icon-button mobile-only" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} aria-controls="ef-mobile-menu">{menuOpen ? <X /> : <Menu />}</button>

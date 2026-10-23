@@ -1,0 +1,23 @@
+[Unit]
+Description=Eldritch Fable independent account API
+After=network.target
+
+[Service]
+Type=simple
+User=eldritch
+Group=eldritch
+WorkingDirectory=/srv/eldritch-fable/current/standalone
+EnvironmentFile=/etc/eldritch-fable.env
+ExecStart=/usr/bin/node server/index.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=35
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/eldritch-fable/data
+
+[Install]
+WantedBy=multi-user.target

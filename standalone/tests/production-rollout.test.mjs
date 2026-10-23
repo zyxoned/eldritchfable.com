@@ -1,12 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, lstatSync, statSync, existsSync, symlinkSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, lstatSync, statSync, existsSync, symlinkSync, chmodSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { openDatabase, digest, migrateDatabase } from '../server/database.mjs';
-import { productionConfig, migrateWithBackup, activateRelease, serviceIdentity, databaseReport } from '../deploy/production-rollout.mjs';
+import { productionConfig, migrateWithBackup, activateRelease, serviceIdentity, databaseReport, checkoutGit } from '../deploy/production-rollout.mjs';
+
+test('privileged source inspection runs as the checkout owner and leaves the Git index untouched', t => {
+  const folder = mkdtempSync(join(tmpdir(), 'ef-git-inspection-')); t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const standalone = join(folder, 'standalone'); mkdirSync(standalone);
+  const run = (executable, args) => {
+    const result = spawnSync(executable, args, { cwd: folder, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr); return result.stdout.trim();
+  };
+  run('git', ['init', '-q']);
+  run('git', ['config', 'user.name', 'Test']); run('git', ['config', 'user.email', 'test@example.test']);
+  const tracked = join(standalone, 'file.txt'); writeFileSync(tracked, 'keep');
+  run('git', ['add', '.']); run('git', ['commit', '-qm', 'fixture']);
+  const index = join(folder, '.git/index'), before = statSync(index), bytes = readFileSync(index);
+  // A changed worktree timestamp makes ordinary git status refresh its cache.
+  utimesSync(tracked, new Date(Date.now() + 5000), new Date(Date.now() + 5000));
+  const calls = [];
+  const inspect = checkoutGit(standalone, (executable, args) => {
+    if (executable === 'getent') return run(executable, args);
+    assert.equal(executable, 'runuser');
+    assert.deepEqual(args.slice(0, 4), ['-u', run('getent', ['passwd', String(before.uid)]).split(':')[0], '--', 'git']);
+    assert.equal(args[4], '--no-optional-locks'); calls.push(args);
+    // The test already runs as the checkout owner; run the actual Git command.
+    return run('git', args.slice(4));
+  });
+  assert.equal(inspect(['status', '--porcelain', '--untracked-files=no']), '');
+  assert.match(inspect(['rev-parse', 'HEAD']), /^[a-f0-9]{40}$/);
+  assert.equal(calls.length, 2);
+  const after = statSync(index);
+  assert.deepEqual(readFileSync(index), bytes);
+  assert.equal(after.ino, before.ino); assert.equal(after.mtimeMs, before.mtimeMs);
+  assert.equal(after.uid, before.uid); assert.equal(after.mode, before.mode);
+});
 
 function resolveIdentity({ user = 'sentinelx', group = '', uid = 1001, primaryGid = 1001, actualUid = uid, actualGid = group ? 2001 : primaryGid, resolvedGroup = 'store-web' } = {}) {
   const calls = [];

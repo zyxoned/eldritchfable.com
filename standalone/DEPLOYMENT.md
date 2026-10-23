@@ -34,15 +34,29 @@ The production check confirms that the running API actually has the configured d
 
 ## Roll out the prepared release
 
-After a successful build and rehearsal, update the checkout to the latest repair revision. Changes limited to deployment scripts and the mail worker do not require another frontend build. Run the upgrade in a transient systemd service so it can continue if the phone's SSH session disconnects:
+After a successful build and rehearsal, update the checkout to the latest repair revision. Changes limited to deployment scripts and the mail worker do not require another frontend build. For phone terminals, run each short command separately:
 
 ```sh
-cd ~/eldritch-accounts-release &&
-git pull --ff-only &&
-sudo systemd-run --unit=eldritch-accounts-upgrade --wait --collect \
-  /usr/bin/node "$PWD/standalone/deploy/production-rollout.mjs"
-sudo journalctl -u eldritch-accounts-upgrade -n 25 --no-pager -o cat
+cd ~/eldritch-accounts-release
 ```
+
+```sh
+git pull --ff-only
+```
+
+```sh
+bash standalone/deploy/upgrade.sh
+```
+
+The launcher updates the checkout as the regular SSH user, runs the upgrade in a transient systemd service so it can continue after a phone disconnects, and displays logs tagged for that attempt only. If Git fails, it stops before starting the upgrade and does not display an older run's log. Do not run the launcher itself with sudo; it requests sudo for systemd.
+
+If an older privileged source inspection left Git metadata inaccessible, repair ownership of this checkout's Git metadata while logged in as its normal owner, then repeat the update:
+
+```sh
+sudo chown -R "$(id -u):$(id -g)" ~/eldritch-accounts-release/.git
+```
+
+The corrected rollout inspects Git as the checkout owner with optional index updates disabled, so privileged deployment checks cannot replace the user's index with a root-owned file. It does not change ownership of the production app or database to the SSH user.
 
 The script targets only the verified layout above. It resolves API and frontend users and groups from systemd through the operating system's account database, then checks their effective and filesystem IDs against the running processes. It uses these discovered identities for file permissions, database work, Caddy validation and the mail service; it does not infer usernames from screenshots. It also checks current local and public API health, the active database file, available disk space and loopback-only Caddy routing before stopping anything. It refuses a maintenance service launched from the app directory or directly referring to files inside it, so that service can be adapted first. If a preflight check stops the upgrade, share the fixed error code rather than credentials or full service configuration.
 

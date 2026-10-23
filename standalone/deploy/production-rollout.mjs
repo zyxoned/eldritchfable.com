@@ -52,6 +52,17 @@ function configArgument(args) {
   return index < 0 ? args.find(arg => arg.startsWith('--config='))?.slice(9) : args[index + 1];
 }
 
+// Inspect a user-owned checkout as its owner. Optional locks are disabled so
+// even stat-cache refreshes cannot replace .git/index from a privileged job.
+export function checkoutGit(directory, run = command) {
+  const repository = realpathSync(dirname(directory));
+  const uid = statSync(repository).uid;
+  const account = run('getent', ['passwd', String(uid)]).split(':');
+  requireCondition(account.length >= 7 && /^(?:[A-Za-z_][A-Za-z0-9_.-]*\$?|[0-9]+)$/.test(account[0]) && Number(account[2]) === uid, 'CHECKOUT_OWNER_NOT_FOUND');
+  const args = ['--no-optional-locks', '-c', 'safe.directory=' + repository, '-C', directory];
+  return action => run('runuser', ['-u', account[0], '--', 'git', ...args, ...action]);
+}
+
 // Systemd is the authority for service accounts; screenshots are not. Resolve
 // names/numeric IDs through NSS and check the running effective/filesystem IDs
 // before using those credentials for Caddy validation or SQLite work.
@@ -255,9 +266,9 @@ async function rollout() {
   const openFiles = readdirSync(api.base + '/fd').flatMap(fd => { try { return [readlinkSync(api.base + '/fd/' + fd)]; } catch { return []; } });
   requireCondition(openFiles.includes(realpathSync(database)), 'API_HAS_DIFFERENT_DATABASE_OPEN');
   for (const path of [app, frontend]) requireCondition(lstatSync(path).dev === statSync(dirname(path)).dev, 'ENTRY_IS_ON_ANOTHER_FILESYSTEM');
-  const gitArgs = ['-c', 'safe.directory=' + dirname(source), '-C', source];
-  requireCondition(command('git', [...gitArgs, 'status', '--porcelain', '--untracked-files=no']) === '', 'TRACKED_SOURCE_HAS_LOCAL_EDITS');
-  const commit = command('git', [...gitArgs, 'rev-parse', 'HEAD']);
+  const git = checkoutGit(source);
+  requireCondition(git(['status', '--porcelain', '--untracked-files=no']) === '', 'TRACKED_SOURCE_HAS_LOCAL_EDITS');
+  const commit = git(['rev-parse', 'HEAD']);
   requireCondition(/^[a-f0-9]{40}$/.test(commit), 'INVALID_SOURCE_REVISION');
   const releaseId = commit.slice(0, 12) + '-' + new Date().toISOString().replace(/[^0-9]/g, '');
   const release = root + '/releases/' + releaseId;

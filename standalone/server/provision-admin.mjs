@@ -2,6 +2,7 @@ import { randomUUID, randomBytes, scryptSync } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
+import { requireSchema } from './database.mjs';
 const database = process.env.ELDRITCH_DB;
 if (!database) throw new Error('ELDRITCH_DB is required');
 const email = process.argv[2]?.trim().toLowerCase();
@@ -14,6 +15,7 @@ try {
   const hashed = 'scrypt$' + salt.toString('hex') + '$' + scryptSync(password, salt, 64).toString('hex');
   const db = new DatabaseSync(database);
   try {
+    requireSchema(db);
     const existing = db.prepare('SELECT id,role FROM account_users WHERE email=?').get(email);
     if (existing) throw new Error('Account already exists. Refusing to elevate an existing account.');
     db.prepare("INSERT INTO account_users(id,email,password_hash,role,email_verified_at) VALUES(?,?,?,'admin',?)").run(randomUUID(), email, hashed, new Date().toISOString());

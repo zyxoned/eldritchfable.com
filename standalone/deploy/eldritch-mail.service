@@ -1,0 +1,19 @@
+[Unit]
+Description=Eldritch Fable transactional email batch
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=eldritch
+Group=eldritch
+WorkingDirectory=/srv/eldritch-fable/current/standalone
+EnvironmentFile=/etc/eldritch-fable.env
+ExecStart=/usr/bin/node server/mail-worker.mjs
+TimeoutStartSec=25min
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/eldritch-fable/data

@@ -1,7 +1,7 @@
 name: Standalone storefront CI
 on:
   push:
-    branches: [migration/independent-storefront]
+    branches: [migration/independent-storefront, 'fix/customer-accounts-mail']
   pull_request:
     paths: ['standalone/**', '.github/workflows/standalone-ci.yml']
 jobs:
@@ -15,7 +15,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run build
       - run: node --check server/index.mjs
-      - run: node --test tests/*.test.mjs
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

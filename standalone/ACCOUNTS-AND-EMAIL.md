@@ -29,4 +29,23 @@
 4. Validate backup/restore and HTTPS before accepting real accounts.
 5. Confirm product availability and discounts against database before activating weekly sends.
 
-Current state: schema created and validated in a temporary SQLite database; no production accounts or mail sending enabled.
+## Implemented account behavior
+
+- Registration and verification-mail creation commit together. Repeating registration does not change an existing password and returns the same public response.
+- Verification links last 24 hours; reset links last 30 minutes. Replays, expired tokens, disabled accounts, and revoked sessions are rejected.
+- `/api/auth/resend-verification` and `/api/auth/request-password-reset` return generic HTTP 202 responses. Each account/purpose has a one-minute cooldown. A pending valid message is reused rather than replaced by another queued copy.
+- `/api/auth/change-password` requires the current password, invalidates outstanding password reset links, and signs out every session. Resetting a password also signs out every session.
+- Login allows 30 attempts per client address and eight per normalized email per 15 minutes. The address header is accepted only from a loopback proxy when explicitly configured. Caddy must overwrite it; see DEPLOYMENT.md.
+- Sessions last seven days. Password hashes retain compatibility with existing scrypt records. All admin authorization remains on the server.
+
+## Transactional email queue
+
+The worker claims each row inside a SQLite transaction, then performs SMTP outside the transaction. Claims expire after ten minutes. Known transient failures retry after 1, 5, 15, then 60 minutes, up to five attempts; expired tokens are discarded before sending. Permanent failures, malformed messages, and superseded tokens are not retried. Successful and terminal messages have their token payload removed.
+
+A stable Message-ID follows the queue row across retries. SMTP does not provide exactly-once delivery: if the connection is lost during DATA, or a worker dies after SMTP accepts a message, its outcome is uncertain. Such rows are quarantined, not automatically resent. A customer can explicitly request a new verification/reset link after the cooldown. Queue summaries expose counts and fixed diagnostic codes only.
+
+The worker defaults to dry run. SMTP sending requires `ELDRITCH_SEND_EMAIL=YES`. Use the supplied systemd timer as the single scheduler and remove older overlapping schedules after identifying them. Database claims also protect against accidental concurrent invocation.
+
+## Public account APIs
+
+GET `/api/auth/me` returns `{ user: null }` or public account fields. GET `/api/admin/status` requires an administrator session. POST JSON routes are `register`, `verify-email`, `resend-verification`, `login`, `logout`, `request-password-reset`, `reset-password`, and `change-password` under `/api/auth/`. Change-password takes `{ currentPassword, password }`; verification takes `{ token }`; reset takes `{ token, password }`. Browser state-changing requests require the exact configured Origin. Credentials and tokens are never returned by account lookup.

@@ -1,146 +1,89 @@
-# Deploy the account and email repair on Linux
+# Deploy the account and email repair on the existing Linux server
 
-This release upgrades the independent store. It does not require Base44, import products, or activate checkout. Run the commands on your Linux server through the terminal you already use on your laptop or phone.
+This release upgrades the independent store without Base44. Product import, checkout and PostgreSQL are separate work.
 
-The reported server uses eldritch-production-api, eldritch-production-web, eldritch-production-mail, and production backup/healthcheck timers. The older eldritch-api unit is inactive. Preserve the existing production units, separate frontend service, and their actual ports; do not start the legacy API or install parallel generic services. The healthcheck timer can restart services, so pause it together with the mail timer during migration and resume it after validation.
+## Verified production layout
 
-Verified production layout (October 23, 2026):
+The server inspection and migration rehearsal on October 23, 2026 confirmed:
 
-- API: user sentinelX, port 3102, script /srv/eldritch-production/app/server/index.mjs.
-- Configured database: /srv/eldritch-production/data/staging.db. The active process has /mnt/eldritch-data/production-seed/data/staging.db open. Its filename does not make it a disposable staging database.
-- App working directory resolves to /mnt/eldritch-data/production-seed/app. Confirm which parent paths are symlinks before replacing an app directory or link.
-- Frontend: user sentinelX, Caddy configuration /etc/caddy/Caddyfile.production.
-- Mail: working directory /srv/eldritch-production/app, user root, environment file /etc/eldritch-fable/mail.env. Preserve this file and its existing credentials.
+- Node 24.22.0 at /usr/bin/node; Caddy 2.6.2; local Cloudflare Tunnel.
+- /srv/eldritch-production is a symlink to /mnt/eldritch-data/production-seed. Its app and data entries are directories.
+- API: eldritch-production-api.service, user sentinelX, port 3102, /srv/eldritch-production/app/server/index.mjs.
+- Live database: /srv/eldritch-production/data/staging.db, resolving to /mnt/eldritch-data/production-seed/data/staging.db. Despite its filename, this is the live customer database.
+- Frontend: eldritch-production-web.service, user sentinelX, /etc/caddy/Caddyfile.production, static root /srv/eldritch-production/frontend, API proxy 127.0.0.1:3102.
+- Mail: eldritch-production-mail.service and its existing timer. Credentials are in /etc/eldritch-fable/mail.env.
+- Separate production backup and healthcheck timers. The healthcheck performs recovery and must be paused during migration.
+- The migrated rehearsal copy retained 3 accounts (1 customer role, 2 admins), 6 sessions and 3 sent email records. These counts can change as people use the site; migration preserves the actual current records.
 
-## 1. Identify the running layout
+The inactive eldritch-api.service and the separate legacy /etc/caddy/Caddyfile use a different layout. Leave them alone. Do not install the generic service templates alongside the production units or migrate a newly created database at the generic template path.
 
-From the downloaded repository run:
+## Build and rehearse without changing production
 
-```sh
-sudo bash standalone/deploy/inspect.sh
-```
-
-This discovers all Eldritch services, reports safe metadata and environment-file paths, and maps active API main PIDs to their TCP listeners. It checks the discovered loopback API ports without assuming port 3000. It also reports timers and possible cron entry locations without printing environment secrets. Record the production code directory and database location. For this server, use the verified production database above; the generic template's /srv/eldritch-fable/data/eldritch.db is not the database reported by the running API. Preserve the working SMTP credentials.
-
-The templates use /srv/eldritch-fable/current/standalone, /etc/eldritch-fable.env, user/group eldritch, and /usr/bin/node. Adapt these to the paths and service user shown by inspection. If Node is installed under a personal home directory, install Node 24 at a system-accessible path before using the hardened service template.
-
-## 2. Build a separate release
-
-Clone the repair branch into a new directory, leaving the running installation in place:
+In the existing repair checkout:
 
 ```sh
-git clone --single-branch --branch fix/customer-accounts-mail https://github.com/zyxoned/eldritchfable.com.git eldritch-accounts-release
-cd eldritch-accounts-release
+cd ~/eldritch-accounts-release
+git pull --ff-only
 bash standalone/deploy/stage.sh
-```
-
-The staging script installs locked dependencies, runs backend tests, builds the frontend, and migrates a new temporary database. It cannot send mail. Browser tests also run in CI; locally run npm run test:browser inside standalone after installing Chromium.
-
-For an existing repair checkout, update it with git pull --ff-only before staging. Then run this read-only production check:
-
-```sh
 sudo /usr/bin/node standalone/deploy/production-check.mjs
 ```
 
-It confirms that the configured database is actually open by the running API, reports symlink destinations and selected Caddy routing paths, and takes a consistent snapshot into a private temporary directory. Only that snapshot is migrated. It verifies that every account, session, account token, newsletter record, product, and collection is preserved, prints aggregate counts without customer details, and deletes the temporary copy. It does not load SMTP credentials, send email, or change services or configuration. A successful rehearsal is not a live deployment.
+For a fresh checkout, clone the fix/customer-accounts-mail branch of https://github.com/zyxoned/eldritchfable.com.git first. The staging script installs locked dependencies, runs tests and builds dist. It uses a new temporary database and cannot send email.
 
-Install this checkout under a versioned directory, for example /srv/eldritch-fable/releases/<commit-sha>, using git rev-parse --short=12 HEAD as the release identifier. Keep the built standalone/dist and standalone/node_modules in that release. Give the API's existing service user read access to the release and write access to the existing data directory. Keep SMTP secrets in the existing environment file outside the checkout.
+The production check confirms that the running API actually has the configured database open, reports symlink and Caddy routing paths, and migrates a consistent private snapshot. It compares every account, session, account token, newsletter record, product and collection before and after migration. It prints aggregate counts and removes the temporary copy. It does not load SMTP credentials or change the live database, configuration or services.
 
-Before changing a current symlink, record its previous destination using readlink -f /srv/eldritch-fable/current. If this server does not use that symlink, point the service and Caddy at the versioned directory explicitly and record their old paths for rollback.
+## Roll out the prepared release
 
-## 3. Environment and trusted proxy
-
-Production configuration needs these values (edit locally; do not paste SMTP secrets into chat):
-
-```ini
-ELDRITCH_DB=/srv/eldritch-fable/data/eldritch.db
-ELDRITCH_ORIGIN=https://eldritchfable.com
-ELDRITCH_PUBLIC_URL=https://eldritchfable.com
-# Preserve the existing production PORT; identify it using inspect.sh.
-ELDRITCH_TRUST_PROXY=loopback
-ELDRITCH_SEND_EMAIL=NO
-# Retain the working SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD,
-# SMTP_FROM and SMTP_TLS values.
-```
-
-The environment file should be root-owned with mode 600 and loaded using systemd's EnvironmentFile setting. The API binds only to 127.0.0.1.
-
-For the reported Caddy 2.6.2 with a local Cloudflare Tunnel, keep Caddy reachable only from loopback and overwrite this header in the existing API reverse_proxy:
-
-```caddy
-header_up X-Eldritch-Client-IP {http.request.header.CF-Connecting-IP}
-```
-
-Cloudflare overwrites CF-Connecting-IP; the loopback-only origin must be reachable through that tunnel, not directly from the public network. Never pass through a browser-supplied X-Eldritch-Client-IP. deploy/Caddyfile.tunnel.example uses Caddy 2.6-compatible syntax and is a new static-file layout example only. Preserve an existing production-web reverse_proxy and its actual port. For another topology, derive the header from a verified trusted client source before enabling ELDRITCH_TRUST_PROXY=loopback. Without that flag the API ignores forwarded addresses. Do not add newer trusted_proxies directives to Caddy 2.6.2.
-
-Retain SPA fallback routing for account links (try_files {path} /index.html). Set Referrer-Policy: no-referrer on frontend responses so link tokens are not forwarded in referrers. Validate changes using sudo caddy validate --config /etc/caddy/Caddyfile before reloading.
-
-## 4. Stop old workers, back up, and migrate
-
-Identify the old mail-worker schedules from step 1. Stop their timers/services and remove only the matching mail-worker cron entries. Wait for an active old worker to finish before migrating; do not run old and new code against this database together.
-
-After the actual release, database, and port have been identified, stop the production writers during migration. Set API_PORT to the port reported by the inspector before running these commands:
+After a successful build and rehearsal, update the checkout to the latest repair revision. Changes limited to deployment scripts and the mail worker do not require another frontend build. Run the upgrade in a transient systemd service so it can continue if the phone's SSH session disconnects:
 
 ```sh
-: "${API_PORT:?Set API_PORT to the production API listener port from inspect.sh}"
-API_UNIT=eldritch-production-api.service
-WEB_UNIT=eldritch-production-web.service
-MAIL_UNIT=eldritch-production-mail.service
-MAIL_TIMER=eldritch-production-mail.timer
-RECOVERY_TIMER=eldritch-production-healthcheck.timer
-sudo systemctl stop "$MAIL_TIMER" "$RECOVERY_TIMER"
-# Wait for already-running mail and recovery checks to finish.
-while systemctl is-active --quiet "$MAIL_UNIT"; do sleep 2; done
-while systemctl is-active --quiet eldritch-production-healthcheck.service; do sleep 2; done
-sudo systemctl stop "$API_UNIT" "$WEB_UNIT"
-cd /srv/eldritch-fable/releases/<commit-sha>/standalone
-sudo -u <existing-service-user> env ELDRITCH_DB=/srv/eldritch-fable/data/eldritch.db npm run db:migrate
+cd ~/eldritch-accounts-release &&
+git pull --ff-only &&
+sudo systemd-run --unit=eldritch-accounts-upgrade --wait --collect \
+  /usr/bin/node "$PWD/standalone/deploy/production-rollout.mjs"
+sudo journalctl -u eldritch-accounts-upgrade -n 25 --no-pager -o cat
 ```
 
-Replace both angle-bracket placeholders with the recorded release ID and service user. Migration automatically creates a consistent, mode-600 backup in the database directory's backups folder and prints its path. Record it. Migration preserves accounts and roles, deduplicates legacy pending mail, cancels obsolete messages, and quarantines interrupted deliveries. A second migration run is safe and creates another backup.
+The script targets only the verified layout above. It checks service users, the active database file, available disk space and loopback-only Caddy routing before stopping anything. It refuses a maintenance service launched from the app directory or directly referring to files inside it, so that service can be adapted first. If a preflight check stops the upgrade, share the fixed error code rather than credentials or full service configuration.
 
-Point the existing production API and frontend services at the new release (or update their existing release symlink). Update the production mail service's working directory and command, retaining a single mail timer. The supplied generic service templates are references for a new installation, not additional services to install alongside production. Preserve the actual service users, environment files, Node paths, production ports, Caddy routing, and backup timer.
+The rollout performs these steps:
 
-```sh
-sudo systemctl daemon-reload
-sudo systemctl start "$API_UNIT" "$WEB_UNIT"
-curl --fail "http://127.0.0.1:$API_PORT/api/health"
-sudo systemctl reload caddy
-curl --fail https://eldritchfable.com/api/health
-curl --fail https://eldritchfable.com/api/auth/me
-sudo systemctl start "$MAIL_UNIT"
-sudo journalctl -u "$MAIL_UNIT" -n 20 --no-pager
-sudo systemctl start "$RECOVERY_TIMER"
-```
+1. Copy the built release and dependencies to a versioned directory under /srv/eldritch-production/releases, omitting .env files. Validate the updated routing with the installed Caddy as the frontend service user.
+2. Pause the mail, recovery and backup timers. Wait for already-running jobs to finish, then stop the API and frontend for a short maintenance window.
+3. Run database work as sentinelX. Create a consistent mode-600 backup in a new private directory beside the live database, migrate that same database to schema version 2, compare preserved data and check integrity and foreign keys. Print the backup path.
+4. Preserve the old app and frontend entries in a private deployment directory, then point those entries at the new release. Keep the existing production service names, API port and database path.
+5. Apply service overrides and a protected shared runtime file at /etc/eldritch-fable/accounts-runtime.env. Retain the existing SMTP credential file. Run the mail worker as sentinelX so its SQLite files remain writable by the API user.
+6. Start the API and frontend. Check API health, unauthenticated session lookup and the account route locally and through https://eldritchfable.com. A release header confirms that public requests reach the new production routing.
+7. Verify SMTP connection and authentication with sending disabled. If it succeeds, enable sending and resume the existing transactional mail timer. If it fails, keep accounts live and leave mail paused with a safe error code. Resume the backup timer and, after successful account deployment, the recovery timer.
 
-With ELDRITCH_SEND_EMAIL=NO, the mail worker reports counts and does not claim or send messages. The unauthenticated account lookup should return a null user.
+The generated /etc/caddy/eldritch-accounts-production.json preserves the production routes, static root, listener and admin configuration. It adds Referrer-Policy: no-referrer and overwrites X-Eldritch-Client-IP from Cloudflare's CF-Connecting-IP. This trust is valid only for the verified local Cloudflare Tunnel and loopback-only origin. The API ignores arbitrary X-Forwarded-For. The separate legacy Caddy service/configuration is not reloaded or replaced.
 
-## 5. Enable and verify delivery
+The original /etc/caddy/Caddyfile.production remains saved in place. The production web service override explicitly uses the generated JSON and clears its previous reload command; use a production-web restart for subsequent configuration changes. A reload through the legacy Caddy admin endpoint could target the wrong process.
 
-Set ELDRITCH_SEND_EMAIL=YES in the protected environment file, then:
+## Verify actual inbox delivery
 
-```sh
-sudo systemctl enable --now "$MAIL_TIMER"
-sudo systemctl start "$MAIL_UNIT"
-sudo systemctl list-timers "$MAIL_TIMER" --no-pager
-sudo journalctl -u "$MAIL_UNIT" -n 20 --no-pager
-```
+A successful SMTP check confirms connection and authentication, not inbox delivery. On the HTTPS site, use your own designated address to:
 
-Use a designated test address on the HTTPS site. Register, receive one verification message, verify, sign in, change password, then request and complete a reset. Confirm old passwords and sessions stop working. Repeat a verification resend and confirm one pending message. Check the forms on a phone. The timer waits one minute after a batch finishes; starting the same systemd service while it runs does not spawn another instance.
+1. Register and receive one verification message; verify and sign in.
+2. Change the password; confirm old sessions and the old password stop working.
+3. Request a reset, receive one message, complete it and sign in again.
+4. Check resend behavior and the forms on a phone.
 
-Summaries distinguish pending, sent, failed, cancelled, and uncertain deliveries. Uncertain messages are not blindly replayed: request a new link through the site. Confirm actual inbox delivery before calling the live rollout complete.
+Previously sent email is not replayed. Interrupted or ambiguous SMTP deliveries are quarantined rather than blindly retried. Customers can request a fresh link through the site. Generic account responses do not disclose whether another address is registered.
 
-## Backups and rollback
+SMTP can be verified without sending mail by running server/mail-worker.mjs --verify with the protected service environment. Do not source or paste the credential file into chat. Normal mail processing remains in the existing production systemd timer.
 
-Inside the release's standalone directory, set ELDRITCH_DB to the actual database and run:
+## Recovery and backups
+
+Each rollout prints a private recovery record at /srv/eldritch-production/deployments/<release-id>/deployment.json. It records the previous app/frontend entries, original configuration snapshots and database backup path. Keep it with the backup.
+
+If startup or public routing checks fail, the script stops the new services, restores the previous app/frontend entries and saved service configuration, and restarts the previous services. It retains the migrated database, including any subsequent account changes. It leaves mail and recovery timers paused after a migration failure or code rollback so older recovery/queue code cannot resume automatically. It never replaces the database with an older snapshot automatically. If restoration itself fails, the script reports ROLLBACK_NEEDS_ATTENTION and the recovery record location.
+
+For routine database tools, inside the active app directory with ELDRITCH_DB set to the verified live database:
 
 ```sh
 npm run db:backup -- /absolute/path/new-backup.sqlite
 npm run db:restore -- /absolute/path/backup.sqlite /absolute/path/restored-copy.sqlite
 ```
 
-Restore verifies integrity, creates a separate file, and refuses to overwrite a destination. Test it before release. Retain backups off the server as well.
-
-For a code rollback, stop the mail timer, wait for the worker to finish, stop the API, restore the previous code/service/Caddy paths, validate Caddy, then restart. This release adds schema metadata and queue fields. Old queue code has no claim logic and can send duplicates, so leave its scheduler stopped.
-
-If a database rollback is necessary, first back up the current database so accounts created after release remain recoverable. Restore the pre-migration backup to a separate filename and update ELDRITCH_DB while services are stopped. An older snapshot omits later account changes; retain the newer snapshot for recovery.
+Restore verifies integrity, creates a separate file and refuses to overwrite an existing destination. A database rollback requires a backup of the current database first so later account changes remain recoverable. Retain copies off the server as well.

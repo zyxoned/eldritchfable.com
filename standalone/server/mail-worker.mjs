@@ -4,11 +4,12 @@ import { queueStatus, runMailBatch } from './mail-queue.mjs';
 
 if (!process.env.ELDRITCH_DB) throw Error('ELDRITCH_DB is required');
 const db = openDatabase(process.env.ELDRITCH_DB);
+const verifyOnly = process.argv.includes('--verify');
 let transport;
 try {
   requireSchema(db);
   console.log('Email queue:', JSON.stringify(queueStatus(db)));
-  if (process.env.ELDRITCH_SEND_EMAIL !== 'YES') {
+  if (!verifyOnly && process.env.ELDRITCH_SEND_EMAIL !== 'YES') {
     console.log('Dry run. No emails sent or queue entries changed.');
   } else {
     for (const key of ['SMTP_HOST','SMTP_PORT','SMTP_USER','SMTP_PASSWORD','SMTP_FROM','ELDRITCH_PUBLIC_URL']) if (!process.env[key]) throw Object.assign(Error('Missing configuration'), { code: 'MISSING_' + key });
@@ -25,7 +26,9 @@ try {
       connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 60000
     });
     await transport.verify();
-    console.log('Email batch:', JSON.stringify(await runMailBatch(db, transport, { publicUrl: publicUrl.href, from: process.env.SMTP_FROM })));
+    console.log('SMTP connection and authentication verified.');
+    if (verifyOnly) console.log('Verification only. No emails sent or queue entries changed.');
+    else console.log('Email batch:', JSON.stringify(await runMailBatch(db, transport, { publicUrl: publicUrl.href, from: process.env.SMTP_FROM })));
   }
 } catch (error) {
   // SMTP error text can contain addresses, server responses or credentials.

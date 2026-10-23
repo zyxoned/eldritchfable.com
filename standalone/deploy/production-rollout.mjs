@@ -52,6 +52,29 @@ function configArgument(args) {
   return index < 0 ? args.find(arg => arg.startsWith('--config='))?.slice(9) : args[index + 1];
 }
 
+// Systemd is the authority for service accounts; screenshots are not. Resolve
+// names/numeric IDs through NSS and check the running effective/filesystem IDs
+// before using those credentials for Caddy validation or SQLite work.
+export function serviceIdentity(unit, info, { getProperty = property, run = command, readStatus = () => readFileSync(info.base + '/status', 'utf8') } = {}) {
+  const validName = value => /^(?:[A-Za-z_][A-Za-z0-9_.-]*\$?|[0-9]+)$/.test(value);
+  const configuredUser = getProperty(unit, 'User') || 'root';
+  requireCondition(validName(configuredUser), 'INVALID_SERVICE_ACCOUNT');
+  const account = run('getent', ['passwd', configuredUser]).split(':');
+  const user = account[0], uid = Number(account[2]), primaryGid = Number(account[3]);
+  requireCondition(account.length >= 7 && validName(user) && /^\d+$/.test(account[2]) && /^\d+$/.test(account[3]), 'SERVICE_ACCOUNT_NOT_FOUND');
+  const configuredGroup = getProperty(unit, 'Group') || String(primaryGid);
+  requireCondition(validName(configuredGroup), 'INVALID_SERVICE_GROUP');
+  const record = run('getent', ['group', configuredGroup]).split(':');
+  const group = record[0], gid = Number(record[2]);
+  requireCondition(record.length >= 4 && validName(group) && /^\d+$/.test(record[2]), 'SERVICE_GROUP_NOT_FOUND');
+  const status = readStatus();
+  const userIds = status.match(/^Uid:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)$/m);
+  const groupIds = status.match(/^Gid:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)$/m);
+  requireCondition(userIds && Number(userIds[2]) === uid && Number(userIds[4]) === uid, 'SERVICE_USER_CHANGED_SINCE_START');
+  requireCondition(groupIds && Number(groupIds[2]) === gid && Number(groupIds[4]) === gid, 'SERVICE_GROUP_CHANGED_SINCE_START');
+  return { user, uid, group, gid };
+}
+
 export function productionConfig(original, releaseId) {
   const config = structuredClone(original);
   const servers = Object.values(config.apps?.http?.servers || {});
@@ -199,7 +222,8 @@ async function rollout() {
   requireCondition(Number(process.versions.node.split('.')[0]) >= 24, 'NODE_24_REQUIRED');
   const api = processInfo(apiUnit), web = processInfo(webUnit);
   const env = environment(api);
-  requireCondition(property(apiUnit, 'User') === 'sentinelX' && property(webUnit, 'User') === 'sentinelX', 'UNEXPECTED_SERVICE_USER');
+  const apiIdentity = serviceIdentity(apiUnit, api), webIdentity = serviceIdentity(webUnit, web);
+  console.log('Production accounts: API=' + apiIdentity.user + ':' + apiIdentity.group + ' frontend=' + webIdentity.user + ':' + webIdentity.group);
   requireCondition(property(mailUnit, 'Type') === 'oneshot', 'EXPECTED_ONESHOT_MAIL_WORKER');
   requireCondition(env.ELDRITCH_DB === database && env.PORT === '3102' && env.ELDRITCH_ORIGIN === origin, 'LIVE_CONFIGURATION_CHANGED');
   requireCondition(realpathSync(database) === '/mnt/eldritch-data/production-seed/data/staging.db', 'LIVE_DATABASE_PATH_CHANGED');
@@ -232,11 +256,7 @@ async function rollout() {
   const currentConfig = configArgument(web.args);
   const originalConfig = currentConfig.endsWith('.json') ? JSON.parse(readFileSync(currentConfig, 'utf8')) : JSON.parse(command(web.binary, ['adapt', '--config', currentConfig, '--adapter', 'caddyfile']));
   const candidate = productionConfig(originalConfig, releaseId);
-  const webGroup = property(webUnit, 'Group');
-  const gid = Number(command('id', ['-g', 'sentinelX']));
-  const webGroupInfo = command('getent', ['group', webGroup || String(gid)]).split(':');
-  const webGid = Number(webGroupInfo[2]);
-  requireCondition(Number.isInteger(gid) && Number.isInteger(webGid), 'SERVICE_GROUP_NOT_FOUND');
+  const webGid = webIdentity.gid;
   await request('http://127.0.0.1:3102/api/health', { json: value => value.status === 'online' });
 
   phase = 'preparing the release';
@@ -249,23 +269,23 @@ async function rollout() {
   mkdirSync(state, { recursive: true, mode: 0o700 }); chmodSync(state, 0o700);
   const candidateFile = '/etc/caddy/eldritch-accounts-candidate-' + releaseId + '.json';
   writeAtomic(candidateFile, JSON.stringify(candidate.config, null, 2) + '\n', 0o640, webGid);
-  try { command('runuser', ['-u', 'sentinelX', '-g', webGroupInfo[0], '--', web.binary, 'validate', '--config', candidateFile]); }
+  try { command('runuser', ['-u', webIdentity.user, '-g', webIdentity.group, '--', web.binary, 'validate', '--config', candidateFile]); }
   finally { unlinkSync(candidateFile); }
   const dropin = unit => '/etc/systemd/system/' + unit + '.d/zz-eldritch-accounts.conf';
   const files = [runtimeFile, webFile, dropin(apiUnit), dropin(webUnit), dropin(mailUnit)].map((path, index) => saveFile(path, state, index));
   const snapshotFolder = root + '/data/accounts-backup-' + releaseId;
   mkdirSync(snapshotFolder, { mode: 0o700 });
-  chownSync(snapshotFolder, Number(command('id', ['-u', 'sentinelX'])), gid);
+  chownSync(snapshotFolder, apiIdentity.uid, apiIdentity.gid);
   const snapshot = snapshotFolder + '/before-upgrade.sqlite';
   const timerStates = Object.fromEntries([mailTimer, recoveryTimer, backupTimer].map(unit => [unit, active(unit)]));
-  const metadata = { releaseId, release, snapshot, files, phase: 'prepared', previousApp: state + '/previous-app', previousFrontend: state + '/previous-frontend' };
+  const metadata = { releaseId, release, snapshot, files, apiIdentity, webIdentity, phase: 'prepared', previousApp: state + '/previous-app', previousFrontend: state + '/previous-frontend' };
   const record = value => { metadata.phase = value; writeAtomic(state + '/deployment.json', JSON.stringify(metadata, null, 2) + '\n'); };
   record('prepared');
   console.log('Prepared release: ' + releaseId);
   let paused = false, servicesStopped = false, migrationStarted = false, activationAttempted = false, deployed = false;
   const runtime = send => `ELDRITCH_DB=${database}\nPORT=3102\nELDRITCH_ORIGIN=${origin}\nELDRITCH_PUBLIC_URL=${origin}\nELDRITCH_TRUST_PROXY=loopback\nELDRITCH_SEND_EMAIL=${send}\n`;
   const common = `[Service]\nWorkingDirectory=${app}\nEnvironmentFile=${runtimeFile}\n`;
-  const mailConfig = verify => common + `User=sentinelX\nGroup=\nExecStart=\nExecStart=${api.binary} ${app}/server/mail-worker.mjs${verify ? ' --verify' : ''}\n`;
+  const mailConfig = verify => common + `User=${apiIdentity.user}\nGroup=${apiIdentity.group}\nExecStart=\nExecStart=${api.binary} ${app}/server/mail-worker.mjs${verify ? ' --verify' : ''}\n`;
   const start = async () => { command('systemctl', ['daemon-reload']); command('systemctl', ['start', apiUnit, webUnit]); };
   const stop = async () => { command('systemctl', ['stop', apiUnit, webUnit]); };
   try {
@@ -275,7 +295,7 @@ async function rollout() {
     console.log('Scheduled workers paused; stopping API and frontend for migration.');
     phase = 'backing up and migrating the live database';
     servicesStopped = true; await stop(); migrationStarted = true;
-    const summary = command('runuser', ['-u', 'sentinelX', '--', api.binary, release + '/deploy/production-rollout.mjs', '--database-phase', database, snapshot]);
+    const summary = command('runuser', ['-u', apiIdentity.user, '-g', apiIdentity.group, '--', api.binary, release + '/deploy/production-rollout.mjs', '--database-phase', database, snapshot]);
     console.log('Database backup: ' + snapshot);
     console.log('Migration PASS: ' + JSON.stringify(JSON.parse(summary)));
     record('database-migrated');

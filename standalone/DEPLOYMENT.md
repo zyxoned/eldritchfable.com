@@ -8,9 +8,9 @@ The server inspection and migration rehearsal on October 23, 2026 confirmed:
 
 - Node 24.22.0 at /usr/bin/node; Caddy 2.6.2; local Cloudflare Tunnel.
 - /srv/eldritch-production is a symlink to /mnt/eldritch-data/production-seed. Its app and data entries are directories.
-- API: eldritch-production-api.service, user sentinelX, port 3102, /srv/eldritch-production/app/server/index.mjs.
+- API: eldritch-production-api.service, port 3102, /srv/eldritch-production/app/server/index.mjs. Read its service account from systemd.
 - Live database: /srv/eldritch-production/data/staging.db, resolving to /mnt/eldritch-data/production-seed/data/staging.db. Despite its filename, this is the live customer database.
-- Frontend: eldritch-production-web.service, user sentinelX, /etc/caddy/Caddyfile.production, static root /srv/eldritch-production/frontend, API proxy 127.0.0.1:3102.
+- Frontend: eldritch-production-web.service, /etc/caddy/Caddyfile.production, static root /srv/eldritch-production/frontend, API proxy 127.0.0.1:3102. Preserve its configured service account.
 - Mail: eldritch-production-mail.service and its existing timer. Credentials are in /etc/eldritch-fable/mail.env.
 - Separate production backup and healthcheck timers. The healthcheck performs recovery and must be paused during migration.
 - The migrated rehearsal copy retained 3 accounts (1 customer role, 2 admins), 6 sessions and 3 sent email records. These counts can change as people use the site; migration preserves the actual current records.
@@ -44,15 +44,15 @@ sudo systemd-run --unit=eldritch-accounts-upgrade --wait --collect \
 sudo journalctl -u eldritch-accounts-upgrade -n 25 --no-pager -o cat
 ```
 
-The script targets only the verified layout above. It checks service users, the active database file, available disk space and loopback-only Caddy routing before stopping anything. It refuses a maintenance service launched from the app directory or directly referring to files inside it, so that service can be adapted first. If a preflight check stops the upgrade, share the fixed error code rather than credentials or full service configuration.
+The script targets only the verified layout above. It resolves API and frontend users and groups from systemd through the operating system's account database, then checks their effective and filesystem IDs against the running processes. It uses these discovered identities for file permissions, database work, Caddy validation and the mail service; it does not infer usernames from screenshots. It also checks the active database file, available disk space and loopback-only Caddy routing before stopping anything. It refuses a maintenance service launched from the app directory or directly referring to files inside it, so that service can be adapted first. If a preflight check stops the upgrade, share the fixed error code rather than credentials or full service configuration.
 
 The rollout performs these steps:
 
 1. Copy the built release and dependencies to a versioned directory under /srv/eldritch-production/releases, omitting .env files. Validate the updated routing with the installed Caddy as the frontend service user.
 2. Pause the mail, recovery and backup timers. Wait for already-running jobs to finish, then stop the API and frontend for a short maintenance window.
-3. Run database work as sentinelX. Create a consistent mode-600 backup in a new private directory beside the live database, migrate that same database to schema version 2, compare preserved data and check integrity and foreign keys. Print the backup path.
+3. Run database work with the API service's existing user and group. Create a consistent mode-600 backup in a new private directory beside the live database, migrate that same database to schema version 2, compare preserved data and check integrity and foreign keys. Print the backup path.
 4. Preserve the old app and frontend entries in a private deployment directory, then point those entries at the new release. Keep the existing production service names, API port and database path.
-5. Apply service overrides and a protected shared runtime file at /etc/eldritch-fable/accounts-runtime.env. Retain the existing SMTP credential file. Run the mail worker as sentinelX so its SQLite files remain writable by the API user.
+5. Apply service overrides and a protected shared runtime file at /etc/eldritch-fable/accounts-runtime.env. Retain the existing SMTP credential file. Run the mail worker with the API service's user and group so its SQLite files remain writable by the API user.
 6. Start the API and frontend. Check API health, unauthenticated session lookup and the account route locally and through https://eldritchfable.com. A release header confirms that public requests reach the new production routing.
 7. Verify SMTP connection and authentication with sending disabled. If it succeeds, enable sending and resume the existing transactional mail timer. If it fails, keep accounts live and leave mail paused with a safe error code. Resume the backup timer and, after successful account deployment, the recovery timer.
 

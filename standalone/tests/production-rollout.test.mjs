@@ -5,7 +5,44 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { openDatabase, digest, migrateDatabase } from '../server/database.mjs';
-import { productionConfig, migrateWithBackup, activateRelease } from '../deploy/production-rollout.mjs';
+import { productionConfig, migrateWithBackup, activateRelease, serviceIdentity } from '../deploy/production-rollout.mjs';
+
+function resolveIdentity({ user = 'sentinelx', group = '', uid = 1001, primaryGid = 1001, actualUid = uid, actualGid = group ? 2001 : primaryGid, resolvedGroup = 'store-web' } = {}) {
+  const calls = [];
+  const result = serviceIdentity('test.service', { base: '/unused' }, {
+    getProperty: (_unit, name) => name === 'User' ? user : group,
+    run: (executable, args) => {
+      calls.push([executable, ...args]);
+      return args[0] === 'passwd' ? `sentinelx:x:${uid}:${primaryGid}:Service:/srv:/usr/sbin/nologin` : `${resolvedGroup}:x:${group ? 2001 : primaryGid}:`;
+    },
+    readStatus: () => `Uid:\t${actualUid}\t${actualUid}\t${actualUid}\t${actualUid}\nGid:\t${actualGid}\t${actualGid}\t${actualGid}\t${actualGid}\n`
+  });
+  return { result, calls };
+}
+
+test('rollout resolves the configured service user exactly, including numeric users and custom groups', () => {
+  const named = resolveIdentity({ group: 'store-web' });
+  assert.deepEqual(named.result, { user: 'sentinelx', uid: 1001, group: 'store-web', gid: 2001 });
+  assert.deepEqual(named.calls, [['getent', 'passwd', 'sentinelx'], ['getent', 'group', 'store-web']]);
+  const numeric = resolveIdentity({ user: '1001' });
+  assert.equal(numeric.result.user, 'sentinelx');
+  assert.equal(numeric.result.gid, 1001);
+  assert.deepEqual(numeric.calls, [['getent', 'passwd', '1001'], ['getent', 'group', '1001']]);
+});
+
+test('service identity resolves real Linux accounts and checks the current process IDs', { skip: process.platform !== 'linux' }, () => {
+  const identity = serviceIdentity('test.service', { base: '/proc/self' }, {
+    getProperty: (_unit, name) => String(name === 'User' ? process.getuid() : process.getgid())
+  });
+  assert.equal(identity.uid, process.getuid());
+  assert.equal(identity.gid, process.getgid());
+});
+
+test('rollout stops if configured service credentials no longer match the running process', () => {
+  assert.throws(() => resolveIdentity({ actualUid: 2002 }), /SERVICE_USER_CHANGED_SINCE_START/);
+  assert.throws(() => resolveIdentity({ actualGid: 2002 }), /SERVICE_GROUP_CHANGED_SINCE_START/);
+  assert.throws(() => resolveIdentity({ user: '%i' }), /INVALID_SERVICE_ACCOUNT/);
+});
 
 const caddy = () => ({ admin: { disabled: true }, apps: { http: { servers: { production: {
   listen: ['127.0.0.1:8081'], routes: [{ handle: [

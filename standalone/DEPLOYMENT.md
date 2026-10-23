@@ -4,6 +4,14 @@ This release upgrades the independent store. It does not require Base44, import 
 
 The reported server uses eldritch-production-api, eldritch-production-web, eldritch-production-mail, and production backup/healthcheck timers. The older eldritch-api unit is inactive. Preserve the existing production units, separate frontend service, and their actual ports; do not start the legacy API or install parallel generic services. The healthcheck timer can restart services, so pause it together with the mail timer during migration and resume it after validation.
 
+Verified production layout (October 23, 2026):
+
+- API: user sentinelX, port 3102, script /srv/eldritch-production/app/server/index.mjs.
+- Configured database: /srv/eldritch-production/data/staging.db. The active process has /mnt/eldritch-data/production-seed/data/staging.db open. Its filename does not make it a disposable staging database.
+- App working directory resolves to /mnt/eldritch-data/production-seed/app. Confirm which parent paths are symlinks before replacing an app directory or link.
+- Frontend: user sentinelX, Caddy configuration /etc/caddy/Caddyfile.production.
+- Mail: working directory /srv/eldritch-production/app, user root, environment file /etc/eldritch-fable/mail.env. Preserve this file and its existing credentials.
+
 ## 1. Identify the running layout
 
 From the downloaded repository run:
@@ -12,7 +20,7 @@ From the downloaded repository run:
 sudo bash standalone/deploy/inspect.sh
 ```
 
-This discovers all Eldritch services, reports safe metadata and environment-file paths, and maps active API main PIDs to their TCP listeners. It checks the discovered loopback API ports without assuming port 3000. It also reports timers and possible cron entry locations without printing environment secrets. Record the production code directory and database location. The previously documented database is /srv/eldritch-fable/data/eldritch.db; confirm this locally before using it. Preserve the working SMTP credentials.
+This discovers all Eldritch services, reports safe metadata and environment-file paths, and maps active API main PIDs to their TCP listeners. It checks the discovered loopback API ports without assuming port 3000. It also reports timers and possible cron entry locations without printing environment secrets. Record the production code directory and database location. For this server, use the verified production database above; the generic template's /srv/eldritch-fable/data/eldritch.db is not the database reported by the running API. Preserve the working SMTP credentials.
 
 The templates use /srv/eldritch-fable/current/standalone, /etc/eldritch-fable.env, user/group eldritch, and /usr/bin/node. Adapt these to the paths and service user shown by inspection. If Node is installed under a personal home directory, install Node 24 at a system-accessible path before using the hardened service template.
 
@@ -27,6 +35,14 @@ bash standalone/deploy/stage.sh
 ```
 
 The staging script installs locked dependencies, runs backend tests, builds the frontend, and migrates a new temporary database. It cannot send mail. Browser tests also run in CI; locally run npm run test:browser inside standalone after installing Chromium.
+
+For an existing repair checkout, update it with git pull --ff-only before staging. Then run this read-only production check:
+
+```sh
+sudo /usr/bin/node standalone/deploy/production-check.mjs
+```
+
+It confirms that the configured database is actually open by the running API, reports symlink destinations and selected Caddy routing paths, and takes a consistent snapshot into a private temporary directory. Only that snapshot is migrated. It verifies that every account, session, account token, newsletter record, product, and collection is preserved, prints aggregate counts without customer details, and deletes the temporary copy. It does not load SMTP credentials, send email, or change services or configuration. A successful rehearsal is not a live deployment.
 
 Install this checkout under a versioned directory, for example /srv/eldritch-fable/releases/<commit-sha>, using git rev-parse --short=12 HEAD as the release identifier. Keep the built standalone/dist and standalone/node_modules in that release. Give the API's existing service user read access to the release and write access to the existing data directory. Keep SMTP secrets in the existing environment file outside the checkout.
 

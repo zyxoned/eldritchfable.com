@@ -4,6 +4,9 @@ import { mkdtempSync, writeFileSync, chmodSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { openDatabase } from '../server/database.mjs';
+import { digest } from '../server/database.mjs';
+import { rehearseMigration, caddySummary } from '../deploy/production-check.mjs';
 
 function inspect(t, active) {
   const folder = mkdtempSync(join(tmpdir(), 'ef-inspection-'));
@@ -36,4 +39,44 @@ test('inspection never assumes a default port when no active API can be mapped',
   const result = inspect(t, false);
   assert.equal(result.calls, '');
   assert.match(result.output, /no default port was assumed/);
+});
+
+test('production rehearsal migrates a WAL snapshot without changing live accounts, sessions or queue', async t => {
+  const folder = mkdtempSync(join(tmpdir(), 'ef-rehearsal-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const filename = join(folder, 'live.db');
+  const db = openDatabase(filename); t.after(() => db.close());
+  db.exec(readFileSync(new URL('../server/accounts-schema.sql', import.meta.url), 'utf8'));
+  db.prepare("INSERT INTO account_users(id,email,password_hash) VALUES('keep','private@example.test','private-hash')").run();
+  db.prepare("INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES('session','keep','2099-01-01')").run();
+  const token = 'a'.repeat(64);
+  db.prepare("INSERT INTO account_tokens(token_hash,user_id,purpose,expires_at) VALUES(?,'keep','verify_email','2099-01-01')").run(digest(token));
+  for (const id of ['first', 'duplicate']) db.prepare("INSERT INTO email_outbox(id,recipient,template,payload_json) VALUES(?,'private@example.test','verify_email',?)").run(id, JSON.stringify({ verification: token }));
+  const result = await rehearseMigration(filename);
+  assert.deepEqual(result, { accounts: 1, customers: 1, admins: 0, sessions: 1, schemaVersion: 2, queue: { cancelled: 1, pending: 1 }, preserved: true });
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='schema_migrations'").get().n, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE status='pending'").get().n, 2);
+  assert.equal(db.prepare('SELECT password_hash FROM account_users').get().password_hash, 'private-hash');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM account_sessions').get().n, 1);
+});
+
+test('production rehearsal refuses a missing live database without creating it', async t => {
+  const folder = mkdtempSync(join(tmpdir(), 'ef-missing-live-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const filename = join(folder, 'missing.db');
+  await assert.rejects(rehearseMigration(filename), /does not exist/);
+  assert.throws(() => readFileSync(filename), { code: 'ENOENT' });
+});
+
+test('Caddy inspection selects paths and trusted-header flags without exposing other header values', () => {
+  const summary = caddySummary({ apps: { http: { servers: { production: { routes: [{ handle: [
+    { handler: 'vars', root: '/srv/eldritch-production/app/dist' },
+    { handler: 'headers', response: { set: { 'Referrer-Policy': ['no-referrer'], Authorization: ['private-value'] } } },
+    { handler: 'reverse_proxy', upstreams: [{ dial: '127.0.0.1:3102' }, { dial: 'user:private-value@upstream' }], headers: { request: { set: { 'X-Eldritch-Client-Ip': ['{http.request.header.CF-Connecting-IP}'], Authorization: ['private-value'] } } } }
+  ] }] } } } } });
+  assert.deepEqual(summary, {
+    roots: ['/srv/eldritch-production/app/dist'], upstreams: ['(other upstream; value withheld)', '127.0.0.1:3102'],
+    cloudflareClientHeader: true, noReferrer: true
+  });
+  assert.doesNotMatch(JSON.stringify(summary), /private-value/);
 });

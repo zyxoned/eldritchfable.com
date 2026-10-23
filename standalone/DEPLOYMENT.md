@@ -2,6 +2,8 @@
 
 This release upgrades the independent store. It does not require Base44, import products, or activate checkout. Run the commands on your Linux server through the terminal you already use on your laptop or phone.
 
+The reported server uses eldritch-production-api, eldritch-production-web, eldritch-production-mail, and production backup/healthcheck timers. The older eldritch-api unit is inactive. Preserve the existing production units, separate frontend service, and their actual ports; do not start the legacy API or install parallel generic services. The healthcheck timer can restart services, so pause it together with the mail timer during migration and resume it after validation.
+
 ## 1. Identify the running layout
 
 From the downloaded repository run:
@@ -10,7 +12,7 @@ From the downloaded repository run:
 sudo bash standalone/deploy/inspect.sh
 ```
 
-This reports service paths, the service user, timers, and possible cron entry locations without printing environment secrets. Record the current code directory and database location. The previously documented database is /srv/eldritch-fable/data/eldritch.db; confirm this locally before using it. Preserve the working SMTP credentials.
+This discovers all Eldritch services, reports safe metadata and environment-file paths, and maps active API main PIDs to their TCP listeners. It checks the discovered loopback API ports without assuming port 3000. It also reports timers and possible cron entry locations without printing environment secrets. Record the production code directory and database location. The previously documented database is /srv/eldritch-fable/data/eldritch.db; confirm this locally before using it. Preserve the working SMTP credentials.
 
 The templates use /srv/eldritch-fable/current/standalone, /etc/eldritch-fable.env, user/group eldritch, and /usr/bin/node. Adapt these to the paths and service user shown by inspection. If Node is installed under a personal home directory, install Node 24 at a system-accessible path before using the hardened service template.
 
@@ -38,7 +40,7 @@ Production configuration needs these values (edit locally; do not paste SMTP sec
 ELDRITCH_DB=/srv/eldritch-fable/data/eldritch.db
 ELDRITCH_ORIGIN=https://eldritchfable.com
 ELDRITCH_PUBLIC_URL=https://eldritchfable.com
-PORT=3000
+# Preserve the existing production PORT; identify it using inspect.sh.
 ELDRITCH_TRUST_PROXY=loopback
 ELDRITCH_SEND_EMAIL=NO
 # Retain the working SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD,
@@ -47,13 +49,13 @@ ELDRITCH_SEND_EMAIL=NO
 
 The environment file should be root-owned with mode 600 and loaded using systemd's EnvironmentFile setting. The API binds only to 127.0.0.1.
 
-In Caddy's existing reverse_proxy for /api/*, overwrite the address header:
+For the reported Caddy 2.6.2 with a local Cloudflare Tunnel, keep Caddy reachable only from loopback and overwrite this header in the existing API reverse_proxy:
 
 ```caddy
-header_up X-Eldritch-Client-IP {client_ip}
+header_up X-Eldritch-Client-IP {http.request.header.CF-Connecting-IP}
 ```
 
-Never pass through a browser-supplied address header. Caddy must derive client_ip from the actual client or a specifically trusted upstream. deploy/Caddyfile.tunnel.example is for a Cloudflare Tunnel connecting locally to Caddy on port 8080: it trusts only loopback upstreams, uses Cloudflare's client-IP header, and binds Caddy to loopback. For another topology, retain the existing trusted-proxy configuration and verify client-IP derivation before enabling ELDRITCH_TRUST_PROXY=loopback. Without the flag the API ignores forwarded addresses.
+Cloudflare overwrites CF-Connecting-IP; the loopback-only origin must be reachable through that tunnel, not directly from the public network. Never pass through a browser-supplied X-Eldritch-Client-IP. deploy/Caddyfile.tunnel.example uses Caddy 2.6-compatible syntax and is a new static-file layout example only. Preserve an existing production-web reverse_proxy and its actual port. For another topology, derive the header from a verified trusted client source before enabling ELDRITCH_TRUST_PROXY=loopback. Without that flag the API ignores forwarded addresses. Do not add newer trusted_proxies directives to Caddy 2.6.2.
 
 Retain SPA fallback routing for account links (try_files {path} /index.html). Set Referrer-Policy: no-referrer on frontend responses so link tokens are not forwarded in referrers. Validate changes using sudo caddy validate --config /etc/caddy/Caddyfile before reloading.
 
@@ -61,27 +63,38 @@ Retain SPA fallback routing for account links (try_files {path} /index.html). Se
 
 Identify the old mail-worker schedules from step 1. Stop their timers/services and remove only the matching mail-worker cron entries. Wait for an active old worker to finish before migrating; do not run old and new code against this database together.
 
-Stop the API during migration:
+After the actual release, database, and port have been identified, stop the production writers during migration. Set API_PORT to the port reported by the inspector before running these commands:
 
 ```sh
-sudo systemctl stop eldritch-api.service
+: "${API_PORT:?Set API_PORT to the production API listener port from inspect.sh}"
+API_UNIT=eldritch-production-api.service
+WEB_UNIT=eldritch-production-web.service
+MAIL_UNIT=eldritch-production-mail.service
+MAIL_TIMER=eldritch-production-mail.timer
+RECOVERY_TIMER=eldritch-production-healthcheck.timer
+sudo systemctl stop "$MAIL_TIMER" "$RECOVERY_TIMER"
+# Wait for already-running mail and recovery checks to finish.
+while systemctl is-active --quiet "$MAIL_UNIT"; do sleep 2; done
+while systemctl is-active --quiet eldritch-production-healthcheck.service; do sleep 2; done
+sudo systemctl stop "$API_UNIT" "$WEB_UNIT"
 cd /srv/eldritch-fable/releases/<commit-sha>/standalone
 sudo -u <existing-service-user> env ELDRITCH_DB=/srv/eldritch-fable/data/eldritch.db npm run db:migrate
 ```
 
 Replace both angle-bracket placeholders with the recorded release ID and service user. Migration automatically creates a consistent, mode-600 backup in the database directory's backups folder and prints its path. Record it. Migration preserves accounts and roles, deduplicates legacy pending mail, cancels obsolete messages, and quarantines interrupted deliveries. A second migration run is safe and creates another backup.
 
-Point the API and Caddy at the new release (or update the existing current symlink). Install/adapt deploy/eldritch-api.service, deploy/eldritch-mail.service, and deploy/eldritch-mail.timer in /etc/systemd/system. Preserve the actual service user and absolute Node path.
+Point the existing production API and frontend services at the new release (or update their existing release symlink). Update the production mail service's working directory and command, retaining a single mail timer. The supplied generic service templates are references for a new installation, not additional services to install alongside production. Preserve the actual service users, environment files, Node paths, production ports, Caddy routing, and backup timer.
 
 ```sh
 sudo systemctl daemon-reload
-sudo systemctl start eldritch-api.service
-curl --fail http://127.0.0.1:3000/api/health
+sudo systemctl start "$API_UNIT" "$WEB_UNIT"
+curl --fail "http://127.0.0.1:$API_PORT/api/health"
 sudo systemctl reload caddy
 curl --fail https://eldritchfable.com/api/health
 curl --fail https://eldritchfable.com/api/auth/me
-sudo systemctl start eldritch-mail.service
-sudo journalctl -u eldritch-mail.service -n 20 --no-pager
+sudo systemctl start "$MAIL_UNIT"
+sudo journalctl -u "$MAIL_UNIT" -n 20 --no-pager
+sudo systemctl start "$RECOVERY_TIMER"
 ```
 
 With ELDRITCH_SEND_EMAIL=NO, the mail worker reports counts and does not claim or send messages. The unauthenticated account lookup should return a null user.
@@ -91,10 +104,10 @@ With ELDRITCH_SEND_EMAIL=NO, the mail worker reports counts and does not claim o
 Set ELDRITCH_SEND_EMAIL=YES in the protected environment file, then:
 
 ```sh
-sudo systemctl enable --now eldritch-mail.timer
-sudo systemctl start eldritch-mail.service
-sudo systemctl list-timers eldritch-mail.timer --no-pager
-sudo journalctl -u eldritch-mail.service -n 20 --no-pager
+sudo systemctl enable --now "$MAIL_TIMER"
+sudo systemctl start "$MAIL_UNIT"
+sudo systemctl list-timers "$MAIL_TIMER" --no-pager
+sudo journalctl -u "$MAIL_UNIT" -n 20 --no-pager
 ```
 
 Use a designated test address on the HTTPS site. Register, receive one verification message, verify, sign in, change password, then request and complete a reset. Confirm old passwords and sessions stop working. Repeat a verification resend and confirm one pending message. Check the forms on a phone. The timer waits one minute after a batch finishes; starting the same systemd service while it runs does not spawn another instance.

@@ -4,8 +4,8 @@ import { backup } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readlinkSync, realpathSync, lstatSync, readdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { openDatabase, migrateDatabase } from '../server/database.mjs';
 
@@ -131,7 +131,7 @@ async function main() {
   console.log('Live services, configuration and database were not changed. No emails sent.');
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   main().catch(() => {
     // Do not print underlying process/configuration errors; they can include secrets.
     console.error('Production check stopped while ' + checkPhase + '. Share the report above; do not change services.');

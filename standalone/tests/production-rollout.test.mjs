@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, lstatSync, statSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, lstatSync, statSync, existsSync, symlinkSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { openDatabase, digest, migrateDatabase } from '../server/database.mjs';
-import { productionConfig, migrateWithBackup, activateRelease, serviceIdentity } from '../deploy/production-rollout.mjs';
+import { productionConfig, migrateWithBackup, activateRelease, serviceIdentity, databaseReport } from '../deploy/production-rollout.mjs';
 
 function resolveIdentity({ user = 'sentinelx', group = '', uid = 1001, primaryGid = 1001, actualUid = uid, actualGid = group ? 2001 : primaryGid, resolvedGroup = 'store-web' } = {}) {
   const calls = [];
@@ -108,6 +109,54 @@ test('live migration makes a private restorable backup while retaining accounts,
     assert.equal(old.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='schema_migrations'").get().n, 0);
   } finally { live.close(); old.close(); }
   await assert.rejects(migrateWithBackup(filename, snapshot), /BACKUP_ALREADY_EXISTS/);
+});
+
+test('the database CLI runs through a symlink and actually creates the backup and migrates the database', t => {
+  const folder = mkdtempSync(join(tmpdir(), 'ef-linked-release-')); t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const linkedApp = join(folder, 'linked-app');
+  symlinkSync(fileURLToPath(new URL('..', import.meta.url)), linkedApp);
+  for (const [index, flags] of [[], ['--preserve-symlinks-main']].entries()) {
+    const filename = join(folder, 'live-' + index + '.db'), snapshot = join(folder, 'before-' + index + '.sqlite');
+    const legacy = openDatabase(filename);
+    legacy.exec(readFileSync(new URL('../server/accounts-schema.sql', import.meta.url), 'utf8'));
+    legacy.prepare("INSERT INTO account_users(id,email,password_hash) VALUES('customer','private@example.test','keep-password')").run();
+    legacy.prepare("INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES('session','customer','2099-01-01')").run();
+    legacy.close();
+    const result = spawnSync(process.execPath, [...flags, join(linkedApp, 'deploy/production-rollout.mjs'), '--database-phase', filename, snapshot], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const report = databaseReport(result.stdout, snapshot, process.getuid());
+    assert.deepEqual(report, { schemaVersion: 2, accounts: 1, sessions: 1, preserved: true });
+    const live = openDatabase(filename), copy = openDatabase(snapshot, { readOnly: true });
+    try {
+      assert.equal(live.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version, 2);
+      assert.equal(live.prepare('SELECT password_hash FROM account_users').get().password_hash, 'keep-password');
+      assert.equal(copy.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='schema_migrations'").get().n, 0);
+      assert.equal(copy.prepare('SELECT COUNT(*) AS n FROM account_sessions').get().n, 1);
+    } finally { live.close(); copy.close(); }
+  }
+});
+
+test('a silent database helper or a missing or public backup cannot be reported as a successful migration', async t => {
+  const folder = mkdtempSync(join(tmpdir(), 'ef-backup-report-')); t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const filename = join(folder, 'live.db'), snapshot = join(folder, 'before.sqlite');
+  const summary = JSON.stringify({ schemaVersion: 2, accounts: 0, sessions: 0, preserved: true });
+  assert.throws(() => databaseReport('', snapshot, process.getuid()), /INVALID_DATABASE_STEP_REPORT/);
+  assert.throws(() => databaseReport(summary, snapshot, process.getuid()), /DATABASE_BACKUP_MISSING/);
+  const db = openDatabase(filename); migrateDatabase(db); db.close();
+  const result = await migrateWithBackup(filename, snapshot);
+  assert.deepEqual(databaseReport(JSON.stringify(result), snapshot, process.getuid()), result);
+  chmodSync(snapshot, 0o644);
+  assert.throws(() => databaseReport(summary, snapshot, process.getuid()), /DATABASE_BACKUP_PERMISSIONS_INVALID/);
+});
+
+test('the production check CLI also executes when its installation path is a symlink', t => {
+  const folder = mkdtempSync(join(tmpdir(), 'ef-linked-check-')); t.after(() => rmSync(folder, { recursive: true, force: true }));
+  symlinkSync(fileURLToPath(new URL('..', import.meta.url)), join(folder, 'linked-app'));
+  const systemctl = join(folder, 'systemctl');
+  writeFileSync(systemctl, '#!/bin/sh\nprintf "0\\n"\n'); chmodSync(systemctl, 0o700);
+  const result = spawnSync(process.execPath, [join(folder, 'linked-app/deploy/production-check.mjs')], { encoding: 'utf8', env: { ...process.env, PATH: folder + ':' + process.env.PATH } });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /stopped while reading the active API/);
 });
 
 test('a failed public startup check restores both code directories without discarding a later account', async t => {

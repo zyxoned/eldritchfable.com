@@ -2,9 +2,9 @@
 // Run as root, preferably in a transient systemd service to survive SSH loss.
 import { backup } from 'node:sqlite';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync, realpathSync, readlinkSync, readdirSync, lstatSync, statSync, statfsSync, mkdirSync, chmodSync, chownSync, cpSync, renameSync, symlinkSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, realpathSync, readlinkSync, readdirSync, lstatSync, statSync, statfsSync, mkdirSync, chmodSync, chownSync, cpSync, renameSync, symlinkSync, unlinkSync, openSync, readSync, closeSync } from 'node:fs';
 import { dirname, join, resolve, basename } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { openDatabase, migrateDatabase } from '../server/database.mjs';
 
@@ -20,7 +20,7 @@ const mailTimer = 'eldritch-production-mail.timer';
 const recoveryTimer = 'eldritch-production-healthcheck.timer';
 const backupTimer = 'eldritch-production-backup.timer';
 const origin = 'https://eldritchfable.com';
-const source = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const source = resolve(dirname(realpathSync(fileURLToPath(import.meta.url))), '..');
 const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products'];
 const delay = ms => new Promise(done => setTimeout(done, ms));
 let phase = 'preflight';
@@ -142,6 +142,21 @@ export async function migrateWithBackup(filename, snapshot) {
   } finally { db.close(); }
 }
 
+export function databaseReport(output, snapshot, ownerUid) {
+  let result;
+  try { result = JSON.parse(output); } catch { requireCondition(false, 'INVALID_DATABASE_STEP_REPORT'); }
+  requireCondition(result && result.schemaVersion === 2 && result.preserved === true &&
+    Number.isSafeInteger(result.accounts) && result.accounts >= 0 &&
+    Number.isSafeInteger(result.sessions) && result.sessions >= 0, 'INVALID_DATABASE_STEP_REPORT');
+  requireCondition(existsSync(snapshot), 'DATABASE_BACKUP_MISSING');
+  const stat = lstatSync(snapshot);
+  requireCondition(stat.isFile() && (stat.mode & 0o777) === 0o600 && stat.uid === ownerUid, 'DATABASE_BACKUP_PERMISSIONS_INVALID');
+  const file = openSync(snapshot, 'r'), header = Buffer.alloc(16);
+  try { readSync(file, header, 0, header.length, 0); } finally { closeSync(file); }
+  requireCondition(header.equals(Buffer.from('SQLite format 3\0')), 'DATABASE_BACKUP_INVALID');
+  return { schemaVersion: result.schemaVersion, accounts: result.accounts, sessions: result.sessions, preserved: true };
+}
+
 // Start/check failures restore both entries and the saved configuration. Never
 // restore a database snapshot automatically: later customer changes must survive.
 export async function activateRelease({ entries, configure, restoreConfig, stop, start, check }) {
@@ -211,7 +226,7 @@ async function waitIdle(unit, timeout = 120000) {
 }
 async function request(url, { releaseId, json, text } = {}) {
   const response = await fetch(url, { signal: AbortSignal.timeout(10000), redirect: 'error', headers: { 'Cache-Control': 'no-cache' } });
-  requireCondition(response.ok, 'HTTP_CHECK_FAILED');
+  requireCondition(response.ok, 'HTTP_CHECK_FAILED_' + response.status);
   if (releaseId) requireCondition(response.headers.get('x-eldritch-release') === releaseId, 'PUBLIC_ROUTE_DID_NOT_REACH_NEW_RELEASE');
   if (json) requireCondition(json(await response.json()), 'API_RESPONSE_CHECK_FAILED');
   if (text) requireCondition((await response.text()).includes(text), 'FRONTEND_CHECK_FAILED');
@@ -257,7 +272,9 @@ async function rollout() {
   const originalConfig = currentConfig.endsWith('.json') ? JSON.parse(readFileSync(currentConfig, 'utf8')) : JSON.parse(command(web.binary, ['adapt', '--config', currentConfig, '--adapter', 'caddyfile']));
   const candidate = productionConfig(originalConfig, releaseId);
   const webGid = webIdentity.gid;
+  phase = 'checking current local and public health';
   await request('http://127.0.0.1:3102/api/health', { json: value => value.status === 'online' });
+  await request(origin + '/api/health?deployment-preflight=' + releaseId, { json: value => value.status === 'online' });
 
   phase = 'preparing the release';
   mkdirSync(root + '/releases', { recursive: true, mode: 0o755 }); chmodSync(root + '/releases', 0o755);
@@ -278,7 +295,7 @@ async function rollout() {
   chownSync(snapshotFolder, apiIdentity.uid, apiIdentity.gid);
   const snapshot = snapshotFolder + '/before-upgrade.sqlite';
   const timerStates = Object.fromEntries([mailTimer, recoveryTimer, backupTimer].map(unit => [unit, active(unit)]));
-  const metadata = { releaseId, release, snapshot, files, apiIdentity, webIdentity, phase: 'prepared', previousApp: state + '/previous-app', previousFrontend: state + '/previous-frontend' };
+  const metadata = { releaseId, release, snapshot, files, apiIdentity, webIdentity, timerStates, phase: 'prepared', previousApp: state + '/previous-app', previousFrontend: state + '/previous-frontend' };
   const record = value => { metadata.phase = value; writeAtomic(state + '/deployment.json', JSON.stringify(metadata, null, 2) + '\n'); };
   record('prepared');
   console.log('Prepared release: ' + releaseId);
@@ -295,9 +312,10 @@ async function rollout() {
     console.log('Scheduled workers paused; stopping API and frontend for migration.');
     phase = 'backing up and migrating the live database';
     servicesStopped = true; await stop(); migrationStarted = true;
-    const summary = command('runuser', ['-u', apiIdentity.user, '-g', apiIdentity.group, '--', api.binary, release + '/deploy/production-rollout.mjs', '--database-phase', database, snapshot]);
+    const output = command('runuser', ['-u', apiIdentity.user, '-g', apiIdentity.group, '--', api.binary, release + '/deploy/production-rollout.mjs', '--database-phase', database, snapshot]);
+    const summary = databaseReport(output, snapshot, apiIdentity.uid);
     console.log('Database backup: ' + snapshot);
-    console.log('Migration PASS: ' + JSON.stringify(JSON.parse(summary)));
+    console.log('Migration PASS: ' + JSON.stringify(summary));
     record('database-migrated');
     phase = 'activating the account release';
     activationAttempted = true;
@@ -377,13 +395,14 @@ async function rollout() {
   } finally {
     if (paused) {
       if (timerStates[backupTimer]) command('systemctl', ['start', backupTimer]);
-      if (deployed && timerStates[recoveryTimer]) command('systemctl', ['start', recoveryTimer]);
+      // Also resume recovery after a retry of an upgrade that paused it.
+      if (deployed) command('systemctl', ['start', recoveryTimer]);
       if (!migrationStarted) for (const unit of [mailTimer, recoveryTimer]) if (timerStates[unit]) command('systemctl', ['start', unit]);
     }
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   const action = process.argv[2] === '--database-phase'
     ? migrateWithBackup(process.argv[3], process.argv[4]).then(result => console.log(JSON.stringify(result)))
     : rollout();

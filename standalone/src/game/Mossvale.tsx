@@ -32,7 +32,7 @@ function readIdentity(userId: string): Identity {
   try {
     const old = JSON.parse(sessionStorage.getItem('eldritch-character-' + userId) || 'null');
     if (old && Object.prototype.hasOwnProperty.call(CLASSES, old.heroClass)) return old;
-  } catch { /* Start a fresh guest session if storage is unavailable. */ }
+  } catch { /* Use fresh character preferences if storage is unavailable. */ }
   return { name: '', heroClass: 'ranger', joined: false };
 }
 
@@ -122,6 +122,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   function applyReply(data: Reply) {
+    if (realmRef.current && data.realm.revision < realmRef.current.revision) return;
     applyRealm(data.realm);
     setProfile(data.profile);
     setPlayerId(data.profile?.active ? data.profile.playerId : null);

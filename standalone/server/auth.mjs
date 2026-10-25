@@ -26,7 +26,7 @@ async function verifyPassword(password, stored) {
 const cookie = (token, lifetime = 604800) => 'ef_session=' + token + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + lifetime;
 function parseCookie(req) { return (req.headers.cookie || '').match(/(?:^|;\s*)ef_session=([a-f0-9]{64})(?:;|$)/)?.[1] || null; }
 function publicUser(user) { return { id: user.id, email: user.email, role: user.role, email_verified_at: user.email_verified_at }; }
-function sessionUser(db, req, now) {
+export function sessionUser(db, req, now = Date.now()) {
   const token = parseCookie(req);
   return token ? db.prepare('SELECT u.id,u.email,u.role,u.email_verified_at FROM account_sessions s JOIN account_users u ON u.id=s.user_id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL').get(digest(token), new Date(now).toISOString()) || null : null;
 }

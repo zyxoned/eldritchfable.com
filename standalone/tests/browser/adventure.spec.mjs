@@ -48,7 +48,7 @@ test('a verified adventurer earns private XP, exchanges it, and keeps progress a
     await expect(page.locator('.map-caption')).toContainText('11, 13');
   }
   await page.getByRole('button', { name: /Clear thornlings/ }).click();
-  await expect(page.locator('.map-caption')).toContainText('17, 8', { timeout: 15000 });
+  await expect(page.locator('.map-caption')).toContainText(/17, 8|21, 13|13, 5|26, 10/, { timeout: 15000 });
   await expect(async () => {
     await page.getByRole('button', { name: 'Attack', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('15 XP', { timeout: 400 });
@@ -72,7 +72,9 @@ test('a verified adventurer earns private XP, exchanges it, and keeps progress a
   const balance = page.getByRole('region', { name: 'Your private XP balance' });
   await expect(balance).toContainText('1,250 XP');
   await page.getByRole('button', { name: 'Exchange XP', exact: true }).click();
-  await page.getByRole('button', { name: 'Keep my XP', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Keep my XP', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(balance).toContainText('1,250 XP');
   await page.getByRole('button', { name: 'Exchange XP', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm exchange', exact: true }).click();

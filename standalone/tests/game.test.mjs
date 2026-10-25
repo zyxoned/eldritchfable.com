@@ -192,7 +192,7 @@ test('game and stash require a valid verified account session', async t => {
   for (const path of ['/api/game/world', '/api/game/stash', '/api/game/events']) {
     expectRejected(await h.game(path), [401]);
   }
-  for (const path of ['join', 'action', 'heartbeat', 'leave']) {
+  for (const path of ['join', 'action', 'heartbeat', 'leave', 'exchange']) {
     expectRejected(await h.game('/api/game/' + path, {
       requestId: randomUUID(), name: 'Anonymous', heroClass: 'ranger', kind: 'attack',
     }), [401]);
@@ -417,11 +417,11 @@ test('public realm and event updates never contain private account or wallet rec
   const rawEvents = stream.chunks.join('');
   assert.match(rawEvents, /event:\s*realm/);
   assert.match(rawEvents, /Public party message/);
-  for (const secret of [privateId, first.details.email, second.details.email, 'balanceXp', 'lifetimeXp', 'password_hash', 'token_hash', 'history']) {
+  for (const secret of [privateId, first.details.email, second.details.email, 'balanceXp', 'balanceCopper', 'shopCreditPennies', 'lifetimeXp', 'password_hash', 'token_hash', 'history']) {
     assert.ok(!rawEvents.includes(secret), 'Private data leaked in events: ' + secret);
   }
   const publicJson = JSON.stringify(change.body.realm);
-  for (const secret of [privateId, first.details.email, second.details.email, 'balanceXp', 'lifetimeXp']) {
+  for (const secret of [privateId, first.details.email, second.details.email, 'balanceXp', 'balanceCopper', 'shopCreditPennies', 'lifetimeXp']) {
     assert.ok(!publicJson.includes(secret), 'Private data leaked in realm: ' + secret);
   }
   const countBeforeClose = stream.chunks.length;
@@ -455,15 +455,20 @@ test('an open event stream revalidates and closes after its account session is r
   expectRejected(await h.action(actor, 'attack'), [401]);
 });
 
-test('unconfigured gear and ability exchange cannot debit XP or invent money credit', async t => {
+test('unconfigured gear purchases and abilities cannot debit XP or invent money credit', async t => {
   const h = harness(t);
   const actor = await h.account('StashSaver');
   await h.walk(actor, 7, 5);
   assert.equal((await h.action(actor, 'interact')).status, 200);
   const before = (await h.stash(actor)).body.stash;
   assert.equal(before.balanceXp, 10);
-  assert.equal(before.exchange.enabled, false);
-  assert.equal(before.exchange.xpPerUnit, null);
+  assert.equal(before.exchange.enabled, true);
+  assert.equal(before.exchange.xpPerGold, 1250);
+  assert.equal(before.exchange.copperPerGold, 1000);
+  assert.equal(before.exchange.silverPerGold, 100);
+  assert.equal(before.exchange.penniesPerGold, 1);
+  assert.equal(before.shopCreditPennies, 0);
+  assert.equal(before.balanceCopper, 0);
   assert.deepEqual(before.abilities, []);
   for (const kind of ['spend', 'redeem', 'unlock-ability']) {
     expectRejected(await h.action(actor, kind, {
@@ -473,5 +478,143 @@ test('unconfigured gear and ability exchange cannot debit XP or invent money cre
   const after = (await h.stash(actor)).body.stash;
   assert.equal(after.balanceXp, 10);
   assert.equal(after.lifetimeXp, 10);
+  assert.equal(after.balanceCopper, 0);
   assert.deepEqual(after.history, before.history);
+});
+
+function seedWallet(h, actor, xp, copper = 0) {
+  h.db.prepare(
+    'UPDATE game_wallets SET balance_xp=?,lifetime_xp=?,balance_copper=? '
+    + 'WHERE user_id=(SELECT id FROM account_users WHERE email=?)',
+  ).run(xp, xp, copper, actor.details.email);
+}
+
+function exchange(h, actor, lots, requestId = randomUUID(), extra = {}) {
+  return h.game('/api/game/exchange', { requestId, lots, ...extra }, {
+    cookie: actor.cookie,
+  });
+}
+
+test('account XP converts exactly to durable gold without reducing lifetime experience', async t => {
+  const h = harness(t);
+  const actor = await h.account('CoinKeeper');
+  seedWallet(h, actor, 5000);
+  assert.equal((await h.game('/api/game/leave', { requestId: randomUUID() }, {
+    cookie: actor.cookie,
+  })).status, 200, 'Exchange must also work without an active game seat');
+
+  const requestId = randomUUID();
+  const first = await exchange(h, actor, 1, requestId);
+  assert.equal(first.status, 200);
+  assert.equal(first.body.stash.balanceXp, 3750);
+  assert.equal(first.body.stash.lifetimeXp, 5000);
+  assert.equal(first.body.stash.balanceCopper, 1000);
+  assert.equal(first.body.stash.shopCreditPennies, 1);
+  assert.equal(first.body.stash.exchange.penniesPerGold, 1);
+  assert.deepEqual(first.body.stash.coins, { gold: 1, silver: 0, copper: 0 });
+  assert.equal(first.body.stash.history.length, 2);
+  assert.ok(first.body.stash.history.some(row => row.currency === 'XP'
+    && row.delta === -1250 && row.balanceAfter === 3750));
+  assert.ok(first.body.stash.history.some(row => row.currency === 'COPPER'
+    && row.delta === 1000 && row.balanceAfter === 1000));
+  const firstHistory = first.body.stash.history;
+
+  const replay = await exchange(h, actor, 1, requestId);
+  assert.equal(replay.status, 200);
+  assert.equal(replay.body.stash.balanceXp, 3750);
+  assert.equal(replay.body.stash.balanceCopper, 1000);
+  assert.deepEqual(replay.body.stash.history, firstHistory);
+  expectRejected(await exchange(h, actor, 2, requestId), [400, 409]);
+
+  const second = await exchange(h, actor, 2);
+  assert.equal(second.status, 200);
+  assert.equal(second.body.stash.balanceXp, 1250);
+  assert.equal(second.body.stash.balanceCopper, 3000);
+  assert.equal(second.body.stash.shopCreditPennies, 3);
+  assert.equal(second.body.stash.lifetimeXp, 5000);
+  assert.deepEqual(second.body.stash.coins, { gold: 3, silver: 0, copper: 0 });
+
+  h.restart();
+  const saved = (await h.stash(actor)).body.stash;
+  assert.equal(saved.balanceXp, 1250);
+  assert.equal(saved.balanceCopper, 3000);
+  assert.equal(saved.lifetimeXp, 5000);
+  assert.equal(saved.history.length, 4);
+  assert.equal(saved.history.filter(row => row.currency === 'XP')
+    .reduce((sum, row) => sum + row.delta, 0), -3750);
+  assert.equal(saved.history.filter(row => row.currency === 'COPPER')
+    .reduce((sum, row) => sum + row.delta, 0), 3000);
+});
+
+test('conversion rejects invalid quantities, insufficient XP and unsafe balances atomically', async t => {
+  const h = harness(t);
+  const actor = await h.account('CoinGuard');
+  seedWallet(h, actor, 1250);
+  const body = { requestId: randomUUID(), lots: 1 };
+  expectRejected(await h.game('/api/game/exchange', body, {
+    cookie: actor.cookie, headers: { origin: 'https://other.example.test' },
+  }), [403]);
+  expectRejected(await h.game('/api/game/exchange', { lots: 1 }, {
+    cookie: actor.cookie,
+  }), [400]);
+  for (const lots of [0, -1, 1.2, '1', 101, Number.MAX_SAFE_INTEGER, null, true]) {
+    expectRejected(await exchange(h, actor, lots), [400]);
+  }
+  expectRejected(await exchange(h, actor, 2), [409]);
+  const unchanged = (await h.stash(actor)).body.stash;
+  assert.equal(unchanged.balanceXp, 1250);
+  assert.equal(unchanged.balanceCopper, 0);
+  assert.deepEqual(unchanged.history, []);
+
+  seedWallet(h, actor, 1250, Number.MAX_SAFE_INTEGER - 500);
+  expectRejected(await exchange(h, actor, 1), [400, 409]);
+  const overflow = (await h.stash(actor)).body.stash;
+  assert.equal(overflow.balanceXp, 1250);
+  assert.equal(overflow.balanceCopper, Number.MAX_SAFE_INTEGER - 500);
+  assert.equal(overflow.lifetimeXp, 1250);
+  assert.deepEqual(overflow.history, []);
+
+  seedWallet(h, actor, 1250, 295);
+  const valid = await exchange(h, actor, 1);
+  assert.equal(valid.status, 200);
+  assert.equal(valid.body.stash.balanceXp, 0);
+  assert.equal(valid.body.stash.balanceCopper, 1295);
+  assert.equal(valid.body.stash.shopCreditPennies, 1);
+  assert.deepEqual(valid.body.stash.coins, { gold: 1, silver: 29, copper: 5 });
+  expectRejected(await exchange(h, actor, 1), [409]);
+  const after = (await h.stash(actor)).body.stash;
+  assert.equal(after.balanceXp, 0);
+  assert.equal(after.balanceCopper, 1295);
+  assert.equal(after.history.length, 2);
+});
+
+test('competing conversions cannot spend the same XP and another account cannot access the coins', async t => {
+  const h = harness(t);
+  const owner = await h.account('CoinOwner');
+  const other = await h.account('CoinVisitor');
+  seedWallet(h, owner, 1250);
+  const outcomes = await Promise.all([
+    exchange(h, owner, 1),
+    exchange(h, owner, 1),
+  ]);
+  assert.deepEqual(outcomes.map(result => result.status).sort(), [200, 409]);
+  const own = (await h.stash(owner)).body.stash;
+  assert.equal(own.balanceXp, 0);
+  assert.equal(own.balanceCopper, 1000);
+  assert.equal(own.lifetimeXp, 1250);
+  assert.equal(own.history.length, 2);
+
+  const privateId = h.db.prepare('SELECT id FROM account_users WHERE email=?')
+    .get(owner.details.email).id;
+  const outsider = await h.game('/api/game/stash?userId=' + privateId, undefined, {
+    cookie: other.cookie,
+  });
+  assert.equal(outsider.status, 200);
+  assert.equal(outsider.body.stash.balanceXp, 0);
+  assert.equal(outsider.body.stash.balanceCopper, 0);
+  assert.deepEqual(outsider.body.stash.history, []);
+  expectRejected(await exchange(h, other, 1, randomUUID(), {
+    userId: privateId, balanceXp: 999999, balanceCopper: 999999,
+  }), [400, 409]);
+  assert.equal((await h.stash(owner)).body.stash.balanceCopper, 1000);
 });

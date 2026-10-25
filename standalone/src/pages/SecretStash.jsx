@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Gem, LockKeyhole, ShoppingBag, Sparkles, ArrowUpRight, ArrowRightLeft } from 'lucide-react';
 import { api } from '../game/transport.js';
+import { useDialogFocus } from '../game/useDialogFocus.js';
 
 export default function SecretStash({ onSessionExpired }) {
   const [state, setState] = useState({ loading: true, stash: null, error: '' });
@@ -11,6 +12,9 @@ export default function SecretStash({ onSessionExpired }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const pending = useRef(null);
+  const dialogRef = useDialogFocus(confirming, () => {
+    if (!busy && !pending.current) setConfirming(false);
+  });
 
   useEffect(() => {
     let active = true;
@@ -118,8 +122,8 @@ export default function SecretStash({ onSessionExpired }) {
           </section>
         </>}
       </main>
-      {confirming && <div className="modal-backdrop" onClick={() => { if (!busy) setConfirming(false); }}>
-        <section className="modal" role="dialog" aria-modal="true" aria-labelledby="exchange-confirm-title" onClick={event => event.stopPropagation()}>
+      {confirming && <div className="modal-backdrop" onClick={() => { if (!busy && !pending.current) setConfirming(false); }}>
+        <section ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="exchange-confirm-title" onClick={event => event.stopPropagation()}>
           <div className="eyebrow">CONFIRM YOUR EXCHANGE</div>
           <h2 id="exchange-confirm-title">Trade {amount.toLocaleString()} XP for {lots} gold?</h2>
           <p>The coins will be saved to your Secret Stash. This spends your available XP; lifetime XP and your character level remain unchanged.</p>

@@ -6,7 +6,7 @@ import { existsSync, readFileSync, writeFileSync, realpathSync, readlinkSync, re
 import { dirname, join, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { openDatabase, migrateDatabase } from '../server/database.mjs';
+import { openDatabase, migrateDatabase, SCHEMA_VERSION } from '../server/database.mjs';
 
 const root = '/srv/eldritch-production';
 const app = root + '/app', frontend = root + '/frontend';
@@ -21,7 +21,7 @@ const recoveryTimer = 'eldritch-production-healthcheck.timer';
 const backupTimer = 'eldritch-production-backup.timer';
 const origin = 'https://eldritchfable.com';
 const source = resolve(dirname(realpathSync(fileURLToPath(import.meta.url))), '..');
-const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products'];
+const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products', 'game_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world'];
 const delay = ms => new Promise(done => setTimeout(done, ms));
 let phase = 'preflight';
 
@@ -130,8 +130,8 @@ export function productionConfig(original, releaseId) {
   return { config, listeners: [...new Set(listeners)] };
 }
 
-function fingerprints(db) {
-  return Object.fromEntries(tables.map(table => {
+function fingerprints(db, selected = tables.filter(table => db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))) {
+  return Object.fromEntries(selected.map(table => {
     const present = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table);
     const rows = present ? db.prepare(`SELECT * FROM ${table}`).all() : [];
     return [table, createHash('sha256').update(JSON.stringify(rows.map(row => JSON.stringify(row)).sort())).digest('hex')];
@@ -147,7 +147,7 @@ export async function migrateWithBackup(filename, snapshot) {
     const before = fingerprints(db);
     await backup(db, snapshot); chmodSync(snapshot, 0o600);
     const version = migrateDatabase(db);
-    requireCondition(JSON.stringify(before) === JSON.stringify(fingerprints(db)), 'PRESERVED_DATA_CHANGED');
+    requireCondition(JSON.stringify(before) === JSON.stringify(fingerprints(db, Object.keys(before))), 'PRESERVED_DATA_CHANGED');
     requireCondition(db.prepare('PRAGMA foreign_key_check').all().length === 0, 'FOREIGN_KEY_CHECK_FAILED');
     return { schemaVersion: version, accounts: db.prepare('SELECT COUNT(*) AS n FROM account_users').get().n, sessions: db.prepare('SELECT COUNT(*) AS n FROM account_sessions').get().n, preserved: true };
   } finally { db.close(); }
@@ -156,7 +156,7 @@ export async function migrateWithBackup(filename, snapshot) {
 export function databaseReport(output, snapshot, ownerUid) {
   let result;
   try { result = JSON.parse(output); } catch { requireCondition(false, 'INVALID_DATABASE_STEP_REPORT'); }
-  requireCondition(result && result.schemaVersion === 2 && result.preserved === true &&
+  requireCondition(result && result.schemaVersion === SCHEMA_VERSION && result.preserved === true &&
     Number.isSafeInteger(result.accounts) && result.accounts >= 0 &&
     Number.isSafeInteger(result.sessions) && result.sessions >= 0, 'INVALID_DATABASE_STEP_REPORT');
   requireCondition(existsSync(snapshot), 'DATABASE_BACKUP_MISSING');

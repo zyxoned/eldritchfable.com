@@ -66,3 +66,18 @@ test('game migration is additive and preserves account sessions, catalog and new
   assert.equal(JSON.parse(db.prepare('SELECT enemies_json FROM game_world WHERE id=1').get().enemies_json).length, 4);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
+
+test('game schema preserves a funded XP and coin wallet on repeated migration', t => {
+  const db = openDatabase(':memory:');
+  t.after(() => db.close());
+  migrateDatabase(db);
+  db.prepare("INSERT INTO account_users(id,email,password_hash,email_verified_at) VALUES('funded','funded@example.test','hash','2026-01-01')").run();
+  db.prepare("INSERT INTO game_characters(user_id,id,name,hero_class) VALUES('funded','public-character','FundedMage','mage')").run();
+  db.prepare("INSERT INTO game_wallets(user_id,balance_xp,lifetime_xp,balance_copper) VALUES('funded',1250,2500,1000)").run();
+  db.prepare("INSERT INTO game_ledger(id,user_id,event_key,currency,delta,balance_after,reason,created_at) VALUES('retained-ledger','funded','retained','COPPER',1000,1000,'Retained conversion','2026-01-01T00:00:00.000Z')").run();
+  const tables = ['game_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world'];
+  const before = Object.fromEntries(tables.map(table => [table, db.prepare('SELECT * FROM ' + table).all()]));
+  assert.equal(migrateDatabase(db), 3);
+  for (const table of tables) assert.deepEqual(db.prepare('SELECT * FROM ' + table).all(), before[table]);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+});

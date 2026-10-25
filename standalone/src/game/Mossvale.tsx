@@ -11,6 +11,7 @@ import {
   type HeroClass, type Realm,
 } from './shared/game';
 import GameCanvas from './GameCanvas';
+import { useDialogFocus } from './useDialogFocus';
 import './game.css';
 
 type Identity = {
@@ -104,6 +105,8 @@ export default function Mossvale({ user, onSessionExpired }: {
   const [leaving, setLeaving] = useState(false);
   const [socketEpoch, setSocketEpoch] = useState(0);
   const realmRef = useRef<Realm | null>(null);
+  const profileRevision = useRef(-1);
+  const dialogRef = useDialogFocus(guide || leaving, () => { setGuide(false); setLeaving(false); });
   const playerRef = useRef<string | null>(null);
   const destination = useRef<{ x: number; y: number } | null>(null);
   const busy = useRef(false);
@@ -122,8 +125,9 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   function applyReply(data: Reply) {
-    if (realmRef.current && data.realm.revision < realmRef.current.revision) return;
     applyRealm(data.realm);
+    if (data.realm.revision < profileRevision.current) return;
+    profileRevision.current = data.realm.revision;
     setProfile(data.profile);
     setPlayerId(data.profile?.active ? data.profile.playerId : null);
   }
@@ -247,6 +251,7 @@ export default function Mossvale({ user, onSessionExpired }: {
       } catch (err) {
         const status = (err as { response?: { status?: number } }).response?.status;
         if (status === 401) { endSession(); onSessionExpired(); }
+        else if ((err as { code?: string }).code === 'SEAT_EXPIRED') endSession();
         setError(errorMessage(err));
       }
     }, 20000);
@@ -326,15 +331,6 @@ export default function Mossvale({ user, onSessionExpired }: {
     };
     window.addEventListener('keydown', keydown);
     return () => window.removeEventListener('keydown', keydown);
-  }, [guide, leaving]);
-
-  useEffect(() => {
-    if (!guide && !leaving) return;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { setGuide(false); setLeaving(false); }
-    };
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
   }, [guide, leaving]);
 
   async function leaveRealm() {
@@ -521,7 +517,7 @@ export default function Mossvale({ user, onSessionExpired }: {
       </main>
 
       {(guide || leaving) && <div className="modal-backdrop" onClick={() => { setGuide(false); setLeaving(false); }}>
-        <section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={event => event.stopPropagation()}>
+        <section ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={event => event.stopPropagation()}>
           <button className="modal-close icon-button" aria-label="Close dialog" onClick={() => { setGuide(false); setLeaving(false); }} autoFocus><X size={20} /></button>
           {leaving ? <>
             <LogOut size={28} /><h2 id="modal-title">Back to the everyday?</h2>

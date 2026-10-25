@@ -1,5 +1,6 @@
 import { newsletterRoute } from './newsletter.mjs';
 import { authRoute } from './auth.mjs';
+import { createGameService } from './game.mjs';
 import { createServer } from 'node:http';
 import { openDatabase, requireSchema } from './database.mjs';
 import { validateOrigin } from './request-security.mjs';
@@ -10,6 +11,7 @@ if (!databasePath) throw new Error('ELDRITCH_DB is required');
 const db = openDatabase(databasePath);
 requireSchema(db);
 validateOrigin(process.env.ELDRITCH_ORIGIN);
+const game = createGameService(db);
 
 function reply(res, status, body) {
   const payload = JSON.stringify(body);
@@ -31,7 +33,8 @@ function catalog() {
 const server = createServer(async (req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
   try { if (await authRoute(db, req, res, path)) return;
-    if (await newsletterRoute(db, req, res, path)) return; }
+    if (await newsletterRoute(db, req, res, path)) return;
+    if (await game.route(req, res, path)) return; }
   catch { console.error('Account request failed'); return reply(res, 500, { error: 'Request failed. Please try again.' }); }
   if (req.method !== 'GET') return reply(res, 405, { error: 'Method not allowed' });
   if (path === '/api/health') return reply(res, 200, { status: 'online', application: 'Eldritch Fable independent API' });
@@ -45,4 +48,7 @@ const server = createServer(async (req, res) => {
 server.requestTimeout = 30000;
 server.headersTimeout = 10000;
 server.listen(port, '127.0.0.1', () => console.log('Eldritch API listening on localhost:' + server.address().port));
-for (const signal of ['SIGTERM','SIGINT']) process.on(signal, () => server.close(() => { db.close(); process.exit(0); }));
+for (const signal of ['SIGTERM','SIGINT']) process.on(signal, () => {
+  game.close();
+  server.close(() => { db.close(); process.exit(0); });
+});

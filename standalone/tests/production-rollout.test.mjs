@@ -131,7 +131,7 @@ test('live migration makes a private restorable backup while retaining accounts,
   for (const id of ['first', 'duplicate']) legacy.prepare("INSERT INTO email_outbox(id,recipient,template,payload_json) VALUES(?,'private@example.test','verify_email',?)").run(id, JSON.stringify({ verification: token }));
   legacy.close();
   const summary = await migrateWithBackup(filename, snapshot);
-  assert.deepEqual(summary, { schemaVersion: 2, accounts: 1, sessions: 1, preserved: true });
+  assert.deepEqual(summary, { schemaVersion: 3, accounts: 1, sessions: 1, preserved: true });
   assert.equal(statSync(snapshot).mode & 0o777, 0o600);
   const live = openDatabase(filename), old = openDatabase(snapshot, { readOnly: true });
   try {
@@ -157,10 +157,10 @@ test('the database CLI runs through a symlink and actually creates the backup an
     const result = spawnSync(process.execPath, [...flags, join(linkedApp, 'deploy/production-rollout.mjs'), '--database-phase', filename, snapshot], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     const report = databaseReport(result.stdout, snapshot, process.getuid());
-    assert.deepEqual(report, { schemaVersion: 2, accounts: 1, sessions: 1, preserved: true });
+    assert.deepEqual(report, { schemaVersion: 3, accounts: 1, sessions: 1, preserved: true });
     const live = openDatabase(filename), copy = openDatabase(snapshot, { readOnly: true });
     try {
-      assert.equal(live.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version, 2);
+      assert.equal(live.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version, 3);
       assert.equal(live.prepare('SELECT password_hash FROM account_users').get().password_hash, 'keep-password');
       assert.equal(copy.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='schema_migrations'").get().n, 0);
       assert.equal(copy.prepare('SELECT COUNT(*) AS n FROM account_sessions').get().n, 1);
@@ -171,7 +171,7 @@ test('the database CLI runs through a symlink and actually creates the backup an
 test('a silent database helper or a missing or public backup cannot be reported as a successful migration', async t => {
   const folder = mkdtempSync(join(tmpdir(), 'ef-backup-report-')); t.after(() => rmSync(folder, { recursive: true, force: true }));
   const filename = join(folder, 'live.db'), snapshot = join(folder, 'before.sqlite');
-  const summary = JSON.stringify({ schemaVersion: 2, accounts: 0, sessions: 0, preserved: true });
+  const summary = JSON.stringify({ schemaVersion: 3, accounts: 0, sessions: 0, preserved: true });
   assert.throws(() => databaseReport('', snapshot, process.getuid()), /INVALID_DATABASE_STEP_REPORT/);
   assert.throws(() => databaseReport(summary, snapshot, process.getuid()), /DATABASE_BACKUP_MISSING/);
   const db = openDatabase(filename); migrateDatabase(db); db.close();

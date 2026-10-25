@@ -21,19 +21,21 @@ CREATE INDEX IF NOT EXISTS idx_game_active ON game_characters(active_until);
 
 CREATE TABLE IF NOT EXISTS game_wallets (
   user_id TEXT PRIMARY KEY REFERENCES account_users(id) ON DELETE CASCADE,
-  balance_xp INTEGER NOT NULL DEFAULT 0 CHECK(balance_xp >= 0),
-  lifetime_xp INTEGER NOT NULL DEFAULT 0 CHECK(lifetime_xp >= balance_xp)
+  balance_xp INTEGER NOT NULL DEFAULT 0 CHECK(balance_xp BETWEEN 0 AND 9007199254740991),
+  lifetime_xp INTEGER NOT NULL DEFAULT 0 CHECK(lifetime_xp BETWEEN balance_xp AND 9007199254740991),
+  balance_copper INTEGER NOT NULL DEFAULT 0 CHECK(balance_copper BETWEEN 0 AND 9007199254740991)
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS game_ledger (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES account_users(id) ON DELETE CASCADE,
   event_key TEXT NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'XP' CHECK(currency IN ('XP','COPPER')),
   delta INTEGER NOT NULL CHECK(delta != 0),
-  balance_after INTEGER NOT NULL CHECK(balance_after >= 0),
+  balance_after INTEGER NOT NULL CHECK(balance_after BETWEEN 0 AND 9007199254740991),
   reason TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  UNIQUE(user_id,event_key)
+  UNIQUE(user_id,event_key,currency)
 ) STRICT;
 CREATE INDEX IF NOT EXISTS idx_game_ledger_user ON game_ledger(user_id,created_at DESC,id);
 

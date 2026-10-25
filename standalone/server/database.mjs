@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 export const digest = value => createHash('sha256').update(value).digest('hex');
 export function transaction(db, action) {
   db.exec('BEGIN IMMEDIATE');
@@ -53,6 +53,10 @@ export function migrateDatabase(db) {
     db.exec(readFileSync(new URL('./migrations/002-account-mail.sql', import.meta.url), 'utf8'));
     upgradeLegacyQueue(db);
     db.prepare('INSERT INTO schema_migrations(version) VALUES(2)').run();
+  });
+  if (current < 3) transaction(db, () => {
+    db.exec(readFileSync(new URL('./migrations/003-game-stash.sql', import.meta.url), 'utf8'));
+    db.prepare('INSERT INTO schema_migrations(version) VALUES(3)').run();
   });
   return SCHEMA_VERSION;
 }

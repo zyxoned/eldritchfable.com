@@ -12,12 +12,13 @@ import { openDatabase, migrateDatabase } from '../server/database.mjs';
 const preservedTables = [
   'account_users', 'account_sessions', 'account_tokens',
   'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries',
-  'storefront_collections', 'storefront_products'
+  'storefront_collections', 'storefront_products',
+  'game_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world'
 ];
 let checkPhase = 'initializing';
 
-function fingerprints(db) {
-  return Object.fromEntries(preservedTables.map(table => {
+function fingerprints(db, selected = preservedTables.filter(table => db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))) {
+  return Object.fromEntries(selected.map(table => {
     const present = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table);
     const rows = present ? db.prepare(`SELECT * FROM ${table}`).all() : [];
     const serialized = rows.map(row => JSON.stringify(row)).sort();
@@ -39,7 +40,7 @@ export async function rehearseMigration(filename) {
     if (copy.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw Error('Snapshot integrity check failed');
     const before = fingerprints(copy);
     const schemaVersion = migrateDatabase(copy);
-    const after = fingerprints(copy);
+    const after = fingerprints(copy, Object.keys(before));
     if (JSON.stringify(before) !== JSON.stringify(after)) throw Error('Migration changed preserved account or store data');
     if (copy.prepare('PRAGMA foreign_key_check').all().length) throw Error('Snapshot has invalid foreign-key references');
     const counts = copy.prepare("SELECT COUNT(*) AS accounts, COUNT(CASE WHEN role='customer' THEN 1 END) AS customers, COUNT(CASE WHEN role='admin' THEN 1 END) AS admins FROM account_users").get();

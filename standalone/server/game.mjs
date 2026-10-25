@@ -35,6 +35,9 @@ export function createGameService(db, options = {}) {
   const now = options.now || Date.now;
   const streams = new Set();
   const streamInterval = options.sseIntervalMs || 15000;
+  const XP_PER_GOLD = 1250;
+  const COPPER_PER_GOLD = 1000;
+  const MAX_BALANCE = Number.MAX_SAFE_INTEGER;
   let closed = false;
 
   function requireUser(req, time) {
@@ -93,7 +96,7 @@ export function createGameService(db, options = {}) {
 
   function character(userId) {
     return db.prepare(
-      'SELECT c.*,COALESCE(w.balance_xp,0) AS balance_xp,COALESCE(w.lifetime_xp,0) AS lifetime_xp '
+      'SELECT c.*,COALESCE(w.balance_xp,0) AS balance_xp,COALESCE(w.lifetime_xp,0) AS lifetime_xp,COALESCE(w.balance_copper,0) AS balance_copper '
       + 'FROM game_characters c LEFT JOIN game_wallets w ON w.user_id=c.user_id WHERE c.user_id=?',
     ).get(userId);
   }
@@ -123,6 +126,7 @@ export function createGameService(db, options = {}) {
       active: false,
       balanceXp: 0,
       lifetimeXp: 0,
+      balanceCopper: 0,
     };
     return {
       playerId: row.id,
@@ -130,6 +134,7 @@ export function createGameService(db, options = {}) {
       active: row.active_until > time,
       balanceXp: row.balance_xp,
       lifetimeXp: row.lifetime_xp,
+      balanceCopper: row.balance_copper,
     };
   }
 
@@ -158,9 +163,12 @@ export function createGameService(db, options = {}) {
   }
 
   function credit(userId, amount, eventKey, reason, time) {
-    const wallet = db.prepare('SELECT balance_xp FROM game_wallets WHERE user_id=?').get(userId);
+    const wallet = db.prepare('SELECT balance_xp,lifetime_xp FROM game_wallets WHERE user_id=?').get(userId);
     if (!wallet) throw Error('Character wallet is missing');
     const balanceAfter = wallet.balance_xp + amount;
+    if (!Number.isSafeInteger(balanceAfter) || !Number.isSafeInteger(wallet.lifetime_xp + amount)) {
+      throw new GameError('Your XP balance reached its supported limit. Contact the shop before earning more.', 409, 'BALANCE_LIMIT');
+    }
     const inserted = db.prepare(
       'INSERT OR IGNORE INTO game_ledger(id,user_id,event_key,delta,balance_after,reason,created_at) VALUES(?,?,?,?,?,?,?)',
     ).run(randomUUID(), userId, eventKey, amount, balanceAfter, reason, new Date(time).toISOString());
@@ -354,18 +362,96 @@ export function createGameService(db, options = {}) {
   }
 
   function stash(userId) {
-    const wallet = db.prepare('SELECT balance_xp,lifetime_xp FROM game_wallets WHERE user_id=?').get(userId);
+    const wallet = db.prepare('SELECT balance_xp,lifetime_xp,balance_copper FROM game_wallets WHERE user_id=?').get(userId);
     const history = db.prepare(
-      'SELECT id,delta,balance_after AS balanceAfter,reason,created_at AS createdAt '
+      'SELECT id,currency,delta,balance_after AS balanceAfter,reason,created_at AS createdAt '
       + 'FROM game_ledger WHERE user_id=? ORDER BY created_at DESC,rowid DESC LIMIT 40',
     ).all(userId);
+    const balanceCopper = wallet?.balance_copper || 0;
     return {
       balanceXp: wallet?.balance_xp || 0,
       lifetimeXp: wallet?.lifetime_xp || 0,
+      balanceCopper,
+      shopCreditPennies: Math.floor(balanceCopper / COPPER_PER_GOLD),
+      coins: {
+        gold: Math.floor(balanceCopper / COPPER_PER_GOLD),
+        silver: Math.floor((balanceCopper % COPPER_PER_GOLD) / 10),
+        copper: balanceCopper % 10,
+      },
       history,
-      exchange: { enabled: false, xpPerUnit: null, currency: null },
+      exchange: {
+        enabled: true,
+        xpPerGold: XP_PER_GOLD,
+        copperPerGold: COPPER_PER_GOLD,
+        silverPerGold: 100,
+        penniesPerGold: 1,
+      },
       abilities: [],
     };
+  }
+
+
+  function exchange(req, input) {
+    const requestId = input.requestId;
+    if (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) {
+      throw new GameError('Invalid request ID. Please try again.');
+    }
+    if (!Number.isSafeInteger(input.lots) || input.lots < 1 || input.lots > 100) {
+      throw new GameError('Exchange a whole number from 1 to 100 gold at a time.');
+    }
+    const payloadHash = digest(JSON.stringify({ path: '/api/game/exchange', input }));
+    return transaction(db, () => {
+      const time = now();
+      const user = requireUser(req, time);
+      const receipt = db.prepare(
+        'SELECT payload_hash,notice FROM game_requests WHERE user_id=? AND request_id=?',
+      ).get(user.id, requestId);
+      if (receipt) {
+        if (receipt.payload_hash !== payloadHash) {
+          throw new GameError('This request ID was used for a different action.', 409, 'REQUEST_CONFLICT');
+        }
+        return { stash: stash(user.id), notice: receipt.notice };
+      }
+      const cost = input.lots * XP_PER_GOLD;
+      const copper = input.lots * COPPER_PER_GOLD;
+      const wallet = db.prepare(
+        'SELECT balance_xp,lifetime_xp,balance_copper FROM game_wallets WHERE user_id=?',
+      ).get(user.id);
+      if (!wallet || wallet.balance_xp < cost) {
+        throw new GameError('You need ' + cost.toLocaleString('en-US') + ' XP for this exchange.', 409, 'INSUFFICIENT_XP');
+      }
+      if (!Number.isSafeInteger(wallet.balance_copper + copper)
+        || wallet.balance_copper > MAX_BALANCE - copper) {
+        throw new GameError('This exchange would exceed the supported coin balance.', 409, 'BALANCE_LIMIT');
+      }
+      const xpAfter = wallet.balance_xp - cost;
+      const copperAfter = wallet.balance_copper + copper;
+      const changed = db.prepare(
+        'UPDATE game_wallets SET balance_xp=balance_xp-?,balance_copper=balance_copper+? '
+        + 'WHERE user_id=? AND balance_xp>=? AND balance_copper<=?',
+      ).run(cost, copper, user.id, cost, MAX_BALANCE - copper);
+      if (changed.changes !== 1) throw new GameError('Your balance changed. Review it and try again.', 409, 'BALANCE_CHANGED');
+      const eventKey = 'exchange:' + requestId;
+      const createdAt = new Date(time).toISOString();
+      const write = db.prepare(
+        'INSERT INTO game_ledger(id,user_id,event_key,currency,delta,balance_after,reason,created_at) '
+        + 'VALUES(?,?,?,?,?,?,?,?)',
+      );
+      write.run(
+        randomUUID(), user.id, eventKey, 'XP', -cost, xpAfter,
+        'XP exchanged for gold', createdAt,
+      );
+      write.run(
+        randomUUID(), user.id, eventKey, 'COPPER', copper, copperAfter,
+        'Gold exchanged from XP', createdAt,
+      );
+      const notice = 'Exchanged ' + cost.toLocaleString('en-US') + ' XP for '
+        + input.lots + ' gold. Your lifetime XP is unchanged.';
+      db.prepare(
+        'INSERT INTO game_requests(user_id,request_id,payload_hash,notice,created_at) VALUES(?,?,?,?,?)',
+      ).run(user.id, requestId, payloadHash, notice, time);
+      return { stash: stash(user.id), notice };
+    });
   }
 
   function closeStream(stream, reason) {
@@ -455,16 +541,20 @@ export function createGameService(db, options = {}) {
         reply(res, 200, { stash: stash(user.id) });
         return true;
       }
-      const posts = ['/api/game/join', '/api/game/action', '/api/game/heartbeat', '/api/game/leave'];
+      const posts = ['/api/game/join', '/api/game/action', '/api/game/heartbeat', '/api/game/leave', '/api/game/exchange'];
       if (!posts.includes(path)) throw new GameError('Not found', 404, 'NOT_FOUND');
       if (req.method !== 'POST') throw new GameError('Method not allowed', 405, 'METHOD_NOT_ALLOWED');
       if (!sameOriginJson(req, options.origin)) throw new GameError('Forbidden', 403, 'ORIGIN_REJECTED');
       let input;
       try { input = await readJson(req, 4096); }
       catch (error) { throw new GameError('Invalid JSON object or request body.', error.status || 400, 'INVALID_REQUEST'); }
-      const result = mutate(req, path, input);
-      publish();
-      reply(res, 200, result);
+      if (path === '/api/game/exchange') {
+        reply(res, 200, exchange(req, input));
+      } else {
+        const result = mutate(req, path, input);
+        publish();
+        reply(res, 200, result);
+      }
     } catch (error) {
       if (error instanceof GameError || error.status === 413) {
         reply(res, error.status, { error: error.message, code: error.code || 'INVALID_REQUEST' });

@@ -18,7 +18,7 @@ test('legacy migration preserves accounts, sessions and newsletter data while cl
   for (const id of ['first','second']) db.prepare("INSERT INTO email_outbox(id,recipient,template,payload_json) VALUES(?,'customer@example.test','verify_email',?)").run(id, JSON.stringify({ verification: token }));
   db.prepare("INSERT INTO email_outbox(id,recipient,template,payload_json,status) VALUES('interrupted','customer@example.test','verify_email',?,'sending')").run(JSON.stringify({ verification: token }));
   assert.throws(() => requireSchema(db), /db:migrate/);
-  assert.equal(migrateDatabase(db), 2); assert.equal(migrateDatabase(db), 2);
+  assert.equal(migrateDatabase(db), 3); assert.equal(migrateDatabase(db), 3);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM account_users').get().n, 2);
   assert.equal(db.prepare("SELECT role,password_hash FROM account_users WHERE id='admin'").get().role, 'admin');
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM account_sessions').get().n, 1);
@@ -40,4 +40,29 @@ test('backup and restore produce a verified copy and refuse to overwrite destina
   const second = command('restore', backup, restored); assert.equal(second.status, 0, second.stderr);
   assert.notEqual(command('restore', backup, restored).status, 0);
   const copy = openDatabase(restored); try { assert.equal(copy.prepare('SELECT id FROM account_users').get().id, 'preserve'); } finally { copy.close(); }
+});
+
+test('game migration is additive and preserves account sessions, catalog and newsletter state', t => {
+  const db = openDatabase(':memory:');
+  t.after(() => db.close());
+  db.exec('CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)');
+  db.exec(readFileSync(new URL('../server/schema.sql', import.meta.url), 'utf8'));
+  db.exec(readFileSync(new URL('../server/accounts-schema.sql', import.meta.url), 'utf8'));
+  db.exec(readFileSync(new URL('../server/migrations/002-account-mail.sql', import.meta.url), 'utf8'));
+  db.exec('INSERT INTO schema_migrations(version) VALUES(1),(2)');
+  db.prepare("INSERT INTO account_users(id,email,password_hash,role,email_verified_at) VALUES('retained','retained@example.test','unchanged-hash','admin','2026-01-01')").run();
+  db.prepare("INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES('retained-session','retained','2099-01-01')").run();
+  db.prepare("INSERT INTO storefront_collections(slug,name,icon) VALUES('dice','Dice','dice')").run();
+  db.prepare("INSERT INTO newsletter_subscribers(email,unsubscribed_at) VALUES('never-mail@example.test','2026-01-02')").run();
+  const tables = ['account_users', 'account_sessions', 'storefront_collections', 'newsletter_subscribers'];
+  const before = Object.fromEntries(tables.map(table => [table, db.prepare('SELECT * FROM ' + table).all()]));
+  assert.equal(migrateDatabase(db), 3);
+  assert.equal(migrateDatabase(db), 3);
+  requireSchema(db);
+  for (const table of tables) assert.deepEqual(db.prepare('SELECT * FROM ' + table).all(), before[table]);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM game_characters').get().n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM game_wallets').get().n, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM game_ledger').get().n, 0);
+  assert.equal(JSON.parse(db.prepare('SELECT enemies_json FROM game_world WHERE id=1').get().enemies_json).length, 4);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });

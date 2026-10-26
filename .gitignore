@@ -1,0 +1,13 @@
+node_modules/
+standalone/dist/
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.log
+test-results/

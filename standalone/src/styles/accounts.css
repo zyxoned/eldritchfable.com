@@ -1,0 +1,30 @@
+.ef-auth { min-height: 100vh; max-width: 32rem; margin: 0 auto; padding: 5rem 1.5rem; color: #eee5d9; font-family: system-ui, sans-serif; }
+body:has(.ef-auth) { background: #141018; }
+.ef-auth h1 { font-size: 2rem; margin-bottom: 1.5rem; }
+.ef-auth form { display: grid; gap: 1.25rem; }
+.ef-auth label { display: grid; gap: .4rem; }
+.ef-auth input { padding: .85rem; background: #26202c; color: #fff; border: 1px solid #756879; border-radius: .4rem; }
+.ef-auth button { background: #b79b6e; color: #17111c; border: 0; padding: .85rem 1.25rem; border-radius: .4rem; cursor: pointer; }
+.ef-auth a { color: #d6b883; }
+.ef-auth p { margin-top: 1.5rem; }
+.ef-auth { box-sizing: border-box; width: 100%; padding: clamp(1.5rem, 6vw, 4rem) 1.25rem; line-height: 1.6; }
+.ef-auth *, .ef-auth *::before, .ef-auth *::after { box-sizing: border-box; }
+.ef-auth .auth-brand { display: inline-block; margin-bottom: 1rem; letter-spacing: .12em; text-decoration: none; font-family: Georgia, serif; }
+.ef-auth .auth-brand span { color: #eee5d9; }
+.ef-auth h1, .ef-auth h2 { font-family: Georgia, serif; font-weight: 500; line-height: 1.2; }
+.ef-auth h1 { margin: 0 0 1.5rem; }
+.ef-auth h2 { font-size: 1.35rem; margin: 0; }
+.ef-auth input { width: 100%; min-width: 0; font-size: 1rem; min-height: 44px; }
+.ef-auth button { min-height: 44px; font-size: 1rem; }
+.ef-auth button:disabled { cursor: wait; opacity: .6; }
+.ef-auth :focus-visible { outline: 2px solid #d6b883; outline-offset: 3px; }
+.ef-auth [role="alert"] { color: #ffb9b0; }
+.ef-auth [role="status"] { color: #dfd0b8; }
+.ef-auth small { color: #bdb0c1; }
+.ef-auth .auth-resend { margin: 1.75rem 0; padding-top: 1.25rem; border-top: 1px solid #55455d; }
+.ef-auth .auth-resend p { margin: .75rem 0 1.25rem; }
+.ef-auth .auth-secondary { background: transparent; color: #d6b883; border: 1px solid #756879; }
+.ef-auth .account-details { display: grid; gap: .75rem; margin: 0; }
+.ef-auth .account-details dt { color: #bdb0c1; font-size: .85rem; }
+.ef-auth .account-details dd { margin: .2rem 0 0; overflow-wrap: anywhere; }
+.ef-auth .auth-home { padding-top: 1rem; font-size: .9rem; }

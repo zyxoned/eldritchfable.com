@@ -1,0 +1,23 @@
+name: Standalone storefront CI
+on:
+  push:
+    branches: [main, migration/independent-storefront, 'fix/customer-accounts-mail']
+  pull_request:
+    paths: ['standalone/**', '.github/workflows/standalone-ci.yml']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: standalone
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: node --check server/index.mjs
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

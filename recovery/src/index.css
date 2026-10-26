@@ -1,0 +1,82 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Deep Tenebrism palette — The Alchemist's Archive */
+    --background: 280 13% 4.5%;
+    --foreground: 40 38% 92%;
+    --card: 276 13% 7.6%;
+    --card-foreground: 40 38% 92%;
+    --popover: 280 14% 8.2%;
+    --popover-foreground: 40 38% 92%;
+    --primary: 37 50% 56%;
+    --primary-foreground: 33 47% 6%;
+    --secondary: 270 18% 13%;
+    --secondary-foreground: 40 38% 92%;
+    --muted: 270 11% 11%;
+    --muted-foreground: 281 7% 65%;
+    --accent: 274 24% 16%;
+    --accent-foreground: 40 38% 92%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 96%;
+    --border: 280 10% 20%;
+    --input: 280 10% 20%;
+    --ring: 37 50% 56%;
+    --chart-1: 39 48% 56%;
+    --chart-2: 180 27% 40%;
+    --chart-3: 197 37% 50%;
+    --chart-4: 27 80% 60%;
+    --chart-5: 280 50% 60%;
+    --radius: 0.6rem;
+    --font-heading: Georgia, 'Times New Roman', serif;
+    --font-body: Inter, ui-sans-serif, system-ui, sans-serif;
+    --font-display: Georgia, 'Times New Roman', serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    font-size: 16px;
+    line-height: 1.7;
+    letter-spacing: 0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+    letter-spacing: 0.02em;
+  }
+
+  button, a, [role="button"] {
+    min-height: 44px;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 28px hsl(var(--primary) / 0.4);
+  }
+  .gold-gradient {
+    background: linear-gradient(135deg, hsl(43 70% 66%), hsl(36 52% 48%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .ley-lines {
+    background-image:
+      linear-gradient(to right, hsl(var(--primary) / 0.06) 0.5px, transparent 0.5px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.06) 0.5px, transparent 0.5px);
+    background-size: 80px 80px;
+  }
+  .digital-aura {
+    box-shadow: 0 0 0 1px hsl(var(--accent) / 0.5), 0 0 18px hsl(var(--accent) / 0.25);
+  }
+}

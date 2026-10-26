@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Eldritch Fable transactional email every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=1min
+AccuracySec=5s
+Unit=eldritch-mail.service
+
+[Install]
+WantedBy=timers.target

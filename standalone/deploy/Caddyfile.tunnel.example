@@ -1,0 +1,23 @@
+# Caddy 2.6+ example for Cloudflare Tunnel -> loopback-only Caddy.
+# Cloudflare sets CF-Connecting-IP. This configuration trusts ONLY that local
+# tunnel path: keep Caddy bound to loopback and do not expose this port publicly.
+# For a new static-file layout only. Preserve an existing production-web proxy
+# and its real ports instead of replacing the running Caddyfile with this file.
+:8080 {
+  bind 127.0.0.1
+  header {
+    Referrer-Policy no-referrer
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+  }
+  handle /api/* {
+    reverse_proxy 127.0.0.1:3000 {
+      header_up X-Eldritch-Client-IP {http.request.header.CF-Connecting-IP}
+    }
+  }
+  handle {
+    root * /srv/eldritch-fable/current/standalone/dist
+    try_files {path} /index.html
+    file_server
+  }
+}

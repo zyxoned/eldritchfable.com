@@ -73,16 +73,25 @@ releases are versioned separately from the account/API release; use the existing
 release workflow and verify the public release manifest after an authorized
 runtime deployment. Repository publication alone does not deploy production.
 
-## Next Tavern design candidate
+## Tavern completion and craft polish
 
 The saved design from local commit aed14f71e0478ee1bcb14009bc4535a4213846e8
-adds illustrated category cards, an expanded footer and a second search form.
-It is being prepared on fix/tavern-candidate-readiness from current main.
-The candidate corrects header search visibility/expansion/focus behavior and the
-first category card's competing background image rule. Browser checks cover those
-regressions and the lower search form in addition to the existing account,
-navigation, wishlist and preview-bag coverage.
+was integrated through pull request 4, retaining the existing React/Vite app.
+It includes illustrated category cards, an expanded footer, a lower search form,
+consistent keyboard search behavior and the intended category artwork.
 
-Production promotion of this design is tracked separately by the public
-frontend-release.json; repository publication alone does not establish deployment.
-Catalog and checkout work remains planned for about 2026-11-02.
+The deployed frontend from commit 7a717e643be3e297c8c3310b77814a26e91ffa4a
+passed 42 backend tests, 18 Chromium browser tests and 32 public runtime checks
+on October 26. The public checks covered desktop/mobile routes, loaded artwork,
+valid HTTPS, search/Account behavior, and seven widths from 320 to 1280 pixels.
+The search panel fits the viewport at all seven widths. API and tunnel processes
+were preserved during the frontend rollout.
+
+The subsequent craft pass refines the existing typography, spacing, gold borders,
+card alignment and mobile footer. Runtime deployment identity remains recorded in
+the public frontend-release.json, which is authoritative for the active version.
+Routine changes use the normal build/CI checks and final verification on the live
+public site, with an available frontend rollback. Separate test deployments are
+reserved for large changes, per the owner's direction.
+
+Catalog and checkout implementation/testing remains planned for about 2026-11-02.

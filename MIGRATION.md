@@ -9,7 +9,7 @@ Maintain the Eldritch Fable storefront independently of Base44, using a React/Vi
 
 - `standalone/` is the maintained application. It contains the storefront, customer accounts, catalog read API, newsletter endpoints, transactional mail queue, SQLite migrations, database tools, and tests. Its runtime has no Base44 dependency.
 - `recovery/` contains partial historical snapshots from the original application. It is not a runnable or deployable project. See [the archive notes](recovery/README.md) for known omissions.
-- Original artwork and a complete historical Base44 export are not included in this baseline. The standalone storefront currently uses a CSS hero fallback.
+- The Tavern storefront includes runtime artwork in standalone/public/approved and standalone/public/visuals. See [Tavern integration and release status](standalone/TAVERN.md) for the verified production baseline. A complete historical Base44 export remains unavailable.
 
 ## Existing production server
 

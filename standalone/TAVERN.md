@@ -39,16 +39,17 @@ production services are changed. Run the browser suite there with:
     LD_LIBRARY_PATH=/srv/eldritch-staging/.tavern-browser-libs/usr/lib/x86_64-linux-gnu \
     npm run test:browser
 
-## Published baseline and outstanding work
+## Verified baseline and outstanding work
 
-The verified production frontend was deployed on 2026-10-24 from local source
+The pre-candidate production frontend was deployed on 2026-10-24 from local source
 commit 918e5d24237bac56846c6e3e869b82017bd458e5, branch
 feat/tavern-vite-integration. Its release ID is
 tavern-918e5d24237b-20261024T224605Z. The account/API backend remains release
-45fb85d21236-20261023221639658. The public frontend-release.json records both.
-This publication carries the same frontend implementation onto current main,
-including main's documentation and CI updates. The publication commit has a new
-identity; the production manifest retains the original deployed source identity.
+45fb85d21236-20261023221639658. The public frontend-release.json is authoritative
+for the currently active frontend and backend. The October 26 baseline
+publication carried that frontend implementation onto main with its documentation
+and CI updates, under a new publication commit identity. The deployment manifest
+retains the source identity of each actual runtime release.
 
 A fresh isolated audit on 2026-10-26 passed all 42 backend tests and 10 Chromium
 browser tests. Its 26 build output files matched production byte for byte.
@@ -71,3 +72,17 @@ Build from standalone in the existing React/Vite application. Production fronten
 releases are versioned separately from the account/API release; use the existing
 release workflow and verify the public release manifest after an authorized
 runtime deployment. Repository publication alone does not deploy production.
+
+## Next Tavern design candidate
+
+The saved design from local commit aed14f71e0478ee1bcb14009bc4535a4213846e8
+adds illustrated category cards, an expanded footer and a second search form.
+It is being prepared on fix/tavern-candidate-readiness from current main.
+The candidate corrects header search visibility/expansion/focus behavior and the
+first category card's competing background image rule. Browser checks cover those
+regressions and the lower search form in addition to the existing account,
+navigation, wishlist and preview-bag coverage.
+
+Production promotion of this design is tracked separately by the public
+frontend-release.json; repository publication alone does not establish deployment.
+Catalog and checkout work remains planned for about 2026-11-02.

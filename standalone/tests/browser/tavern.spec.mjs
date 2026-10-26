@@ -196,3 +196,42 @@ test('Find wares submits trimmed queries and starts with all catalog categories'
   await expect(page.locator('.product-card')).toHaveCount(1);
   await expect(page.locator('.product-card')).toContainText('Dragon miniature');
 });
+
+
+test('Header search stays within the viewport at mobile and desktop widths', async ({ page }) => {
+  await page.route('**/api/catalog', route => route.fulfill({ json: { products: [], collections: [] } }));
+  const trigger = page.getByRole('button', { name: 'Search store', exact: true });
+  const input = page.locator('#ef-header-search');
+  for (const width of [320, 390, 680, 701, 800, 1024, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of ['/', '/shop']) {
+      await page.goto(path);
+      await expect(trigger).toHaveAttribute('aria-expanded', path === '/' ? 'false' : 'true');
+      if (path !== '/') {
+        await input.focus();
+        await input.press('Escape');
+        await expect(input).toBeHidden();
+        await expect(trigger).toBeFocused();
+      }
+      await trigger.focus();
+      await trigger.press('Enter');
+      await expect(input).toBeFocused();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+      const bounds = await input.evaluate(element => {
+        const rect = element.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: innerWidth, height: innerHeight };
+      });
+      expect(bounds.left, 'Search left edge at ' + width + 'px on ' + path).toBeGreaterThanOrEqual(0);
+      expect(bounds.right, 'Search right edge at ' + width + 'px on ' + path).toBeLessThanOrEqual(bounds.width);
+      expect(bounds.top).toBeGreaterThanOrEqual(0);
+      expect(bounds.bottom).toBeLessThanOrEqual(bounds.height);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await input.press('Escape');
+      await expect(input).toBeHidden();
+      await expect(trigger).toBeFocused();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+      expect(new URL(page.url()).pathname).toBe(path);
+      expect(new URL(page.url()).search).toBe('');
+    }
+  }
+});

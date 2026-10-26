@@ -100,10 +100,10 @@ test('Tavern navigation remains usable at narrow and intermediate mobile widths'
       return element.scrollWidth <= element.clientWidth + 1 && bounds.left >= 0 && bounds.right <= innerWidth;
     }), 'Headline fits at ' + width + 'px').toBe(true);
     const headerFits = await page.locator('.site-header').evaluate(header => {
-      const logo = header.querySelector('.brand strong').getBoundingClientRect();
+      const logo = header.querySelector('.brand > span:last-child').getBoundingClientRect();
       const actions = header.querySelector('.header-actions').getBoundingClientRect();
       const search = header.querySelector('.header-search').getBoundingClientRect();
-      return logo.right <= actions.left && actions.right <= innerWidth && (innerWidth <= 1100 || search.right <= actions.left);
+      return logo.right + 6 <= search.left && logo.right <= actions.left && actions.right <= innerWidth && (innerWidth <= 1100 || search.right <= actions.left);
     });
     expect(headerFits).toBe(true);
     if (width === 320 || width === 680) await page.screenshot({ path: testInfo.outputPath('tavern-' + width + '.png') });

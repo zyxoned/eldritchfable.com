@@ -1,0 +1,93 @@
+/* Account-bound callings, starter equipment, and the Seventh connection. */
+.ef-rpg .hero-portrait { image-rendering: auto; overflow: visible; filter: drop-shadow(0 3px 4px #0005); }
+.ef-rpg .story-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: -6px 0 23px; padding: 13px 16px; border: 1px solid #c79b5533; border-radius: 6px; background: linear-gradient(95deg,#2d2139aa,#17121b); }
+.ef-rpg .story-banner > span { display: inline-flex; align-items: center; gap: 9px; color: #c4b5ce; font-size: 11px; line-height: 1.6; }
+.ef-rpg .story-banner > span svg { flex-shrink: 0; color: #d7b57c; }
+.ef-rpg .story-banner button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; background: none; padding: 8px; color: #dfbb80; font-size: 11px; white-space: nowrap; min-height: 40px; }
+.ef-rpg .class-options { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+.ef-rpg .class-option { min-width: 0; min-height: 67px; padding: 10px 3px; }
+.ef-rpg .class-option span { font-size: 10px; }
+.ef-rpg .calling-preview { margin-top: 16px; padding-top: 16px; border-top: 1px solid #ffffff1a; }
+.ef-rpg .calling-title { display: flex; flex-direction: column; gap: 5px; }
+.ef-rpg .calling-title > span { color: #b5a5c0; font-size: 8px; letter-spacing: .09em; text-transform: uppercase; line-height: 1.5; }
+.ef-rpg .calling-title > strong { color: var(--calling-color,#dfc191); font: 400 22px/1.2 Georgia,serif; }
+.ef-rpg .calling-summary { font-size: 10px; color: #d4c7db; line-height: 1.6; }
+.ef-rpg .calling-lore { color: #b6a7c0; font-size: 10px; line-height: 1.8; }
+.ef-rpg .calling-stats { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 8px 0; color: #d2b58a; font-size: 9px; }
+.ef-rpg .calling-stats > span { display: inline-flex; align-items: center; gap: 5px; }
+.ef-rpg .calling-preview h3, .ef-rpg .calling-card h3 { margin: 14px 0 10px; color: #d2b58a; font-size: 9px; letter-spacing: .04em; font-weight: 550; }
+.ef-rpg .calling-skill-list { display: grid; gap: 10px; margin: 0; }
+.ef-rpg .calling-skill-list dt { color: #e2d5e8; font-size: 10px; font-weight: 550; }
+.ef-rpg .calling-skill-list dd { color: #a99ab3; font-size: 9px; line-height: 1.7; margin: 3px 0 0; }
+.ef-rpg .starter-equipment { margin: 13px 0; border-top: 1px solid #ffffff14; border-bottom: 1px solid #ffffff14; }
+.ef-rpg .starter-equipment summary { cursor: pointer; color: #d7b77f; font-size: 10px; padding: 12px 0; line-height: 1.6; }
+.ef-rpg .starter-note { display: block; color: #96879e; font-size: 8px; line-height: 1.7; }
+.ef-rpg .calling-card { padding: 20px 18px; }
+.ef-rpg .calling-card > .section-kicker { justify-content: flex-start; gap: 7px; }
+.ef-rpg .calling-card h2 { font: 400 21px Georgia,serif; margin: 15px 0; color: #efe3cf; }
+.ef-rpg .calling-card .calling-title { gap: 8px; }
+.ef-rpg .calling-card .calling-title > strong { font-size: 16px; }
+.ef-rpg .equipment-list { list-style: none; display: grid; gap: 13px; margin: 0; padding: 0; }
+.ef-rpg .equipment-list li { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 5px 6px; padding-top: 11px; border-top: 1px solid #ffffff12; }
+.ef-rpg .equipment-slot { grid-column: 1/-1; color: #8e8199; font-size: 7px; letter-spacing: .12em; text-transform: uppercase; }
+.ef-rpg .equipment-list strong { color: #dbcedf; font-size: 10px; font-weight: 500; line-height: 1.6; overflow-wrap: anywhere; }
+.ef-rpg .equipment-rarity { color: #b8a2cf; border: 1px solid #78608b66; padding: 2px 4px; border-radius: 2px; font-size: 7px; line-height: 1.6; align-self: start; }
+.ef-rpg .equipment-rarity.sss { color: #c5e6fa; border-color: #b298dd; background: #472d6444; text-shadow: 0 0 8px #c8b1ff88; }
+.ef-rpg .equipment-list p { grid-column: 1/-1; margin: 0; color: #96879f; font-size: 9px; line-height: 1.7; }
+.ef-rpg .skill-panel { margin-top: 13px; border: 1px solid #5e476c99; background: linear-gradient(135deg,#251b30,#17121c); padding: 13px; border-radius: 6px; }
+.ef-rpg .skill-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.ef-rpg .skill-panel-heading > span { display: inline-flex; align-items: center; gap: 7px; font-size: 8px; letter-spacing: .12em; color: #d9b880; }
+.ef-rpg .skill-panel-heading > small { color: #a998b4; font-size: 8px; }
+.ef-rpg .skill-bar { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.ef-rpg .skill-button { position: relative; display: grid; grid-template-columns: 31px minmax(0,1fr); align-items: center; gap: 3px 9px; padding: 13px 11px; background: #211827; border: 1px solid #6d527e; border-radius: 4px; text-align: left; min-width: 0; min-height: 101px; }
+.ef-rpg .skill-button:enabled:hover { background: #35243f; border-color: #b294cb; }
+.ef-rpg .skill-button:disabled { opacity: .6; }
+.ef-rpg .skill-symbol { display: grid; place-items: center; width: 31px; height: 34px; grid-row: 1/3; color: #d8b4f0; background: radial-gradient(circle,#67417766,#221828); border: 1px solid #7c609166; border-radius: 8px; }
+.ef-rpg .skill-button > strong { color: #eddef5; font-size: 10px; line-height: 1.5; font-weight: 550; overflow-wrap: anywhere; }
+.ef-rpg .skill-button > small { color: #b5c6ab; font-size: 8px; line-height: 1.7; }
+.ef-rpg .skill-button small kbd { margin-left: 5px; padding: 1px 4px; font: inherit; }
+.ef-rpg .skill-description { grid-column: 1/-1; color: #b1a0bb; font-size: 9px; line-height: 1.65; padding-top: 6px; }
+.ef-rpg .skill-button.cooling-down > small { color: #d5b47f; }
+.ef-rpg .skill-passive { border-color: #5d6384; background: #242238; }
+.ef-rpg .skill-passive .skill-symbol { color: #bfd9f4; }
+.ef-rpg .seventh-access { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 23px; border: 1px solid #a188c166; background: linear-gradient(120deg,#2a203a,#14141e); border-radius: 6px; margin: 0 0 22px; box-shadow: inset 0 0 35px #8272b511; }
+.ef-rpg .seventh-access > div { max-width: 700px; }
+.ef-rpg .seventh-access h2 { font: 400 23px/1.2 Georgia,serif; margin: 9px 0; color: #c7d6ef; }
+.ef-rpg .seventh-access p { color: #b8aaca; font-size: 11px; line-height: 1.8; margin: 0; }
+.ef-rpg .seventh-access > button { flex-shrink: 0; min-height: 44px; }
+.ef-rpg .seventh-status { display: flex; align-items: center; justify-content: center; gap: 8px; color: #bad8ef; font-size: 9px; letter-spacing: .14em; padding: 15px 0 5px; }
+@media (min-width: 1550px) { .ef-rpg .calling-card { padding: 23px; } }
+@media (max-width: 760px) {
+  .ef-rpg .story-banner { align-items: flex-start; flex-direction: column; gap: 6px; margin-top: -6px; padding: 12px 13px; }
+  .ef-rpg .story-banner > span { font-size: 10px; }
+  .ef-rpg .story-banner button { font-size: 10px; padding-left: 0; min-height: 35px; }
+  .ef-rpg .class-options { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .ef-rpg .class-option { flex-direction: column; min-height: 70px; padding: 10px 3px; }
+  .ef-rpg .class-option span { font-size: 9px; }
+  .ef-rpg .calling-preview { padding-top: 16px; }
+  .ef-rpg .calling-lore, .ef-rpg .calling-summary { font-size: 11px; }
+  .ef-rpg .calling-skill-list { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px; }
+  .ef-rpg .calling-skill-list dt { font-size: 11px; }
+  .ef-rpg .calling-skill-list dd { font-size: 10px; }
+  .ef-rpg .starter-note { font-size: 9px; }
+  .ef-rpg .calling-card { order: 5; width: 100%; padding: 20px; }
+  .ef-rpg .calling-card .equipment-list { grid-template-columns: 1fr; }
+  .ef-rpg .equipment-list strong { font-size: 11px; }
+  .ef-rpg .equipment-list p { font-size: 10px; }
+  .ef-rpg .equipment-slot, .ef-rpg .equipment-rarity { font-size: 8px; }
+  .ef-rpg .skill-panel { padding: 11px; }
+  .ef-rpg .skill-panel-heading { flex-wrap: wrap; gap: 7px; }
+  .ef-rpg .skill-panel-heading > span, .ef-rpg .skill-panel-heading > small { font-size: 8px; }
+  .ef-rpg .skill-bar { gap: 7px; }
+  .ef-rpg .skill-button { padding: 11px 9px; gap: 3px 7px; }
+  .ef-rpg .skill-button > strong { font-size: 10px; }
+  .ef-rpg .skill-description { font-size: 9px; }
+  .ef-rpg .seventh-access { padding: 18px; align-items: stretch; flex-direction: column; gap: 16px; }
+}
+@media (max-width: 359px) {
+  .ef-rpg .class-options { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .ef-rpg .calling-skill-list, .ef-rpg .skill-bar { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ef-rpg .skill-button, .ef-rpg .story-banner button { transition: none; }
+}

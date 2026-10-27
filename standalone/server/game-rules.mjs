@@ -3,11 +3,7 @@ export const HEIGHT = 22;
 export const SPAWN = { x: 10, y: 13 };
 export const SHRINE = { x: 24, y: 5 };
 export const LEASE_MS = 75000;
-export const CLASSES = Object.freeze({
-  ranger: { damage: 14, range: 3 },
-  knight: { damage: 22, range: 2 },
-  mage: { damage: 18, range: 3 },
-});
+export { CLASS_CATALOG as CLASSES } from '../shared/class-catalog.mjs';
 export const CRYSTALS = Object.freeze([
   { id: 'moon', x: 7, y: 5 },
   { id: 'fern', x: 24, y: 15 },

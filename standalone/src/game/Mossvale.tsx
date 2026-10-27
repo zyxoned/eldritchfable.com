@@ -4,15 +4,18 @@ import {
   ChevronRight, Compass, Flame, Gem, Leaf, LogOut, MessageCircle, Radio,
   RotateCw, Send, Shield, Sparkles, Sword, Users, X,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { api } from './transport';
 import {
-  CLASSES, CRYSTALS, ENEMIES, SHRINE, WIDTH, HEIGHT, level, questReady, walkable,
+  CLASSES, PLAYER_CLASS_IDS, CRYSTALS, ENEMIES, SHRINE, WIDTH, HEIGHT, level, questReady, walkable,
   type HeroClass, type Realm,
 } from './shared/game';
 import GameCanvas from './GameCanvas';
+import IntroCutscene from './IntroCutscene';
+import { CallingPreview, CharacterCalling, SkillBar } from './ClassDetails';
 import { useDialogFocus } from './useDialogFocus';
 import './game.css';
+import './expansion.css';
 
 type Identity = {
   name: string;
@@ -26,13 +29,17 @@ type Profile = {
   balanceCopper?: number;
   lifetimeXp: number;
   character: Realm['players'][number] | null;
+  regularCharacter?: Realm['players'][number] | null;
+  adminAccess?: boolean;
+  adminActive?: boolean;
+  cooldowns?: Record<string, number>;
 };
 type Reply = { realm: Realm; profile: Profile; notice?: string; playerId?: string | null };
 
 function readIdentity(userId: string): Identity {
   try {
     const old = JSON.parse(sessionStorage.getItem('eldritch-character-' + userId) || 'null');
-    if (old && Object.prototype.hasOwnProperty.call(CLASSES, old.heroClass)) return old;
+    if (old && (PLAYER_CLASS_IDS as readonly string[]).includes(old.heroClass)) return old;
   } catch { /* Use fresh character preferences if storage is unavailable. */ }
   return { name: '', heroClass: 'ranger', joined: false };
 }
@@ -71,25 +78,46 @@ function nextStep(start: { x: number; y: number }, target: { x: number; y: numbe
 function PixelHero({ heroClass = 'ranger', empty = false, large = false }: {
   heroClass?: HeroClass; empty?: boolean; large?: boolean;
 }) {
-  const color = empty ? '#b8bbaa' : CLASSES[heroClass].color;
-  return (
-    <svg className={large ? 'pixel-hero large' : 'pixel-hero'} viewBox="0 0 32 38" aria-hidden="true">
-      <path fill="#233f34" opacity=".16" d="M4 32h24v5H4z" />
-      <path fill={empty ? '#a3aa99' : '#314b3a'} d="M8 26h6v9H8zm11 0h6v9h-6z" />
-      <path fill={color} d="M7 16h19v14H7zM8 5h17v15H8zM4 10h25v7H4z" />
-      <path fill={empty ? '#dedfce' : '#f0cf9e'} d="M12 13h12v8H12z" />
-      <path fill="#2c4937" d="M14 15h2v2h-2zm7 0h2v2h-2z" />
-      <path fill="#e9ddad" d="M8 25h17v3H8z" />
-      {!empty && <path fill="#8b704c" d="M28 8h2v25h-2z" />}
-    </svg>
-  );
+  const color = empty ? '#8e8798' : CLASSES[heroClass].color;
+  const draconian = !empty && heroClass === 'death-knight';
+  const caster = ['mage', 'wizard', 'sorcerer'].includes(heroClass);
+  return <svg className={'pixel-hero hero-portrait' + (large ? ' large' : '')} viewBox="0 0 64 76" aria-hidden="true">
+    <ellipse cx="32" cy="70" rx="22" ry="4" fill="#030209" opacity=".45" />
+    {draconian && <path d="M25 31 4 17 8 46 22 41M39 31 60 17 56 46 42 41" fill="#372d50" stroke="#a58ece" strokeWidth="1.2" />}
+    <path d="M19 34Q32 27 45 34L49 65Q32 73 15 65Z" fill={color} opacity={empty ? '.55' : '.9'} />
+    <path d="m23 55-3 14h10l2-12 3 12h10l-4-14" fill="#282332" />
+    <path d="M20 35q12-5 24 0l-2 23H22Z" fill={draconian ? '#30313e' : color} stroke="#e5d2ad" strokeOpacity=".35" />
+    <path d="m24 37 8 8 8-8M23 53h18" fill="none" stroke="#e5d2ad" strokeWidth="2" opacity=".7" />
+    <path d="M20 34 15 49 21 52M44 34l5 15-6 3" fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" />
+    <ellipse cx="32" cy="23" rx={draconian ? 12 : 10} ry="13" fill={empty ? '#a49cab' : draconian ? '#6d7890' : '#d8b392'} />
+    {!empty && <path d="M21 20q0-14 11-14 12 0 12 17l-7-9-8 4Z" fill={draconian ? '#293446' : '#40323a'} />}
+    {heroClass === 'wizard' && !empty && <path d="m17 17 15-17 10 17 8 4H14Z" fill={color} stroke="#d6c49a" strokeWidth="1.3" />}
+    {heroClass === 'ranger' && !empty && <path d="m19 25-2-10L32 3 46 17l-2 10-8-13Z" fill={color} />}
+    {heroClass === 'knight' && !empty && <path d="M20 23V13q12-12 24 0v10l-9-3h-6Z" fill="#b0a7ab" stroke="#e7d4ae" />}
+    {draconian && <><path d="M21 17 15 3l12 10M43 17 49 3 37 13" fill="#c5b0dd" /><path d="m24 24 8 12 12-12-4 12-8 4-8-5Z" fill="#78899c" /></>}
+    <path d="M26 24h4m5 0h4" stroke={draconian ? '#adf4ff' : '#312635'} strokeWidth={draconian ? 2.5 : 2} strokeLinecap="round" />
+    {!empty && heroClass === 'cleric' && <><ellipse cx="32" cy="3" rx="12" ry="3" fill="none" stroke="#eed38f" strokeWidth="2" /><path d="M52 22v44m-5-36h10" stroke="#e7d2a0" strokeWidth="3" /></>}
+    {!empty && heroClass === 'ranger' && <><path d="M50 21q17 21 0 42l3-21Z" fill="none" stroke="#d2b67c" strokeWidth="2" /><path d="m48 40 13-3" stroke="#e4dfcd" strokeWidth="1.5" /></>}
+    {!empty && heroClass === 'knight' && <><path d="m9 39 12-3v18l-6 6-6-7Z" fill="#7b7484" stroke="#c7b285" /><path d="M51 21v35m-6-7h12" stroke="#e4d4ba" strokeWidth="2.5" /></>}
+    {!empty && heroClass === 'bard' && <><path d="m42 45 12-21" stroke="#c8a673" strokeWidth="4" /><ellipse cx="39" cy="51" rx="10" ry="13" transform="rotate(25 39 51)" fill="#a76948" stroke="#dfbc85" /><circle cx="40" cy="49" r="4" fill="#463047" /><path d="m39 49 15-24" stroke="#f1d4a2" strokeWidth="1.2" /></>}
+    {!empty && heroClass === 'monk' && <><path d="M25 35q7 12 14 0" fill="none" stroke="#dccda1" strokeWidth="3" strokeDasharray="1 3" /><circle cx="15" cy="49" r="5" fill="#ddba97" /><circle cx="48" cy="49" r="5" fill="#ddba97" /></>}
+    {!empty && caster && <><path d="M52 25v42" stroke="#a18a76" strokeWidth="3" /><circle cx="52" cy="20" r="7" fill={color} opacity=".2" /><circle cx="52" cy="20" r="4" fill={heroClass === 'sorcerer' ? '#f3a17c' : '#d3b9fa'} /><path d="M9 42q-6-9 1-15-2 9 5 11Z" fill={color} opacity=".8" /></>}
+    {draconian && <><path d="m52 17 5 34-5 8-4-8Z" fill="#c7ddeb" stroke="#a5b5d9" /><path d="M44 55h16m-8 1v11" stroke="#c3a1e5" strokeWidth="3" /><path d="m26 43 6-5 6 5-6 5Z" fill="#b1eafa" /></>}
+  </svg>;
 }
 
 export default function Mossvale({ user, onSessionExpired }: {
-  user: { id: string };
+  user: { id: string; role?: string };
   onSessionExpired: () => void;
 }) {
+  const location = useLocation();
   const [identity] = useState(() => readIdentity(user.id));
+  const [introOpen, setIntroOpen] = useState(() => {
+    try { return localStorage.getItem('eldritch-intro-v1:' + user.id) !== 'seen'; }
+    catch { return true; }
+  });
+  const [actionPending, setActionPending] = useState(false);
+  const [seventhBusy, setSeventhBusy] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState(identity.name);
   const [heroClass, setHeroClass] = useState<HeroClass>(identity.heroClass);
@@ -111,11 +139,25 @@ export default function Mossvale({ user, onSessionExpired }: {
   const destination = useRef<{ x: number; y: number } | null>(null);
   const busy = useRef(false);
   const resumed = useRef(false);
+  const seventhAttempted = useRef(false);
   const messages = useRef<HTMLDivElement>(null);
   const actRef = useRef<(kind: string, extra?: Record<string, unknown>) => Promise<boolean>>(async () => false);
   playerRef.current = playerId;
-  const me = realm?.players.find(p => p.id === playerId);
+  const me = realm?.seventh?.id === playerId ? realm.seventh : realm?.players.find(p => p.id === playerId);
   const count = realm?.players.length || 0;
+  const adminActive = !!profile?.adminActive;
+  const wantsSeventh = new URLSearchParams(location.search).get('seventh') === '1';
+
+  function completeIntro() {
+    try { localStorage.setItem('eldritch-intro-v1:' + user.id, 'seen'); }
+    catch { /* The current visit still remembers a completed prologue. */ }
+    setIntroOpen(false);
+  }
+
+  function replayIntro() {
+    destination.current = null;
+    setGuide(false); setLeaving(false); setIntroOpen(true);
+  }
 
   function applyRealm(next: Realm) {
     if (!realmRef.current || next.revision >= realmRef.current.revision) {
@@ -160,7 +202,7 @@ export default function Mossvale({ user, onSessionExpired }: {
         const result = await api.get('/api/game/world');
         if (!active) return;
         applyReply(result.data);
-        const saved = result.data.profile?.character;
+        const saved = result.data.profile?.regularCharacter || (!result.data.profile?.adminActive ? result.data.profile?.character : null);
         if (saved) {
           setName(saved.name);
           setHeroClass(saved.heroClass);
@@ -202,7 +244,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   }, [realm?.messages.length]);
 
   async function joinRealm(resume = false) {
-    if (joining) return;
+    if (joining || introOpen) return;
     const chosenName = resume ? identity.name : name.trim();
     const chosenClass = resume ? identity.heroClass : heroClass;
     if (!/^[a-zA-Z0-9 _-]{2,16}$/.test(chosenName)) {
@@ -228,11 +270,42 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   useEffect(() => {
-    if (connected && identity.joined && !resumed.current) {
+    if (connected && !introOpen && !wantsSeventh && !profile?.adminActive && identity.joined && !resumed.current) {
       resumed.current = true;
       void joinRealm(true);
     }
-  }, [connected]);
+  }, [connected, introOpen, wantsSeventh, profile?.adminActive]);
+
+  async function enterSeventh() {
+    if (seventhBusy || introOpen || !profile?.adminAccess) return;
+    setSeventhBusy(true); setError(''); destination.current = null;
+    try {
+      const result = await api.post('/api/game/admin/join', envelope());
+      applyReply(result.data);
+      setNotice(result.data.notice || 'The Seventh has entered the glade.');
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setSeventhBusy(false); }
+  }
+
+  async function leaveSeventh() {
+    if (seventhBusy) return;
+    setSeventhBusy(true); setError(''); destination.current = null;
+    try {
+      const result = await api.post('/api/game/admin/leave', envelope());
+      applyReply(result.data);
+      setNotice(result.data.notice || 'Your Death Knight waits beyond the veil.');
+      identity.joined = false;
+      saveIdentity(identity, user.id);
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setSeventhBusy(false); }
+  }
+
+  useEffect(() => {
+    if (!connected || introOpen || !profile || !wantsSeventh || seventhAttempted.current) return;
+    seventhAttempted.current = true;
+    if (profile.adminAccess && !profile.adminActive) void enterSeventh();
+    else if (!profile.adminAccess) setError('The Seventh is available only to site administrators.');
+  }, [connected, introOpen, wantsSeventh, profile?.adminAccess]);
 
   function endSession() {
     setPlayerId(null);
@@ -259,8 +332,9 @@ export default function Mossvale({ user, onSessionExpired }: {
   }, [playerId, connected]);
 
   async function act(kind: string, extra: Record<string, unknown> = {}) {
-    if (!playerRef.current || !connected || busy.current) return false;
+    if (!playerRef.current || !connected || busy.current || introOpen || guide || leaving) return false;
     busy.current = true;
+    setActionPending(true);
     if (kind !== 'move') destination.current = null;
     try {
       const result = await api.post('/api/game/action', envelope({ kind, ...extra }));
@@ -282,6 +356,7 @@ export default function Mossvale({ user, onSessionExpired }: {
       return false;
     } finally {
       busy.current = false;
+      setActionPending(false);
     }
   }
   actRef.current = act;
@@ -289,7 +364,8 @@ export default function Mossvale({ user, onSessionExpired }: {
   useEffect(() => {
     const timer = window.setInterval(() => {
       const target = destination.current;
-      const p = realmRef.current?.players.find(v => v.id === playerRef.current);
+      const currentRealm = realmRef.current;
+      const p = currentRealm?.seventh?.id === playerRef.current ? currentRealm.seventh : currentRealm?.players.find(v => v.id === playerRef.current);
       if (!target || !p || busy.current) return;
       const step = nextStep(p, target);
       if (!step) { destination.current = null; return; }
@@ -299,6 +375,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   }, []);
 
   function go(x: number, y: number) {
+    if (introOpen || guide || leaving) return;
     if (!me) { setNotice('Choose a name and enter the glade to start exploring.'); return; }
     if (!connected) { setError('Reconnect to move through the glade.'); return; }
     if (!walkable(x, y)) { setNotice('Use the wooden bridge to cross the brook.'); return; }
@@ -306,7 +383,9 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   function move(dx: number, dy: number) {
-    const p = realmRef.current?.players.find(v => v.id === playerRef.current);
+    if (introOpen || guide || leaving) return;
+    const currentRealm = realmRef.current;
+    const p = currentRealm?.seventh?.id === playerRef.current ? currentRealm.seventh : currentRealm?.players.find(v => v.id === playerRef.current);
     if (p) {
       destination.current = null;
       if (walkable(p.x + dx, p.y + dy)) void actRef.current('move', { x: p.x + dx, y: p.y + dy });
@@ -316,7 +395,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      if (['INPUT', 'TEXTAREA'].includes(target.tagName) || guide || leaving) return;
+      if (!(target instanceof HTMLElement) || target.closest('input, textarea, select, [contenteditable]') || guide || leaving || introOpen || event.altKey || event.ctrlKey || event.metaKey) return;
       const directions: Record<string, [number, number]> = {
         ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1],
         ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0],
@@ -324,6 +403,9 @@ export default function Mossvale({ user, onSessionExpired }: {
       if (directions[event.key]) {
         event.preventDefault();
         move(...directions[event.key]);
+      } else if ((event.key === '1' || event.key === '2') && me) {
+        const skill = CLASSES[me.heroClass].skills[Number(event.key) - 1];
+        if (skill && skill.type !== 'passive') { event.preventDefault(); void actRef.current('skill', { skillId: skill.id }); }
       } else if (event.code === 'Space' && target.tagName !== 'BUTTON') {
         event.preventDefault();
         void actRef.current('attack');
@@ -334,7 +416,7 @@ export default function Mossvale({ user, onSessionExpired }: {
     };
     window.addEventListener('keydown', keydown);
     return () => window.removeEventListener('keydown', keydown);
-  }, [guide, leaving]);
+  }, [guide, leaving, introOpen, me?.heroClass]);
 
   async function leaveRealm() {
     try {
@@ -346,7 +428,7 @@ export default function Mossvale({ user, onSessionExpired }: {
     } catch (err) { setError(errorMessage(err)); }
   }
 
-  const canAct = !!me && connected;
+  const canAct = !!me && connected && !introOpen && !guide && !leaving && !actionPending;
   const questDone = me ? questReady(me) : false;
   const trackEnemy = () => {
     const enemy = realm?.enemies.find(e => e.hp > 0) || ENEMIES[0];
@@ -378,10 +460,18 @@ export default function Mossvale({ user, onSessionExpired }: {
           <div>
             <div className="eyebrow"><span /> ELDRITCH FABLE · SIX-PLAYER ADVENTURE</div>
             <h1>Enter the fable. <em>Bring back a legend.</em></h1>
-            <p>Six adventurers. One shared realm. Earn XP and build your private Secret Stash.</p>
+            <p>Eight callings. Six adventurers. One shared realm. Earn XP and build your private Secret Stash.</p>
           </div>
           <div className="chapter"><span>CHAPTER 01</span><strong>The waking woods</strong><small>Your account. Your continuing story.</small></div>
         </section>
+
+        <div className="story-banner"><span><Sparkles size={14} /> The Hollow King is waking. A new company must answer.</span><button type="button" onClick={replayIntro}><BookOpen size={14} /> Watch the prologue</button></div>
+
+        {profile?.adminAccess && <section className="seventh-access" aria-label="The Seventh connection">
+          <div><span className="section-kicker">BEYOND THE SIX · ADMINISTRATOR</span><h2>The Seventh</h2><p>A separate Draconian Death Knight. Level ???. SSS equipment, invulnerability, and an instant-kill strike. Your regular character stays saved.</p></div>
+          {adminActive ? <button type="button" className="secondary-button" disabled={seventhBusy || introOpen} onClick={() => void leaveSeventh()}>{seventhBusy ? 'Returning beyond the veil…' : 'Leave as the Seventh'}</button>
+            : <button type="button" className="primary-button" disabled={!connected || seventhBusy || introOpen} onClick={() => void enterSeventh()}>{seventhBusy ? 'Crossing the veil…' : 'Enter as the Seventh'}</button>}
+        </section>}
 
         {error && <div className="error-banner" role="alert">
           <span>{error}</span>
@@ -397,32 +487,36 @@ export default function Mossvale({ user, onSessionExpired }: {
                 <div className="active-hero">
                   <div className="portrait"><PixelHero heroClass={me.heroClass} large /><span className="portrait-spark">✧</span></div>
                   <h2>{me.name}</h2>
-                  <p>Level {level(me.xp)} {CLASSES[me.heroClass].name}</p>
+                  <p>Level {me.levelLabel || level(me.xp)} · {me.race === 'Draconian' ? 'Draconian ' : ''}{CLASSES[me.heroClass].name}</p>
                 </div>
-                <div className="stat-label"><span><span className="health-dot" /> Health</span><strong>{me.hp} / 100</strong></div>
+                <div className="stat-label"><span><span className="health-dot" /> Health</span><strong>{adminActive ? 'Invulnerable' : me.hp + ' / 100'}</strong></div>
                 <div className="progress health"><span style={{ width: me.hp + '%' }} /></div>
-                <div className="stat-label"><span>Next level</span><strong>{me.xp % 100} / 100 XP</strong></div>
-                <div className="progress xp"><span style={{ width: me.xp % 100 + '%' }} /></div>
+                {!adminActive && <><div className="stat-label"><span>Next level</span><strong>{me.xp % 100} / 100 XP</strong></div>
+                <div className="progress xp"><span style={{ width: me.xp % 100 + '%' }} /></div></>}
+                {adminActive && <div className="seventh-status"><Shield size={13} /> UNDYING · SSS</div>}
                 <Link to="/stash" className="gold-line"><Gem size={14} /> {profile?.balanceXp || 0}<span>Secret Stash · XP</span><ArrowUpRight size={12} /></Link>
-                <button className="leave-button" onClick={() => setLeaving(true)}><LogOut size={13} /> Leave realm</button>
+                <button className="leave-button" onClick={() => adminActive ? void leaveSeventh() : setLeaving(true)}><LogOut size={13} /> {adminActive ? 'Return beyond the veil' : 'Leave realm'}</button>
               </> : <>
                 <div className="welcome-hero"><div className="portrait"><PixelHero heroClass={heroClass} large /><span className="portrait-spark">✧</span></div><h2>Your story starts here.</h2><p>Make yourself a little legend.</p></div>
                 <form onSubmit={event => { event.preventDefault(); void joinRealm(); }} noValidate>
                   <label className="field-label" htmlFor="hero-name">Adventurer name</label>
-                  <input id="hero-name" readOnly={!!profile?.character} value={name} maxLength={16} placeholder="What shall we call you?" onChange={event => setName(event.target.value)} autoComplete="off" />
+                  <input id="hero-name" readOnly={!!(profile?.regularCharacter || profile?.character)} value={name} maxLength={16} placeholder="What shall we call you?" onChange={event => setName(event.target.value)} autoComplete="off" />
                   <span className="field-label choose-label">Choose your calling</span>
                   <div className="class-options">
-                    {(Object.keys(CLASSES) as HeroClass[]).map(value => <button type="button" key={value} className={heroClass === value ? 'class-option selected' : 'class-option'} disabled={!!profile?.character} aria-pressed={heroClass === value} onClick={() => setHeroClass(value)} title={CLASSES[value].description}>
+                    {PLAYER_CLASS_IDS.map(value => <button type="button" key={value} className={heroClass === value ? 'class-option selected' : 'class-option'} disabled={!!(profile?.regularCharacter || profile?.character)} aria-pressed={heroClass === value} onClick={() => setHeroClass(value)} title={CLASSES[value].description}>
                       <PixelHero heroClass={value} /><span>{CLASSES[value].name}</span>
                     </button>)}
                   </div>
-                  <button className="primary-button enter-button" type="submit" disabled={!connected || joining}>
+                  <CallingPreview heroClass={heroClass} />
+                  <button className="primary-button enter-button" type="submit" disabled={!connected || joining || introOpen}>
                     {joining ? 'Entering the glade…' : loading ? 'Connecting…' : count >= 6 ? 'Realm full · Try again' : 'Enter the glade'} <ArrowUpRight size={17} />
                   </button>
                   <div className="join-note"><Shield size={11} /> Account linked. Character and XP saved.</div>
                 </form>
               </>}
             </section>
+
+            {me && <CharacterCalling heroClass={me.heroClass} equipment={me.equipment} />}
 
             <section className="card quest-card">
               <div className="section-kicker"><span className="kicker-with-icon"><Compass size={14} /> YOUR FIRST ADVENTURE</span></div>
@@ -461,6 +555,7 @@ export default function Mossvale({ user, onSessionExpired }: {
               </div>
               <button className="help-button" onClick={() => setGuide(true)} aria-label="Open field guide"><BookOpen size={18} /></button>
             </div>
+            {me && <SkillBar heroClass={me.heroClass} cooldowns={profile?.cooldowns} serverTime={realm?.serverTime || Date.now()} enabled={canAct} onUse={skillId => void act('skill', { skillId })} />}
             <div className="mobile-controls" aria-label="Touch movement controls">
               <button aria-label="Move west" disabled={!canAct} onClick={() => move(-1, 0)}><ArrowLeft size={19} /></button>
               <button aria-label="Move north" disabled={!canAct} onClick={() => move(0, -1)}><ArrowUp size={19} /></button>
@@ -481,14 +576,14 @@ export default function Mossvale({ user, onSessionExpired }: {
                   const player = realm?.players[i];
                   return <div key={player?.id || i} className={'party-slot ' + (player ? 'occupied' : '')}>
                     <div className="slot-avatar"><PixelHero heroClass={player?.heroClass} empty={!player} /></div>
-                    <div>{player ? <><strong>{player.name}</strong><small>{player.id === playerId ? 'You · ' : ''}Lv. {level(player.xp)} {CLASSES[player.heroClass].name}</small></> : <><strong>Open seat</strong><small>A friend belongs here</small></>}</div>
+                    <div>{player ? <><strong>{player.name}</strong><small>{player.id === playerId ? 'You · ' : ''}Lv. {player.levelLabel || level(player.xp)} {CLASSES[player.heroClass].name}</small></> : <><strong>Open seat</strong><small>A friend belongs here</small></>}</div>
                     {player ? <span className="online-dot" /> : <span className="seat-number">0{i + 1}</span>}
                   </div>;
                 })}
               </div>
               <button className="invite-button" onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(window.location.href);
+                  await navigator.clipboard.writeText(window.location.origin + '/play');
                   setNotice('Invite link copied. Send it to your party!');
                 } catch { setNotice('Invite friends by sharing this page’s URL.'); }
               }}><span>Invite a friend</span><ArrowUpRight size={15} /></button>
@@ -519,6 +614,8 @@ export default function Mossvale({ user, onSessionExpired }: {
         <footer><span><Leaf size={12} /> ELDRITCH FABLE · Legendary gear for stories yet to be told.</span><span>Your progress lives with your account. <span>✧</span></span></footer>
       </main>
 
+      <IntroCutscene open={introOpen} onComplete={completeIntro} />
+
       {(guide || leaving) && <div className="modal-backdrop" onClick={() => { setGuide(false); setLeaving(false); }}>
         <section ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={event => event.stopPropagation()}>
           <button className="modal-close icon-button" aria-label="Close dialog" onClick={() => { setGuide(false); setLeaving(false); }} autoFocus><X size={20} /></button>
@@ -531,7 +628,7 @@ export default function Mossvale({ user, onSessionExpired }: {
             <p>Mossvale is Eldritch Fable’s live realm for six signed-in adventurers. Share the page link and meet your party by the campfire.</p>
             <div className="guide-steps">
               <div><Compass /><span><strong>Take the scenic route</strong><p>Click or tap the ground to walk. Use WASD, arrow keys, or the touch buttons. The wooden bridge crosses the brook.</p></span></div>
-              <div><Sword /><span><strong>Be a guardian, together</strong><p>Walk near a green thornling and press Attack or Space. Rangers and mages reach 3 tiles; knights reach 2. Active adventurers who contribute to a fight earn XP. Every awarded XP also goes into your private Secret Stash.</p></span></div>
+              <div><Sword /><span><strong>Be a guardian, together</strong><p>Walk near a thornling and press Attack or Space. Your calling determines weapon reach and starter skills. Use the skill cards or keys 1 and 2; their cooldowns keep combat paced. Healing and wards help your company survive. Active contributors earn XP for their private Secret Stash.</p></span></div>
               <div><Gem /><span><strong>Follow the blue glow</strong><p>Stand beside two different moon crystals and press Interact or E. Then visit the shrine in the northeast and interact with it.</p></span></div>
               <div><Flame /><span><strong>There is always a way home</strong><p>Interact at camp to restore health. Complete all three objectives to claim 100 XP for your Secret Stash. Thornlings return after 20 seconds.</p></span></div>
             </div>

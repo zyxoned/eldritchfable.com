@@ -52,7 +52,7 @@ export default function Adventure({ stash = false }) {
         {state.loading ? <p role="status">Checking your Eldritch Fable account…</p> : <>
           <p>{stash
             ? 'Sign in to see your private XP balance, adventure rewards, and future exchanges.'
-            : 'Sign in to your Eldritch Fable account to play with up to five other adventurers. Your character and earned XP stay with your account.'}</p>
+            : 'Choose from eight callings and play with up to five other adventurers. Sign in to watch the opening story, create your persistent character, and keep your earned XP with your account.'}</p>
           {state.error && <p role="alert">{state.error}</p>}
           {state.error
             ? <button className="primary-button" onClick={() => setRetry(value => value + 1)}>Try again</button>

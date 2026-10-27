@@ -488,3 +488,28 @@
   .ef-rpg .coin-purse strong { font-size: 25px; }
   .ef-rpg .exchange-card { grid-template-columns: 1fr; padding: 23px; gap: 20px; }
 }
+
+/* Illustrated realm: smooth artwork, moonlit depth, and restrained gold inlay. */
+.ef-rpg .site-shell { background: radial-gradient(ellipse at 60% 0, #241d3090, transparent 46%); }
+.ef-rpg .world-card { overflow: hidden; border-color: #8d755e60; box-shadow: 0 18px 70px #0005, 0 0 0 1px #101119 inset; }
+.ef-rpg .world-heading { background: linear-gradient(115deg, #211b2b, #141920); border-bottom: 1px solid #bc9b6150; }
+.ef-rpg .world-heading h2 { color: #f0dfbd; letter-spacing: -.02em; }
+.ef-rpg .canvas-container { position: relative; background: #18333c; border-color: #31414c; }
+.ef-rpg .canvas-container canvas { image-rendering: auto; display: block; width: 100%; height: auto; aspect-ratio: 30 / 22; min-height: 0; cursor: crosshair; }
+.ef-rpg .map-caption { background: linear-gradient(90deg, #171b23, #1b1721); border-top: 1px solid #b7995d33; color: #c3b794; }
+.ef-rpg .map-corner { color: #e3cfa2; text-shadow: 0 1px 5px #07111c; background: #0a172248; padding: 5px 7px; border-left: 1px solid #d1b68170; }
+.ef-rpg .world-invitation { backdrop-filter: blur(9px); box-shadow: 0 8px 25px #01050a60; border: 1px solid #c2a46e70; }
+.ef-rpg .card { background: linear-gradient(145deg, #1b1621, #11131a); box-shadow: 0 8px 28px #0002; }
+.ef-rpg .portrait { background: radial-gradient(ellipse at 40% 20%, #58465860, #20202c 62%); box-shadow: 0 0 25px #b79b5520, 0 0 0 3px #0d1117; }
+.ef-rpg .portrait:before { border-style: solid; border-color: #c1a66a36; }
+.ef-rpg .controls-card { background: linear-gradient(110deg, #211b28, #171a22); border-color: #9b7c4e4d; }
+.ef-rpg .party-slot.occupied { background: linear-gradient(100deg, #2d2335, #1a1d28); }
+.ef-rpg .game-notice { backdrop-filter: blur(8px); box-shadow: 0 8px 30px #0005; }
+@media (max-width: 760px) {
+  .ef-rpg .canvas-container canvas { min-height: 0; height: auto; aspect-ratio: 30 / 22; }
+  .ef-rpg .world-heading { padding: 15px 13px; }
+  .ef-rpg .world-heading h2 { font-size: 23px; }
+}
+
+/* Keep the realm flush with the viewport on direct route visits. */
+body:has(.ef-rpg) { margin: 0; background: #0d0b13; }

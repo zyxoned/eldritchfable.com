@@ -21,7 +21,7 @@ const recoveryTimer = 'eldritch-production-healthcheck.timer';
 const backupTimer = 'eldritch-production-backup.timer';
 const origin = 'https://eldritchfable.com';
 const source = resolve(dirname(realpathSync(fileURLToPath(import.meta.url))), '..');
-const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products', 'game_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world'];
+const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products', 'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world'];
 const delay = ms => new Promise(done => setTimeout(done, ms));
 let phase = 'preflight';
 
@@ -109,7 +109,7 @@ export function productionConfig(original, releaseId) {
       proxies++;
     }
     if (value.handler === 'headers') for (const name of Object.keys(value.response?.set || {})) {
-      if (name.toLowerCase() === 'x-eldritch-release') value.response.set[name] = [releaseId];
+      if (['x-eldritch-release', 'x-eldritch-frontend-release'].includes(name.toLowerCase())) value.response.set[name] = [releaseId];
       if (name.toLowerCase() === 'referrer-policy') value.response.set[name] = ['no-referrer'];
     }
     for (const child of Object.values(value)) walk(child);
@@ -122,18 +122,25 @@ export function productionConfig(original, releaseId) {
     const first = server.routes[0];
     const generated = first?.handle?.length === 1 && first.handle[0].handler === 'headers' &&
       first.handle[0].response?.set?.['X-Eldritch-Release'] && !first.match && !first.terminal;
+    if (generated) first.handle[0].response.set['X-Eldritch-Frontend-Release'] = [releaseId];
     if (!generated) server.routes.unshift({ handle: [{ handler: 'headers', response: { set: {
-      'Referrer-Policy': ['no-referrer'], 'X-Eldritch-Release': [releaseId]
+      'Referrer-Policy': ['no-referrer'], 'X-Eldritch-Release': [releaseId], 'X-Eldritch-Frontend-Release': [releaseId]
     } } }] });
   }
   requireCondition(proxies > 0 && roots > 0, 'EXPECTED_PRODUCTION_ROUTES');
   return { config, listeners: [...new Set(listeners)] };
 }
 
-function fingerprints(db, selected = tables.filter(table => db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))) {
-  return Object.fromEntries(selected.map(table => {
-    const present = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table);
-    const rows = present ? db.prepare(`SELECT * FROM ${table}`).all() : [];
+const quoteIdentifier = value => '"' + value.replaceAll('"', '""') + '"';
+function preservedColumns(db, selected = tables) {
+  return Object.fromEntries(selected.flatMap(table => {
+    if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table)) return [];
+    return [[table, db.prepare('PRAGMA table_info(' + quoteIdentifier(table) + ')').all().map(column => column.name)]];
+  }));
+}
+function fingerprints(db, selected) {
+  return Object.fromEntries(Object.entries(selected).map(([table, columns]) => {
+    const rows = db.prepare('SELECT ' + columns.map(quoteIdentifier).join(',') + ' FROM ' + quoteIdentifier(table)).all();
     return [table, createHash('sha256').update(JSON.stringify(rows.map(row => JSON.stringify(row)).sort())).digest('hex')];
   }));
 }
@@ -144,10 +151,12 @@ export async function migrateWithBackup(filename, snapshot) {
   const db = openDatabase(filename);
   try {
     requireCondition(db.prepare('PRAGMA integrity_check').get().integrity_check === 'ok', 'DATABASE_INTEGRITY_FAILED');
-    const before = fingerprints(db);
+    // Freeze the original projection: additive columns must not look like data loss.
+    const columns = preservedColumns(db);
+    const before = fingerprints(db, columns);
     await backup(db, snapshot); chmodSync(snapshot, 0o600);
     const version = migrateDatabase(db);
-    requireCondition(JSON.stringify(before) === JSON.stringify(fingerprints(db, Object.keys(before))), 'PRESERVED_DATA_CHANGED');
+    requireCondition(JSON.stringify(before) === JSON.stringify(fingerprints(db, columns)), 'PRESERVED_DATA_CHANGED');
     requireCondition(db.prepare('PRAGMA foreign_key_check').all().length === 0, 'FOREIGN_KEY_CHECK_FAILED');
     return { schemaVersion: version, accounts: db.prepare('SELECT COUNT(*) AS n FROM account_users').get().n, sessions: db.prepare('SELECT COUNT(*) AS n FROM account_sessions').get().n, preserved: true };
   } finally { db.close(); }
@@ -168,8 +177,38 @@ export function databaseReport(output, snapshot, ownerUid) {
   return { schemaVersion: result.schemaVersion, accounts: result.accounts, sessions: result.sessions, preserved: true };
 }
 
-// Keep the previous API's behavior, with the database module needed to read
-// the additive game schema. Never edit the previous installed release itself.
+// The prior game client cannot render newly persisted classes. Preserve account,
+// shop, private stash and exchange behavior, while pausing incompatible realm
+// routes. Never downgrade or restore the live database during automatic recovery.
+const rollbackGameModule = `import { sessionUser } from './auth.mjs';
+import { reply } from './request-security.mjs';
+import { createGameService as createLegacyGameService } from './rollback-legacy-game.mjs';
+
+export function createGameService(db, options = {}) {
+  const legacy = createLegacyGameService(db, options);
+  const now = options.now || Date.now;
+  return {
+    async route(req, res, path) {
+      if (!path.startsWith('/api/game/')) return false;
+      if (!sessionUser(db, req, now())) {
+        reply(res, 401, { error: 'Sign in to your Eldritch Fable account.', code: 'SIGN_IN_REQUIRED' });
+        return true;
+      }
+      if ((req.method === 'GET' && path === '/api/game/stash')
+        || (req.method === 'POST' && path === '/api/game/exchange')) {
+        return legacy.route(req, res, path);
+      }
+      reply(res, 503, {
+        error: 'The realm is being restored. Your character and Secret Stash are safe.',
+        code: 'REALM_MAINTENANCE',
+      });
+      return true;
+    },
+    close() { legacy.close(); },
+  };
+}
+`;
+
 export function prepareRollbackApp(previousApp, nextApp, target) {
   requireCondition(!existsSync(target), 'ROLLBACK_APP_ALREADY_EXISTS');
   cpSync(realpathSync(previousApp), target, {
@@ -178,7 +217,17 @@ export function prepareRollbackApp(previousApp, nextApp, target) {
   });
   cpSync(join(nextApp, 'server/database.mjs'), join(target, 'server/database.mjs'));
   mkdirSync(join(target, 'server/migrations'), { recursive: true });
-  cpSync(join(nextApp, 'server/migrations/003-game-stash.sql'), join(target, 'server/migrations/003-game-stash.sql'));
+  cpSync(join(nextApp, 'server/migrations'), join(target, 'server/migrations'), { recursive: true });
+  if (existsSync(join(nextApp, 'shared'))) {
+    cpSync(join(nextApp, 'shared'), join(target, 'shared'), { recursive: true });
+  }
+  if (existsSync(join(target, 'server/game.mjs'))) {
+    // Retrying from an existing recovery release must not wrap its adapter again.
+    if (!readFileSync(join(target, 'server/game.mjs'), 'utf8').includes("from './rollback-legacy-game.mjs'")) {
+      renameSync(join(target, 'server/game.mjs'), join(target, 'server/rollback-legacy-game.mjs'));
+    }
+    writeFileSync(join(target, 'server/game.mjs'), rollbackGameModule);
+  }
   allowCodeReads(target);
   return target;
 }
@@ -307,7 +356,7 @@ async function rollout() {
   const state = root + '/deployments/' + releaseId;
   const rollbackApp = root + '/releases/' + releaseId + '-rollback';
   requireCondition(existsSync(join(source, 'dist/index.html')) && existsSync(join(source, 'node_modules/nodemailer/package.json')), 'RUN_STAGE_SCRIPT_FIRST');
-  const releaseFiles = ['server', 'dist', 'node_modules', 'deploy', 'package.json', 'package-lock.json'];
+  const releaseFiles = ['server', 'shared', 'dist', 'node_modules', 'deploy', 'package.json', 'package-lock.json'];
   const needed = releaseFiles.reduce((sum, name) => sum + copySize(join(source, name)), 0) + copySize(realpathSync(app)) + statSync(database).size * 3 + 64 * 1024 * 1024;
   const disk = statfsSync(root);
   requireCondition(disk.bavail * disk.bsize > needed * 1.1, 'NOT_ENOUGH_DISK_SPACE_FOR_RELEASE_AND_BACKUP');

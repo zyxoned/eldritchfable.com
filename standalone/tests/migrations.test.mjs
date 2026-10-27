@@ -4,7 +4,7 @@ import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { openDatabase, migrateDatabase, requireSchema, digest } from '../server/database.mjs';
+import { openDatabase, migrateDatabase, requireSchema, digest, SCHEMA_VERSION } from '../server/database.mjs';
 
 test('legacy migration preserves accounts, sessions and newsletter data while cleaning the queue', t => {
   const db = openDatabase(':memory:'); t.after(() => db.close());
@@ -18,7 +18,7 @@ test('legacy migration preserves accounts, sessions and newsletter data while cl
   for (const id of ['first','second']) db.prepare("INSERT INTO email_outbox(id,recipient,template,payload_json) VALUES(?,'customer@example.test','verify_email',?)").run(id, JSON.stringify({ verification: token }));
   db.prepare("INSERT INTO email_outbox(id,recipient,template,payload_json,status) VALUES('interrupted','customer@example.test','verify_email',?,'sending')").run(JSON.stringify({ verification: token }));
   assert.throws(() => requireSchema(db), /db:migrate/);
-  assert.equal(migrateDatabase(db), 3); assert.equal(migrateDatabase(db), 3);
+  assert.equal(migrateDatabase(db), SCHEMA_VERSION); assert.equal(migrateDatabase(db), SCHEMA_VERSION);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM account_users').get().n, 2);
   assert.equal(db.prepare("SELECT role,password_hash FROM account_users WHERE id='admin'").get().role, 'admin');
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM account_sessions').get().n, 1);
@@ -56,8 +56,8 @@ test('game migration is additive and preserves account sessions, catalog and new
   db.prepare("INSERT INTO newsletter_subscribers(email,unsubscribed_at) VALUES('never-mail@example.test','2026-01-02')").run();
   const tables = ['account_users', 'account_sessions', 'storefront_collections', 'newsletter_subscribers'];
   const before = Object.fromEntries(tables.map(table => [table, db.prepare('SELECT * FROM ' + table).all()]));
-  assert.equal(migrateDatabase(db), 3);
-  assert.equal(migrateDatabase(db), 3);
+  assert.equal(migrateDatabase(db), SCHEMA_VERSION);
+  assert.equal(migrateDatabase(db), SCHEMA_VERSION);
   requireSchema(db);
   for (const table of tables) assert.deepEqual(db.prepare('SELECT * FROM ' + table).all(), before[table]);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM game_characters').get().n, 0);
@@ -77,7 +77,7 @@ test('game schema preserves a funded XP and coin wallet on repeated migration', 
   db.prepare("INSERT INTO game_ledger(id,user_id,event_key,currency,delta,balance_after,reason,created_at) VALUES('retained-ledger','funded','retained','COPPER',1000,1000,'Retained conversion','2026-01-01T00:00:00.000Z')").run();
   const tables = ['game_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world'];
   const before = Object.fromEntries(tables.map(table => [table, db.prepare('SELECT * FROM ' + table).all()]));
-  assert.equal(migrateDatabase(db), 3);
+  assert.equal(migrateDatabase(db), SCHEMA_VERSION);
   for (const table of tables) assert.deepEqual(db.prepare('SELECT * FROM ' + table).all(), before[table]);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });

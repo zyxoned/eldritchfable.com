@@ -104,9 +104,9 @@ export default function SecretStash({ onSessionExpired }) {
             <article>
               <Sparkles size={24} aria-hidden="true" />
               <h2>Power worth waiting for.</h2>
-              <p>Keep unexchanged XP for future abilities. Exchanging XP reduces what is available for abilities, without lowering your character level.</p>
-              <span className="stash-status">Abilities and costs are being prepared</span>
-              <p>Ability choices and their XP prices will appear here when available.</p>
+              <p>Your starter class skills are included in the realm. Keep unexchanged XP for future ability unlocks. Exchanging XP reduces what is available for unlocks, without lowering your character level.</p>
+              <span className="stash-status">Additional ability unlocks are being prepared</span>
+              <p>Additional ability choices and their XP prices will appear here when available.</p>
               <Link className="primary-button" to="/play">Earn more XP <ArrowUpRight size={13} /></Link>
             </article>
           </div>

@@ -39,6 +39,7 @@ test('a verified adventurer earns private XP, exchanges it, and keeps progress a
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/play$/);
+  await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
 
   await page.getByLabel('Adventurer name', { exact: true }).fill(name);
   await page.getByRole('button', { name: 'Ranger', exact: true }).click();

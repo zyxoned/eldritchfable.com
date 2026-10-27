@@ -24,7 +24,7 @@ test('customer can register, verify, sign in, change and reset password, and sig
   await expect(welcome).toContainText('Be sure to invite your friends!');
   await expect(welcome).toContainText('1,250 XP = 1 gold = 100 silver = 1,000 copper.');
   await expect(welcome).toContainText('1 gold is worth 1 penny.');
-  await expect(welcome).toContainText('Buying shop gear with coins and unlocking abilities are coming soon.');
+  await expect(welcome).toContainText('Buying shop gear with coins and additional XP ability unlocks are coming soon.');
   await expect(welcome).toContainText('Verify your email and sign in');
   await expect(welcome.getByRole('button', { name: 'Close adventure welcome' })).toBeFocused();
   await welcome.getByRole('button', { name: 'Got it — check my inbox' }).click();

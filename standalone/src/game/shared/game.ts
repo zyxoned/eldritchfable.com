@@ -1,4 +1,20 @@
-export type HeroClass = 'ranger' | 'knight' | 'mage';
+import { CLASS_CATALOG, PLAYER_CLASS_IDS as PLAYABLE_IDS, ADMIN_CLASS_ID as ADMIN_ID } from '../../../shared/class-catalog.mjs';
+
+export type HeroClass = 'ranger' | 'knight' | 'mage' | 'bard' | 'cleric' | 'wizard' | 'sorcerer' | 'monk' | 'death-knight';
+export type Equipment = { id: string; name: string; slot: string; rarity: string; description: string };
+export type Skill = {
+  id: string; name: string; description: string; cooldownMs: number;
+  type: 'strike' | 'area' | 'heal' | 'ward' | 'passive' | 'execute';
+  target: 'enemy' | 'self' | 'party';
+  damage?: number; heal?: number; range?: number; radius?: number; ward?: number; durationMs?: number;
+};
+export type ClassDefinition = {
+  id: HeroClass; name: string; color: string; description: string; role: string; lore: string;
+  damage: number; range: number; armor: number; equipment: Equipment[]; skills: Skill[];
+};
+export const PLAYER_CLASS_IDS = PLAYABLE_IDS as readonly Exclude<HeroClass, 'death-knight'>[];
+export const ADMIN_CLASS_ID: HeroClass = ADMIN_ID;
+export const CLASSES = CLASS_CATALOG as Record<HeroClass, ClassDefinition>;
 
 export type Player = {
   id: string;
@@ -13,6 +29,12 @@ export type Player = {
   gathered: string[];
   shrine: boolean;
   claimed: boolean;
+  race?: string;
+  levelLabel?: string;
+  hidden?: boolean;
+  equipment?: Equipment[];
+  wardUntil?: number;
+  wardAmount?: number;
 };
 
 export type Enemy = {
@@ -31,12 +53,19 @@ export type ChatMessage = {
   system?: boolean;
 };
 
+export type RealmEffect = {
+  id: string; type: 'strike' | 'area' | 'heal' | 'ward' | 'execute';
+  x: number; y: number; color: string; at: number; radius?: number; actorId: string;
+};
+
 export type Realm = {
   revision: number;
   players: Player[];
   enemies: Enemy[];
   messages: ChatMessage[];
   serverTime: number;
+  seventh?: Player | null;
+  effects?: RealmEffect[];
 };
 
 export const WIDTH = 30;
@@ -56,12 +85,6 @@ export const ENEMIES = [
   { id: 'briar', x: 13, y: 5 },
   { id: 'sprig', x: 26, y: 10 },
 ];
-
-export const CLASSES = {
-  ranger: { name: 'Ranger', color: '#b9cf77', damage: 14, range: 3, description: 'Quick bow · 3-tile range' },
-  knight: { name: 'Knight', color: '#e5ac79', damage: 22, range: 2, description: 'Strong blade · 2-tile range' },
-  mage: { name: 'Mage', color: '#c2a3e0', damage: 18, range: 3, description: 'Arcane bolt · 3-tile range' },
-};
 
 export function tile(x: number, y: number): 'grass' | 'water' | 'path' | 'bridge' {
   const river = x >= 3 + Math.floor(y / 7) && x <= 5 + Math.floor(y / 7);

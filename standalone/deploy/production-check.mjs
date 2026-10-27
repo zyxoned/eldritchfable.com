@@ -122,7 +122,9 @@ async function main() {
   const gateway = processFor('caddy.service');
   const configs = new Set([configArgument(web.args, '/etc/caddy/Caddyfile.production'), configArgument(gateway.args, '/etc/caddy/Caddyfile')]);
   for (const config of configs) {
-    const result = spawnSync('caddy', ['adapt', '--config', config, '--adapter', 'caddyfile'], { encoding: 'utf8', timeout: 10000, maxBuffer: 4 * 1024 * 1024 });
+    const result = config.endsWith('.json')
+      ? { status: 0, stdout: readFileSync(config, 'utf8') }
+      : spawnSync('caddy', ['adapt', '--config', config, '--adapter', 'caddyfile'], { encoding: 'utf8', timeout: 10000, maxBuffer: 4 * 1024 * 1024 });
     if (result.status !== 0) throw Error('Caddy configuration could not be inspected: ' + config);
     console.log(config + ': ' + JSON.stringify(caddySummary(JSON.parse(result.stdout))));
   }

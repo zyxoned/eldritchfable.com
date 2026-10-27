@@ -168,6 +168,37 @@ export function databaseReport(output, snapshot, ownerUid) {
   return { schemaVersion: result.schemaVersion, accounts: result.accounts, sessions: result.sessions, preserved: true };
 }
 
+// Keep the previous API's behavior, with the database module needed to read
+// the additive game schema. Never edit the previous installed release itself.
+export function prepareRollbackApp(previousApp, nextApp, target) {
+  requireCondition(!existsSync(target), 'ROLLBACK_APP_ALREADY_EXISTS');
+  cpSync(realpathSync(previousApp), target, {
+    recursive: true, verbatimSymlinks: true,
+    filter: path => !basename(path).startsWith('.env')
+  });
+  cpSync(join(nextApp, 'server/database.mjs'), join(target, 'server/database.mjs'));
+  mkdirSync(join(target, 'server/migrations'), { recursive: true });
+  cpSync(join(nextApp, 'server/migrations/003-game-stash.sql'), join(target, 'server/migrations/003-game-stash.sql'));
+  allowCodeReads(target);
+  return target;
+}
+
+// A migration can commit before its completion report is rejected. Select a
+// compatible API before restarting; an untouched older DB uses the original.
+export function useRollbackAppAfterMigration({ database, app, previous, rollbackTarget }) {
+  const db = openDatabase(database, { readOnly: true });
+  let version;
+  try { version = db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get().version; }
+  finally { db.close(); }
+  if (version < SCHEMA_VERSION) return false;
+  requireCondition(version === SCHEMA_VERSION, 'ROLLBACK_DATABASE_VERSION_UNSUPPORTED');
+  requireCondition(existsSync(rollbackTarget), 'ROLLBACK_APP_MISSING');
+  requireCondition(!existsSync(previous), 'PREVIOUS_APP_ALREADY_SAVED');
+  renameSync(app, previous);
+  symlinkSync(rollbackTarget, app);
+  return true;
+}
+
 // Start/check failures restore both entries and the saved configuration. Never
 // restore a database snapshot automatically: later customer changes must survive.
 export async function activateRelease({ entries, configure, restoreConfig, stop, start, check }) {
@@ -183,7 +214,8 @@ export async function activateRelease({ entries, configure, restoreConfig, stop,
       await stop();
       for (const entry of changed.reverse()) {
         if (existsSync(entry.path) || (() => { try { return lstatSync(entry.path).isSymbolicLink(); } catch { return false; } })()) unlinkSync(entry.path);
-        renameSync(entry.previous, entry.path);
+        if (entry.rollbackTarget) symlinkSync(entry.rollbackTarget, entry.path);
+        else renameSync(entry.previous, entry.path);
       }
       await restoreConfig(); await start();
     } catch { throw Object.assign(Error('ROLLBACK_NEEDS_ATTENTION'), { safeCode: 'ROLLBACK_NEEDS_ATTENTION' }); }
@@ -273,9 +305,10 @@ async function rollout() {
   const releaseId = commit.slice(0, 12) + '-' + new Date().toISOString().replace(/[^0-9]/g, '');
   const release = root + '/releases/' + releaseId;
   const state = root + '/deployments/' + releaseId;
+  const rollbackApp = root + '/releases/' + releaseId + '-rollback';
   requireCondition(existsSync(join(source, 'dist/index.html')) && existsSync(join(source, 'node_modules/nodemailer/package.json')), 'RUN_STAGE_SCRIPT_FIRST');
   const releaseFiles = ['server', 'dist', 'node_modules', 'deploy', 'package.json', 'package-lock.json'];
-  const needed = releaseFiles.reduce((sum, name) => sum + copySize(join(source, name)), 0) + statSync(database).size * 3 + 64 * 1024 * 1024;
+  const needed = releaseFiles.reduce((sum, name) => sum + copySize(join(source, name)), 0) + copySize(realpathSync(app)) + statSync(database).size * 3 + 64 * 1024 * 1024;
   const disk = statfsSync(root);
   requireCondition(disk.bavail * disk.bsize > needed * 1.1, 'NOT_ENOUGH_DISK_SPACE_FOR_RELEASE_AND_BACKUP');
   requireCondition(configArgument(web.args) === '/etc/caddy/Caddyfile.production' || configArgument(web.args) === webFile, 'UNEXPECTED_WEB_CONFIGURATION');
@@ -293,7 +326,13 @@ async function rollout() {
   for (const name of releaseFiles) {
     cpSync(join(source, name), join(release, name), { recursive: true, verbatimSymlinks: true, filter: path => !basename(path).startsWith('.env') });
   }
+  const builtAssets = [...readFileSync(join(release, 'dist/index.html'), 'utf8')
+    .matchAll(/(?:src|href)=["'](\/assets\/[^"']+\.(?:js|css))["']/g)].map(match => match[1]);
+  writeFileSync(join(release, 'dist/frontend-release.json'), JSON.stringify({
+    releaseId, frontendCommit: commit, backendRelease: releaseId, builtAssets
+  }, null, 2) + '\n');
   allowCodeReads(release);
+  prepareRollbackApp(app, release, rollbackApp);
   mkdirSync(state, { recursive: true, mode: 0o700 }); chmodSync(state, 0o700);
   const candidateFile = '/etc/caddy/eldritch-accounts-candidate-' + releaseId + '.json';
   writeAtomic(candidateFile, JSON.stringify(candidate.config, null, 2) + '\n', 0o640, webGid);
@@ -306,7 +345,7 @@ async function rollout() {
   chownSync(snapshotFolder, apiIdentity.uid, apiIdentity.gid);
   const snapshot = snapshotFolder + '/before-upgrade.sqlite';
   const timerStates = Object.fromEntries([mailTimer, recoveryTimer, backupTimer].map(unit => [unit, active(unit)]));
-  const metadata = { releaseId, release, snapshot, files, apiIdentity, webIdentity, timerStates, phase: 'prepared', previousApp: state + '/previous-app', previousFrontend: state + '/previous-frontend' };
+  const metadata = { releaseId, release, snapshot, files, apiIdentity, webIdentity, timerStates, phase: 'prepared', previousApp: state + '/previous-app', rollbackApp, previousFrontend: state + '/previous-frontend' };
   const record = value => { metadata.phase = value; writeAtomic(state + '/deployment.json', JSON.stringify(metadata, null, 2) + '\n'); };
   record('prepared');
   console.log('Prepared release: ' + releaseId);
@@ -331,7 +370,7 @@ async function rollout() {
     phase = 'activating the account release';
     activationAttempted = true;
     await activateRelease({
-      entries: [{ path: app, previous: metadata.previousApp, target: release }, { path: frontend, previous: metadata.previousFrontend, target: release + '/dist' }],
+      entries: [{ path: app, previous: metadata.previousApp, target: release, rollbackTarget: rollbackApp }, { path: frontend, previous: metadata.previousFrontend, target: release + '/dist' }],
       configure: async () => {
         writeAtomic(runtimeFile, runtime('NO'));
         writeAtomic(webFile, JSON.stringify(candidate.config, null, 2) + '\n', 0o640, webGid);
@@ -349,7 +388,14 @@ async function rollout() {
               const suffix = '?deployment=' + releaseId;
               await request(base + '/api/health' + suffix, { releaseId, json: value => value.status === 'online' });
               await request(base + '/api/auth/me' + suffix, { releaseId, json: value => value.user === null });
-              await request(base + '/resend-verification' + suffix, { releaseId, text: readFileSync(release + '/dist/index.html', 'utf8').match(/\/assets\/[^" ]+\.js/)?.[0] || 'root' });
+              const entryAsset = builtAssets.find(asset => asset.endsWith('.js')) || 'root';
+              for (const path of ['/resend-verification', '/play', '/stash']) {
+                await request(base + path + suffix, { releaseId, text: entryAsset });
+              }
+              const denied = await fetch(base + '/api/game/world' + suffix, {
+                signal: AbortSignal.timeout(10000), redirect: 'error', headers: { 'Cache-Control': 'no-cache' }
+              });
+              requireCondition(denied.status === 401 && (await denied.json()).code === 'SIGN_IN_REQUIRED', 'GAME_ACCOUNT_GATE_FAILED');
             }
             break;
           }
@@ -394,7 +440,12 @@ async function rollout() {
     console.log('Next: verify one signup and password-reset email in your own inbox.');
   } catch (error) {
     if (!deployed && servicesStopped && !activationAttempted) {
-      try { await start(); } catch { console.log('Previous services could not be restarted; use the recovery record.'); }
+      try {
+        if (migrationStarted) useRollbackAppAfterMigration({
+          database, app, previous: metadata.previousApp, rollbackTarget: rollbackApp
+        });
+        await start();
+      } catch { console.log('Previous services could not be restarted; use the recovery record.'); }
     }
     if (!deployed && migrationStarted) {
       console.log('Mail and recovery timers remain paused. The database was not replaced or restored.');

@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, lstatSync, statSync, existsSync, symlinkSync, chmodSync, utimesSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, lstatSync, statSync, existsSync, symlinkSync, chmodSync, utimesSync, cpSync, readlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { openDatabase, digest, migrateDatabase } from '../server/database.mjs';
-import { productionConfig, migrateWithBackup, activateRelease, serviceIdentity, databaseReport, checkoutGit } from '../deploy/production-rollout.mjs';
+import { productionConfig, migrateWithBackup, activateRelease, serviceIdentity, databaseReport, checkoutGit, prepareRollbackApp, useRollbackAppAfterMigration } from '../deploy/production-rollout.mjs';
 
 test('privileged source inspection runs as the checkout owner and leaves the Git index untouched', t => {
   const folder = mkdtempSync(join(tmpdir(), 'ef-git-inspection-')); t.after(() => rmSync(folder, { recursive: true, force: true }));
@@ -227,4 +227,136 @@ test('SMTP verify mode validates configuration even when sending is disabled and
   assert.equal(result.status, 1);
   assert.match(result.stderr, /MISSING_SMTP_HOST/);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_outbox').get().n, 0);
+});
+
+
+function rollbackFixture(t) {
+  const folder = mkdtempSync(join(tmpdir(), 'ef-schema-rollback-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const old = join(folder, 'old-app'), next = join(folder, 'new-app');
+  for (const target of [old, next]) {
+    mkdirSync(target);
+    cpSync(fileURLToPath(new URL('../server', import.meta.url)), join(target, 'server'), { recursive: true });
+  }
+  writeFileSync(join(old, 'version'), 'old');
+  writeFileSync(join(next, 'version'), 'new');
+  writeFileSync(join(old, '.env'), 'PRIVATE_FIXTURE=must-not-copy');
+  const modulePath = join(old, 'server/database.mjs');
+  let module = readFileSync(modulePath, 'utf8').replace('SCHEMA_VERSION = 3', 'SCHEMA_VERSION = 2');
+  const gameMigration = "  if (current < 3) transaction(db, () => {\n    db.exec(readFileSync(new URL('./migrations/003-game-stash.sql', import.meta.url), 'utf8'));\n    db.prepare('INSERT INTO schema_migrations(version) VALUES(3)').run();\n  });\n";
+  assert.ok(module.includes(gameMigration));
+  writeFileSync(modulePath, module.replace(gameMigration, ''));
+  const app = join(folder, 'app'), previous = join(folder, 'previous-app');
+  symlinkSync(old, app);
+  const fallback = prepareRollbackApp(app, next, join(folder, 'rollback-app'));
+  assert.equal(existsSync(join(fallback, '.env')), false);
+  assert.equal(readFileSync(join(old, 'server/database.mjs'), 'utf8').includes('SCHEMA_VERSION = 2'), true);
+  assert.equal(readFileSync(join(fallback, 'version'), 'utf8'), 'old');
+  assert.equal(readFileSync(join(fallback, 'server/auth.mjs'), 'utf8'), readFileSync(join(old, 'server/auth.mjs'), 'utf8'));
+  return { folder, old, next, app, previous, fallback, database: join(folder, 'live.db') };
+}
+
+function probeAccount(app, filename, id, token) {
+  const script = [
+    "import assert from 'node:assert/strict';",
+    "import { join } from 'node:path';",
+    "import { pathToFileURL } from 'node:url';",
+    "const [app, filename, id, token] = process.argv.slice(1);",
+    "const database = await import(pathToFileURL(join(app, 'server/database.mjs')).href);",
+    "const auth = await import(pathToFileURL(join(app, 'server/auth.mjs')).href);",
+    "const db = database.openDatabase(filename);",
+    "try {",
+    "  database.requireSchema(db);",
+    "  const result = {};",
+    "  await auth.authRoute(db, { method: 'GET', headers: { cookie: 'ef_session=' + token } }, {",
+    "    writeHead(status) { result.status = status; },",
+    "    end(body) { result.body = JSON.parse(body); }",
+    "  }, '/api/auth/me');",
+    "  assert.equal(result.status, 200);",
+    "  assert.equal(result.body.user.id, id);",
+    "} finally { db.close(); }",
+  ].join('\n');
+  return spawnSync(process.execPath, ['--input-type=module', '-e', script, app, filename, id, token], { encoding: 'utf8' });
+}
+
+async function legacyAccountDatabase(fixture) {
+  const legacy = await import(pathToFileURL(join(fixture.old, 'server/database.mjs')).href);
+  const db = legacy.openDatabase(fixture.database);
+  legacy.migrateDatabase(db);
+  const token = 'a'.repeat(64);
+  db.prepare("INSERT INTO account_users(id,email,password_hash,email_verified_at) VALUES('existing','existing@example.test','keep','2026-01-01')").run();
+  db.prepare("INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES(?,'existing','2099-01-01')").run(digest(token));
+  legacy.requireSchema(db);
+  db.close();
+  return token;
+}
+
+test('startup failure rolls back to a compatible prior API and retains new accounts and game funds', async t => {
+  const f = rollbackFixture(t);
+  const existingToken = await legacyAccountDatabase(f);
+  let probe = probeAccount(f.app, f.database, 'existing', existingToken);
+  assert.equal(probe.status, 0, probe.stderr);
+  await migrateWithBackup(f.database, join(f.folder, 'before.sqlite'));
+  probe = probeAccount(f.old, f.database, 'existing', existingToken);
+  assert.notEqual(probe.status, 0, 'the unchanged old API must reproduce the schema mismatch');
+
+  const oldFrontend = join(f.folder, 'old-front'), newFrontend = join(f.folder, 'new-front');
+  mkdirSync(oldFrontend); mkdirSync(newFrontend);
+  writeFileSync(join(oldFrontend, 'version'), 'old-front');
+  writeFileSync(join(newFrontend, 'version'), 'new-front');
+  const frontend = join(f.folder, 'frontend');
+  symlinkSync(oldFrontend, frontend);
+  let accountId = 'existing', token = existingToken, starts = 0;
+  await assert.rejects(activateRelease({
+    entries: [
+      { path: f.app, previous: f.previous, target: f.next, rollbackTarget: f.fallback },
+      { path: frontend, previous: join(f.folder, 'previous-front'), target: newFrontend },
+    ],
+    configure: async () => {},
+    restoreConfig: async () => {},
+    stop: async () => {},
+    start: async () => {
+      starts++;
+      const result = probeAccount(f.app, f.database, accountId, token);
+      assert.equal(result.status, 0, result.stderr);
+    },
+    check: async () => {
+      const db = openDatabase(f.database);
+      token = 'b'.repeat(64);
+      db.prepare("INSERT INTO account_users(id,email,password_hash,email_verified_at) VALUES('later','later@example.test','keep-later','2026-01-01')").run();
+      db.prepare("INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES(?,'later','2099-01-01')").run(digest(token));
+      db.prepare("INSERT INTO game_wallets(user_id,balance_xp,lifetime_xp,balance_copper) VALUES('later',1250,2500,1000)").run();
+      db.close();
+      accountId = 'later';
+      throw Error('public startup check failed');
+    },
+  }), /PREVIOUS_CODE_RESTORED/);
+  assert.equal(starts, 2);
+  assert.equal(readlinkSync(f.app), f.fallback);
+  assert.equal(readlinkSync(f.previous), f.old, 'retain the original app link as a recovery record');
+  assert.equal(readlinkSync(frontend), oldFrontend);
+  const db = openDatabase(f.database, { readOnly: true });
+  try {
+    assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get().v, 3);
+    assert.equal(db.prepare("SELECT password_hash FROM account_users WHERE id='later'").get().password_hash, 'keep-later');
+    assert.equal(db.prepare("SELECT balance_copper FROM game_wallets WHERE user_id='later'").get().balance_copper, 1000);
+  } finally { db.close(); }
+});
+
+test('a failure after migration commits but before activation selects the compatible fallback only for the new schema', async t => {
+  const f = rollbackFixture(t);
+  const token = await legacyAccountDatabase(f);
+  assert.equal(useRollbackAppAfterMigration({
+    database: f.database, app: f.app, previous: f.previous, rollbackTarget: f.fallback,
+  }), false);
+  assert.equal(readlinkSync(f.app), f.old);
+  assert.equal(existsSync(f.previous), false);
+  await migrateWithBackup(f.database, join(f.folder, 'before.sqlite'));
+  assert.equal(useRollbackAppAfterMigration({
+    database: f.database, app: f.app, previous: f.previous, rollbackTarget: f.fallback,
+  }), true);
+  assert.equal(readlinkSync(f.app), f.fallback);
+  assert.equal(readlinkSync(f.previous), f.old);
+  const result = probeAccount(f.app, f.database, 'existing', token);
+  assert.equal(result.status, 0, result.stderr);
 });

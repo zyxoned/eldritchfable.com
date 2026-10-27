@@ -269,6 +269,9 @@ export default function Mossvale({ user, onSessionExpired }: {
       setError('');
       return true;
     } catch (err) {
+      // A delayed response can put the next step inside the server cooldown.
+      // Keep the route so the movement timer retries instead of stopping early.
+      if (kind === 'move' && (err as { code?: string }).code === 'MOVE_COOLDOWN') return false;
       destination.current = null;
       if ((err as { response?: { status?: number } }).response?.status === 401) {
         endSession(); onSessionExpired();

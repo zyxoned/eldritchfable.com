@@ -21,6 +21,19 @@ the standalone AppDeploy prototype is not the production integration.
   rewards can be earned once per character. XP credits and request receipts
   commit atomically. The private balance and ledger never enter realm events.
 
+## Account welcome popup
+
+Registration offers an optional adventure preview and automatically opens the
+welcome popup after a successful registration request. It explains email
+verification, persistent characters and progress, the six-player realm, inviting
+friends, private XP and the approved exchange, and the planned gear/ability uses.
+The account page can reopen the same introduction. The invite button copies the
+public `/play` link; it does not send messages or expose account details.
+
+The native modal keeps keyboard focus inside it, supports Escape and explicit
+close controls, restores focus to its replay button, and scrolls on small screens.
+Gear purchases and ability unlocks are clearly described as coming soon.
+
 ## Approved exchange
 
 The owner specified:
@@ -56,8 +69,10 @@ New coverage includes account gates, six-seat allocation, persistent rewards,
 cross-account isolation, live-stream authorization, exchange replay protection,
 and the browser earn/exchange/persist workflow on desktop and mobile.
 
-The coding workspace could not start during this task. The code is submitted
-for CI and review; no claim of local or live production verification is made.
+Run `npm run build` and the desktop/mobile Playwright suite in an isolated
+browser-test database. The account lifecycle tests exercise signup welcome,
+keyboard focus, account replay, invitation copy/fallback, and small-screen
+scrolling, alongside the existing adventure and exchange workflow.
 
 Use the existing `standalone/DEPLOYMENT.md` process and production layout.
 Back up the current database before applying the explicit version 3 migration,

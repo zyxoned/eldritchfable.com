@@ -22,6 +22,7 @@ test('a verified adventurer earns private XP, exchanges it, and keeps progress a
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByLabel('Confirm password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await page.getByRole('button', { name: 'Got it — check my inbox' }).click();
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
 
   const db = openDatabase(process.env.ELDRITCH_BROWSER_DB);
@@ -47,8 +48,19 @@ test('a verified adventurer earns private XP, exchanges it, and keeps progress a
     await page.getByRole('button', { name: 'Move east', exact: true }).click();
     await expect(page.locator('.map-caption')).toContainText('11, 13');
   }
+  // Exercise transient server pacing deterministically: the selected route
+  // must continue after a rejected step, rather than stopping after one tile.
+  let pacedSteps = 0;
+  await page.route('**/api/game/action', route => {
+    if (route.request().postDataJSON()?.kind === 'move' && pacedSteps === 0) {
+      pacedSteps++;
+      return route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ code: 'MOVE_COOLDOWN', error: 'Wait a moment before moving again.' }) });
+    }
+    return route.continue();
+  });
   await page.getByRole('button', { name: /Clear thornlings/ }).click();
   await expect(page.locator('.map-caption')).toContainText(/17, 8|21, 13|13, 5|26, 10/, { timeout: 15000 });
+  expect(pacedSteps).toBe(1);
   await expect(async () => {
     await page.getByRole('button', { name: 'Attack', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('15 XP', { timeout: 400 });

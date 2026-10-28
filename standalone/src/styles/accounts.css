@@ -28,3 +28,25 @@ body:has(.ef-auth) { background: #141018; }
 .ef-auth .account-details dt { color: #bdb0c1; font-size: .85rem; }
 .ef-auth .account-details dd { margin: .2rem 0 0; overflow-wrap: anywhere; }
 .ef-auth .auth-home { padding-top: 1rem; font-size: .9rem; }
+
+.ef-auth .auth-adventure-intro { margin-top: 1.5rem; padding: 1rem; border: 1px solid #55455d; border-radius: .6rem; background: #1e1823; }
+.ef-auth .auth-adventure-intro > p { margin: 0 0 .75rem; }
+.ef-auth .adventure-welcome { width: min(36rem, calc(100% - 2rem)); max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem); margin: auto; padding: clamp(1.1rem, 4vw, 2rem); overflow-y: auto; overscroll-behavior: contain; border: 1px solid #8d7557; border-radius: .8rem; background: radial-gradient(ellipse at top left, #352739, #19131f 65%); color: #eee5d9; box-shadow: 0 1.5rem 5rem #0009; }
+.ef-auth .adventure-welcome::backdrop { background: #09060ddd; }
+.ef-auth .adventure-welcome-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.ef-auth .adventure-welcome-eyebrow { color: #d6b883; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; }
+.ef-auth .adventure-welcome-close { flex: none; width: 44px; padding: 0; font-size: 1.5rem; }
+.ef-auth .adventure-welcome h2 { margin-top: 1rem; font-size: clamp(1.7rem, 6vw, 2.2rem); }
+.ef-auth .adventure-welcome p { margin: .65rem 0; }
+.ef-auth .adventure-welcome-features { display: grid; gap: 1rem; padding: 0; margin: 1.5rem 0; list-style: none; }
+.ef-auth .adventure-welcome-features li { padding-left: 1rem; border-left: 2px solid #8d7557; }
+.ef-auth .adventure-welcome h3 { margin: 0; color: #e6c78c; font-size: 1rem; }
+.ef-auth .adventure-welcome-rate { font-size: .9rem; }
+.ef-auth .adventure-welcome-note { color: #c8b8cc; font-size: .85rem; }
+.ef-auth .adventure-welcome-invite { padding: 1rem 0; border-top: 1px solid #55455d; border-bottom: 1px solid #55455d; }
+.ef-auth .adventure-welcome-invite label { margin-bottom: .5rem; color: #e6c78c; }
+.ef-auth .adventure-welcome-invite > div { display: flex; flex-wrap: wrap; gap: .5rem; }
+.ef-auth .adventure-welcome-invite input { flex: 1 1 14rem; font-size: .85rem; }
+.ef-auth .adventure-welcome-invite button { flex: 1 1 auto; }
+.ef-auth .adventure-welcome .adventure-welcome-verification { margin-top: 1rem; font-size: .9rem; }
+.ef-auth .adventure-welcome-done { width: 100%; margin-top: 1rem; }

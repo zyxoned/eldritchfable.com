@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authRequest } from '../api/auth.js';
+import AdventureWelcome from '../components/AdventureWelcome.jsx';
 
 export function AuthShell({ title, children }) {
   return <main className="ef-auth"><Link className="auth-brand" to="/" aria-label="Eldritch Fable home">ELDRITCH <span>FABLE</span></Link><h1>{title}</h1>{children}<p className="auth-home"><Link to="/">Return to the storefront</Link></p></main>;
@@ -36,8 +37,13 @@ export function Account({ mode = 'login' }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const welcomeTrigger = useRef(null);
   const [unverified, setUnverified] = useState(false);
   const register = mode === 'register';
+  const requestedNext = new URLSearchParams(location.search).get('next');
+  const next = ['/play', '/stash'].includes(requestedNext) ? requestedNext : '/account';
+  const nextQuery = next === '/account' ? '' : '?next=' + encodeURIComponent(next);
   async function submit(event) {
     event.preventDefault();
     if (busy) return;
@@ -47,8 +53,8 @@ export function Account({ mode = 'login' }) {
     try {
       const result = await authRequest(mode, { email, password });
       setPassword(''); setConfirmation('');
-      if (register) { setPending(true); setMessage(result.message); }
-      else navigate('/account', { replace: true });
+      if (register) { setPending(true); setMessage(result.message); setWelcomeOpen(true); }
+      else navigate(next, { replace: true });
     } catch (failure) { setError(failure.message); setUnverified(failure.code === 'EMAIL_UNVERIFIED'); }
     finally { setBusy(false); }
   }
@@ -58,8 +64,13 @@ export function Account({ mode = 'login' }) {
       {register && <><small id="password-help">Use at least 12 characters. A few unrelated words make a good passphrase.</small><label>Confirm password<input required type="password" autoComplete="new-password" minLength={12} maxLength={256} value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label></>}
       <button disabled={busy} type="submit">{busy ? 'Working…' : register ? 'Create account' : 'Sign in'}</button></form>}
     {message && <p role="status">{message}</p>}{error && <p role="alert">{error}</p>}
+    {register && <section className="auth-adventure-intro">
+      <p>Your account includes a persistent adventure with friends.</p>
+      <button ref={welcomeTrigger} type="button" className="auth-secondary" onClick={() => setWelcomeOpen(true)}>Discover your adventure</button>
+      <AdventureWelcome open={welcomeOpen} onDismiss={() => setWelcomeOpen(false)} returnFocusRef={welcomeTrigger} pending={pending} needsVerification />
+    </section>}
     {(pending || unverified) && <ResendVerification key={email} initialEmail={email} />}
-    <p>{register ? <Link to="/login">Already registered? Sign in</Link> : <Link to="/register">Create an account</Link>}</p>
+    <p>{register ? <Link to={'/login' + nextQuery}>Already registered? Sign in</Link> : <Link to={'/register' + nextQuery}>Create an account</Link>}</p>
     {!register && <p><Link to="/forgot-password">Forgot your password?</Link> · <Link to="/resend-verification">Verify your email</Link></p>}
     {pending && <button type="button" className="auth-secondary" onClick={() => { setPending(false); setMessage(''); }}>Use another email</button>}
   </AuthShell>;
@@ -69,6 +80,8 @@ export function AccountHome({ admin = false }) {
   const navigate = useNavigate();
   const [state, setState] = useState({ loading: true, user: null, error: '' });
   const [reload, setReload] = useState(0);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const welcomeTrigger = useRef(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -109,6 +122,18 @@ export function AccountHome({ admin = false }) {
   if (admin && state.user.role !== 'admin') return <AuthShell title="Access denied"><p>This page requires an administrator account.</p><Link to="/account">Your account</Link></AuthShell>;
   return <AuthShell title={admin ? 'Administration' : 'Your account'}>
     <dl className="account-details"><div><dt>Email</dt><dd>{state.user.email}</dd></div><div><dt>Email status</dt><dd>{state.user.email_verified_at ? 'Verified' : 'Verification required'}</dd></div></dl>
+    <section className="auth-resend">
+      <h2>Your continuing adventure</h2>
+      <p>Your character and earned XP stay linked to this account.</p>
+      <p><Link to="/play">Enter the realm</Link> · <Link to="/stash">Open your Secret Stash</Link></p>
+      <button ref={welcomeTrigger} type="button" className="auth-secondary" onClick={() => setWelcomeOpen(true)}>About your adventure</button>
+      <AdventureWelcome open={welcomeOpen} onDismiss={() => setWelcomeOpen(false)} returnFocusRef={welcomeTrigger} />
+    </section>
+    {state.user.role === 'admin' && <section className="auth-resend" aria-label="The Seventh connection">
+      <h2>The Seventh connection</h2>
+      <p>Step into the realm as your separate Draconian Death Knight: level ???, SSS equipment, invulnerability, and an instant-kill strike. Your regular character remains saved, and all six player seats stay available.</p>
+      <p><Link to="/play?seventh=1">Enter as the Seventh</Link></p>
+    </section>}
     {admin && <p>Store administration features will be added separately.</p>}
     <section className="auth-resend"><h2>Change your password</h2><p>Changing your password signs out all your devices.</p><form onSubmit={changePassword}>
       <label>Current password<input required type="password" autoComplete="current-password" maxLength={256} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} /></label>

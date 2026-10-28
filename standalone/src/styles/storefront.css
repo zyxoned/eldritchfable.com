@@ -709,6 +709,7 @@ body:has(#root > .ef-storefront) { margin: 0; background: #08070a; }
 }
 @media (max-width:390px){
   .ef-storefront .header-wishlist{display:none}
+  .ef-storefront .site-header .brand strong,.ef-storefront .site-header .brand em{font-size:clamp(.9rem,4.5vw,1.1rem)}
 }
 @media(prefers-reduced-motion:reduce){
   .ef-storefront .tavern-category,.ef-storefront .reference-nav a,.ef-storefront .category-grid a.tavern-category-button{transition:none!important}

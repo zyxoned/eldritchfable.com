@@ -17,6 +17,19 @@ test('customer can register, verify, sign in, change and reset password, and sig
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByLabel('Confirm password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  const welcome = page.getByRole('dialog', { name: 'Your adventure keeps going.' });
+  await expect(welcome).toBeVisible();
+  await expect(welcome).toContainText('persistent character linked to your account');
+  await expect(welcome).toContainText('up to six adventurers');
+  await expect(welcome).toContainText('Be sure to invite your friends!');
+  await expect(welcome).toContainText('1,250 XP = 1 gold = 100 silver = 1,000 copper.');
+  await expect(welcome).toContainText('1 gold is worth 1 penny.');
+  await expect(welcome).toContainText('Buying shop gear with coins and additional XP ability unlocks are coming soon.');
+  await expect(welcome).toContainText('Verify your email and sign in');
+  await expect(welcome.getByRole('button', { name: 'Close adventure welcome' })).toBeFocused();
+  await welcome.getByRole('button', { name: 'Got it — check my inbox' }).click();
+  await expect(welcome).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Discover your adventure' })).toBeFocused();
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
   const verification = mailToken(email, 'verify_email', 'verification');
   await page.goto('/verify-email?token=' + verification);
@@ -28,6 +41,11 @@ test('customer can register, verify, sign in, change and reset password, and sig
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByText('Verified', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'About your adventure' }).click();
+  await expect(page.getByRole('dialog', { name: 'Your adventure keeps going.' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'About your adventure' })).toBeFocused();
   const session = (await context.cookies()).find(item => item.name === 'ef_session');
   expect(session.httpOnly).toBeTruthy(); expect(session.secure).toBeTruthy();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
@@ -64,6 +82,7 @@ test('expired verification offers a working resend form; missing reset links rem
   await page.getByLabel('Password', { exact: true }).fill('a-long-enough-passphrase');
   await page.getByLabel('Confirm password', { exact: true }).fill('a-long-enough-passphrase');
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await page.getByRole('button', { name: 'Got it — check my inbox' }).click();
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
   const token = mailToken(email, 'verify_email', 'verification');
   const db = openDatabase(process.env.ELDRITCH_BROWSER_DB);
@@ -80,4 +99,46 @@ test('expired verification offers a working resend form; missing reset links rem
   await expect(page.getByRole('button', { name: 'Change password', exact: true })).toBeDisabled();
   await expect(page.getByRole('link', { name: 'Request a new reset link' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+});
+
+
+test('adventure welcome can be previewed, shared, scrolled, and dismissed without submitting signup', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+      writeText: async value => { window.copiedInvite = value; }
+    } });
+  });
+  await page.goto('/register');
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await page.getByRole('button', { name: 'Discover your adventure' }).click();
+  const welcome = page.getByRole('dialog', { name: 'Your adventure keeps going.' });
+  await expect(welcome).toBeVisible();
+  const close = welcome.getByRole('button', { name: 'Close adventure welcome' });
+  const done = welcome.getByRole('button', { name: 'Got it', exact: true });
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(done).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await welcome.getByRole('button', { name: 'Copy invite link' }).click();
+  await expect(welcome.getByRole('status')).toHaveText('Invite link copied. Share it with your friends!');
+  expect(await page.evaluate(() => window.copiedInvite)).toBe('https://eldritchfable.com/play');
+  await expect(welcome.getByLabel('Adventure invite link')).toHaveValue('https://eldritchfable.com/play');
+  await page.setViewportSize({ width: 320, height: 568 });
+  await done.scrollIntoViewIfNeeded();
+  await expect(done).toBeInViewport();
+  expect(await welcome.evaluate(element => element.scrollWidth <= element.clientWidth)).toBeTruthy();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.keyboard.press('Escape');
+  await expect(welcome).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Discover your adventure' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();
+  await expect(page.getByLabel('Email', { exact: true })).toHaveValue('');
+  await page.getByRole('button', { name: 'Discover your adventure' }).click();
+  await page.evaluate(() => { navigator.clipboard.writeText = async () => { throw Error('Clipboard blocked'); }; });
+  await welcome.getByRole('button', { name: 'Copy invite link' }).click();
+  await expect(welcome.getByRole('status')).toHaveText('Copy the selected link and share it with your friends.');
+  await expect(welcome.getByLabel('Adventure invite link')).toBeFocused();
+  await welcome.getByRole('button', { name: 'Got it', exact: true }).click();
+  await expect(welcome).not.toBeVisible();
 });

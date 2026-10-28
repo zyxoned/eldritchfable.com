@@ -12,14 +12,21 @@ import { openDatabase, migrateDatabase } from '../server/database.mjs';
 const preservedTables = [
   'account_users', 'account_sessions', 'account_tokens',
   'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries',
-  'storefront_collections', 'storefront_products'
+  'storefront_collections', 'storefront_products',
+  'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world'
 ];
 let checkPhase = 'initializing';
 
-function fingerprints(db) {
-  return Object.fromEntries(preservedTables.map(table => {
-    const present = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table);
-    const rows = present ? db.prepare(`SELECT * FROM ${table}`).all() : [];
+const quoteIdentifier = value => '"' + value.replaceAll('"', '""') + '"';
+function preservedColumns(db) {
+  return Object.fromEntries(preservedTables.flatMap(table => {
+    if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table)) return [];
+    return [[table, db.prepare('PRAGMA table_info(' + quoteIdentifier(table) + ')').all().map(column => column.name)]];
+  }));
+}
+function fingerprints(db, selected) {
+  return Object.fromEntries(Object.entries(selected).map(([table, columns]) => {
+    const rows = db.prepare('SELECT ' + columns.map(quoteIdentifier).join(',') + ' FROM ' + quoteIdentifier(table)).all();
     const serialized = rows.map(row => JSON.stringify(row)).sort();
     return [table, createHash('sha256').update(JSON.stringify(serialized)).digest('hex')];
   }));
@@ -37,9 +44,10 @@ export async function rehearseMigration(filename) {
     live.close(); live = undefined;
     copy = openDatabase(snapshot);
     if (copy.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok') throw Error('Snapshot integrity check failed');
-    const before = fingerprints(copy);
+    const columns = preservedColumns(copy);
+    const before = fingerprints(copy, columns);
     const schemaVersion = migrateDatabase(copy);
-    const after = fingerprints(copy);
+    const after = fingerprints(copy, columns);
     if (JSON.stringify(before) !== JSON.stringify(after)) throw Error('Migration changed preserved account or store data');
     if (copy.prepare('PRAGMA foreign_key_check').all().length) throw Error('Snapshot has invalid foreign-key references');
     const counts = copy.prepare("SELECT COUNT(*) AS accounts, COUNT(CASE WHEN role='customer' THEN 1 END) AS customers, COUNT(CASE WHEN role='admin' THEN 1 END) AS admins FROM account_users").get();
@@ -121,7 +129,9 @@ async function main() {
   const gateway = processFor('caddy.service');
   const configs = new Set([configArgument(web.args, '/etc/caddy/Caddyfile.production'), configArgument(gateway.args, '/etc/caddy/Caddyfile')]);
   for (const config of configs) {
-    const result = spawnSync('caddy', ['adapt', '--config', config, '--adapter', 'caddyfile'], { encoding: 'utf8', timeout: 10000, maxBuffer: 4 * 1024 * 1024 });
+    const result = config.endsWith('.json')
+      ? { status: 0, stdout: readFileSync(config, 'utf8') }
+      : spawnSync('caddy', ['adapt', '--config', config, '--adapter', 'caddyfile'], { encoding: 'utf8', timeout: 10000, maxBuffer: 4 * 1024 * 1024 });
     if (result.status !== 0) throw Error('Caddy configuration could not be inspected: ' + config);
     console.log(config + ': ' + JSON.stringify(caddySummary(JSON.parse(result.stdout))));
   }

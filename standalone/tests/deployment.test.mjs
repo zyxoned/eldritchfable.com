@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, chmodSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { openDatabase } from '../server/database.mjs';
+import { openDatabase, SCHEMA_VERSION } from '../server/database.mjs';
 import { digest } from '../server/database.mjs';
 import { rehearseMigration, caddySummary } from '../deploy/production-check.mjs';
 
@@ -53,7 +53,7 @@ test('production rehearsal migrates a WAL snapshot without changing live account
   db.prepare("INSERT INTO account_tokens(token_hash,user_id,purpose,expires_at) VALUES(?,'keep','verify_email','2099-01-01')").run(digest(token));
   for (const id of ['first', 'duplicate']) db.prepare("INSERT INTO email_outbox(id,recipient,template,payload_json) VALUES(?,'private@example.test','verify_email',?)").run(id, JSON.stringify({ verification: token }));
   const result = await rehearseMigration(filename);
-  assert.deepEqual(result, { accounts: 1, customers: 1, admins: 0, sessions: 1, schemaVersion: 2, queue: { cancelled: 1, pending: 1 }, preserved: true });
+  assert.deepEqual(result, { accounts: 1, customers: 1, admins: 0, sessions: 1, schemaVersion: SCHEMA_VERSION, queue: { cancelled: 1, pending: 1 }, preserved: true });
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='schema_migrations'").get().n, 0);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM email_outbox WHERE status='pending'").get().n, 2);
   assert.equal(db.prepare('SELECT password_hash FROM account_users').get().password_hash, 'private-hash');

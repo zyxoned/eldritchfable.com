@@ -95,3 +95,12 @@ public site, with an available frontend rollback. Separate test deployments are
 reserved for large changes, per the owner's direction.
 
 Catalog and checkout implementation/testing remains planned for about 2026-11-02.
+
+## Repository reconciliation, October 28, 2026
+
+The consolidated source combines main's Tavern design and CI/docs, the account
+RPG/Stash and Hollow King expansion, the phone-header fix from PR #6, and the
+October 27 audit notes. The earlier baseline sections above describe historical
+releases; they do not identify the currently deployed version. See
+[PROJECT_STATE.md](../PROJECT_STATE.md) for the reconciliation inputs and limits.
+Eldritch Fable uses zyxoned/eldritchfable.com. zyxoned.github.io belongs to Pine Kind.

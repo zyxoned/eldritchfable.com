@@ -1,0 +1,25 @@
+{
+  "verifiedAtUtc": "2026-10-29T08:07:43.762492+00:00",
+  "currentMain": "2d708248a9e812195d4e4e9177da85aaa33d7589",
+  "snapshotsRestored": 14,
+  "sourceFilesVerified": 1069,
+  "uniqueContents": 274,
+  "reusedBlobsReachableFromMain": 200,
+  "historicalPayloads": 74,
+  "historicalPayloadBytes": 5209117,
+  "checks": [
+    "Every archived alias matches privately preserved source bytes and regular-file permission mode.",
+    "All content matches its byte count, SHA-256 and Git blob identity.",
+    "Every reused existing blob is reachable from current main and matches its immutable commit/path witness.",
+    "All fourteen snapshots reconstructed successfully into separate new private directories.",
+    "Eleven unsafe relative paths and existing, production and existing-worktree destinations were refused.",
+    "Generated artifacts, credentials, live data and private Git history bundles are excluded."
+  ],
+  "templateExclusion": {
+    "path": "standalone/.env.example",
+    "reason": "Identical template already present in main, omitted from historical reconstruction by conservative filename filter.",
+    "gitBlob": "9356b9b934541a5a03772416766f5cb45d1c0963",
+    "aliases": 7
+  },
+  "productionModified": false
+}

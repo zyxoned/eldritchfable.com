@@ -1,5 +1,7 @@
 # Account RPG and Secret Stash
 
+> Verified 2026-10-29: main requires schema **4**; production remains schema **3**, frontend `2011d095` and backend `f05b81a0`. Historical deployment sections below are dated evidence. Use [PROJECT_STATE](../PROJECT_STATE.md) and [DEPLOYMENT_RECOVERY](../DEPLOYMENT_RECOVERY.md) for current identities and recovery instructions. Repository publication does not deploy production.
+
 This change adds same-origin `/play` and `/stash` routes to the standalone
 Eldritch Fable storefront. It builds on the account and email work in PR #1;
 the standalone AppDeploy prototype is not the production integration.

@@ -1,5 +1,45 @@
 # Eldritch Fable project state
 
+## Latest readiness observation — October 29, 2026, 17:20 EDT
+
+This observation supersedes the current-status and next-action claims in the
+earlier audit below. Before this documentation handoff, GitHub main was
+`4c54082e55279d1f0efa301a5fd40e198405b8d9`. [PR #8](https://github.com/zyxoned/eldritchfable.com/pull/8)
+was merged at 13:18 EDT; its merge commit was
+`08b8d757c7d1b49ebf72ebfeac597c3fe57f2a7f`. Reviewing/merging PR #8 is no
+longer an outstanding task.
+
+The enrolled staging development checkout was clean at the same main SHA, with
+no staged/unstaged/untracked files, active Git operation or unpublished commits.
+Its retained recovery branch was two commits ahead of its old upstream, zero
+behind; both commits were already published on main. Fresh Relay inspection
+reported main ahead/behind 0/0 and `up_to_date`. The existing watcher was
+active/enabled with a recent fresh successful result. Historical recovery
+checkouts were not fast-forwarded or modified. The managed cloud environment
+reported `environment_startup_failed`; its unpublished contents remain UNKNOWN.
+
+[CI 40954037828](https://github.com/zyxoned/eldritchfable.com/actions/runs/40954037828/job/123729348898)
+passed on that exact main SHA: build/server syntax, 69 backend tests (zero
+failures/skips), and 30 desktop/mobile browser tests. Logs were inspected now;
+no local application tests were rerun for this documentation-only audit.
+
+Public health was online. The manifest still identified frontend
+`2011d09558baa37d90820aeae4aab3eab473e6b6` and backend release
+`f05b81a0ff9d-20261027013515284`. API/web/tunnel services were active/running,
+and mail/backup/healthcheck timers active/waiting. Production remains a separate,
+older release. The live schema and real inbox delivery were not retested.
+
+The game is custom Canvas 2D with one shared Mossvale map; formal parties,
+100-floor caves, destination selection and sky temples are new implementation
+work. The owner will provide the desired aesthetic next.
+[The skill-readiness brief](docs/workspace/MMO_SKILL_READINESS.md) records verified
+omgskills candidates, renderer constraints and the next design questions. No
+skills were installed and no gameplay, deployment or live data changed.
+Continue with that reference and project-specific design rather than claiming
+the proposed MMO expansion is complete.
+
+## Earlier source and production audit
+
 Verified 2026-10-29 UTC against GitHub, the actual CANDY checkouts and production.
 Maintained repository: [zyxoned/eldritchfable.com](https://github.com/zyxoned/eldritchfable.com).
 Public site: https://eldritchfable.com. `zyxoned.github.io` belongs to the separate

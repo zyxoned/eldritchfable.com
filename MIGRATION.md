@@ -34,3 +34,7 @@ Checkout stays disabled until real products, inventory, payment confirmation, sh
 ## Data and recovery
 
 Never commit database files, customer records, payment keys, API tokens, SSH keys, or live `.env` files. Keep private backups and the rollout recovery record outside the public repository. Follow the deployment guide for code rollback; replacing a live database requires preserving subsequent account changes first.
+
+## October 29 verified reconciliation
+
+GitHub main `2d708248a9e812195d4e4e9177da85aaa33d7589` includes the combined React/Vite, accounts/mail and schema-4 expansion source. Actual production remains the welcome frontend and f05 backend on schema 3. The accessible CANDY source inventory and recovery archive supplement the earlier remote-only reconciliation; a complete original Base44 export remains unavailable. Read [PROJECT_STATE](PROJECT_STATE.md), [exact source differences](SOURCE_RECONCILIATION.md) and [deployment/recovery](DEPLOYMENT_RECOVERY.md) before future operations.

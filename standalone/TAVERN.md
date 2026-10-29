@@ -1,5 +1,7 @@
 # Tavern frontend integration
 
+> Verified 2026-10-29: main requires schema **4**; production remains schema **3**, frontend `2011d095` and backend `f05b81a0`. Historical deployment sections below are dated evidence. Use [PROJECT_STATE](../PROJECT_STATE.md) and [DEPLOYMENT_RECOVERY](../DEPLOYMENT_RECOVERY.md) for current identities and recovery instructions. Repository publication does not deploy production.
+
 The Tavern design is integrated into the existing React/Vite storefront, based on
 commit 45fb85d21236557c0abb65d6049976fd9a7d4392. It ports the storefront UI and
 runtime artwork from the preserved staging Tavern prototype. Account, admin,

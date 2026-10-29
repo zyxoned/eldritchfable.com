@@ -1,5 +1,7 @@
 # Deploy Eldritch Fable on the existing Linux server
 
+> Verified 2026-10-29: main requires schema **4**; production remains schema **3**, frontend `2011d095` and backend `f05b81a0`. Historical deployment sections below are dated evidence. Use [PROJECT_STATE](../PROJECT_STATE.md) and [DEPLOYMENT_RECOVERY](../DEPLOYMENT_RECOVERY.md) for current identities and recovery instructions. Repository publication does not deploy production.
+
 The maintained release includes accounts, mail, Tavern, RPG/Stash and the Hollow King expansion. Product import, checkout and PostgreSQL remain separate work. Use schema version 4 as required by server/database.mjs; read [ADVENTURE.md](ADVENTURE.md) and [EXPANSION.md](EXPANSION.md) with these instructions. Repository reconciliation does not deploy this release.
 
 ## Historically verified production layout

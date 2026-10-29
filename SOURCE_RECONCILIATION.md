@@ -134,12 +134,17 @@ configuration are deliberately outside these Git comparisons.
 
 ## Workspace Relay handoff
 
-The October 29 follow-up enrolls the existing clean CANDY development checkout
-and adds [a shared handoff](docs/workspace/HANDOFF.md). Fresh fetch confirmed
-upstream `10802d3481d6a687bbe02c6b677f2a06ef57f9c6` and main `2d708248`; no repair
-was required. Relay enrollment/session metadata is private, no continuous watcher
-was started, and no production/release worktree was enrolled. The helper comes
-from the explicitly invoked Workspace Relay plugin; application code is unchanged.
+The October 29 follow-ups enroll the existing clean CANDY development checkout
+and maintain [a shared handoff](docs/workspace/HANDOFF.md). Fresh activation-time
+fetch confirmed upstream `648bd81c04bd8e5c1c2e0e7c62b16b202be8e730` and main
+`2d708248`; no repair was required. Following explicit owner authorization,
+`eldritch-workspace-relay.service` now runs the helper every 300 seconds as
+`sentinelx`, independently of this chat and enabled at boot. Its effective unit
+is a root-owned copy, not linked to writable staging. First-cycle fresh fetching
+and editing-lease pause behavior were verified. Session metadata stays private;
+no production/release worktree is enrolled. Stop/disable commands and limitations
+are in the shared handoff. The helper comes from the explicitly invoked Workspace
+Relay plugin; application code is unchanged.
 
 ## Exact files in this recovery/documentation PR
 

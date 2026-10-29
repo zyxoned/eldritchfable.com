@@ -204,3 +204,21 @@ releases above. The earlier file/service/schema audit remains dated evidence.
 PR #8's pre-handoff exact head passed CI run 40841655451: build/syntax, 69 backend
 and 30 browser tests; this session did not rerun local application tests for these
 documentation-only edits. The cloud workspace is still pending/offline.
+
+## Workspace Relay continuous checks enabled
+
+At 12:29 EDT on October 29, following explicit owner authorization,
+`eldritch-workspace-relay.service` was installed and enabled as a dedicated
+system service running as `sentinelx`. It checks only the enrolled CANDY
+development checkout every 300 seconds and is configured to start at boot.
+The effective unit is root-owned; its reviewed artifact remains in private staging.
+No infrastructure-home files, production services, live database or release
+symlinks were changed. The managed cloud workspace remains pending/offline.
+
+The first daemon cycle freshly fetched upstream and main, found clean
+`648bd81c04bd8e5c1c2e0e7c62b16b202be8e730` with upstream 0/0 and two commits ahead
+of main, and required no repair. A controlled restart verified that an editing
+lease pauses it with `session_active` in the journal. The [shared handoff](docs/workspace/HANDOFF.md)
+records exact scope, persistence configuration, limits and stop/disable commands.
+The owning editing session releases its lease after publishing these docs and
+verifies a new fresh cycle. No reboot or deployment was used for verification.

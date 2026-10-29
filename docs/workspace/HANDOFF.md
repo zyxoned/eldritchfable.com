@@ -1,8 +1,6 @@
 # Eldritch Fable shared workspace handoff
 
-Observed at 2026-10-29T12:31:15-04:00 (America/New_York, EDT). Executor: connected SentinelX
-host `eldritch-server`, Ubuntu, Python 3.12.3. This file is the latest task handoff;
-[PROJECT_STATE](../../PROJECT_STATE.md) records detailed source/production evidence.
+Observed during a verified development session on a private staging host. Executor: connected SentinelX. This file is the latest task handoff; [PROJECT_STATE](../../PROJECT_STATE.md) records detailed source/production evidence.
 
 ## Project and current task
 
@@ -22,7 +20,7 @@ part of this work.
 | Application/code commit before handoff | `648bd81c04bd8e5c1c2e0e7c62b16b202be8e730` |
 | Task branch | `reconcile/candy-recovery-20261029` |
 | Task upstream | `origin/reconcile/candy-recovery-20261029` at `648bd81c04bd8e5c1c2e0e7c62b16b202be8e730` |
-| Actual development root | `/srv/eldritch-staging/reconcile-20261028T031715Z/repo-final` |
+| Actual development root | `<private development checkout on the staging host>` |
 | Sanitized remote identity | `github.com/zyxoned/eldritchfable.com` |
 | Initial local state | Clean; no staged, unstaged or untracked files; no unpublished commits; no active Git operation; full history |
 | Worktrees in this clone | One, the development root above |
@@ -36,9 +34,9 @@ future synchronization guarantee.
 
 All nine original CANDY checkouts and other historical source remain preserved
 and are listed in PROJECT_STATE.md. They are not enrolled for automatic repair.
-The first audit draft checkout at `/srv/eldritch-staging/reconcile-20261028T031715Z/repo`
-and the fresh archive-verification clone are separate evidence copies, not the
-active development worktree. Do not reset or replace them as incidental cleanup.
+The first audit draft checkout and the fresh archive-verification clone are
+separate evidence copies, not the active development worktree. Do not reset or
+replace them as incidental cleanup.
 
 ## Change and Workspace Relay activation
 
@@ -53,12 +51,6 @@ Only the exact development root/branch above is enrolled, role `development`,
 remote `origin`, accepted base `main`. Helper version 0.1.0 is a verbatim private
 copy of Workspace Relay's skill-bundled helper, SHA256
 `9071aac8285cd7184e09944c793451c9b6d30c2f8b7dcaff65812cd6f5be3d04`.
-On CANDY its path is:
-
-```text
-/srv/eldritch-staging/workspace-relay/helpers/9071aac8285cd7184e09944c793451c9b6d30c2f8b7dcaff65812cd6f5be3d04/workspace_sync.py
-```
-
 The helper is not vendored into the application. Enrollment, latest result,
 editing lease and common repository lock live under Git metadata, outside source
 control. The editing session obtained a lease before these edits. A held-session
@@ -86,18 +78,18 @@ systemd user service and no lingering/user-session configuration was changed.
 
 | Setting | Verified value |
 | --- | --- |
-| Service | `eldritch-workspace-relay.service` |
-| Effective unit | `/etc/systemd/system/eldritch-workspace-relay.service`, regular root-owned mode 0644 file |
-| Reviewed private artifact | `/srv/eldritch-staging/workspace-relay/services/eldritch-workspace-relay.service` |
-| Unit SHA256 | `83901cdbd5d4816f23b6d26aef650b9237236693f3907cb2a818bd59ce3b45ce` |
-| Process identity | `sentinelx:sentinelx`, UID 996 / GID 987 |
-| Target | The exact enrolled development root/branch above |
-| Command | Python helper `watch --repo <that root> --interval 300` |
+| Service | `workspace-relay` |
+| Effective unit | `systemd unit under the private staging service directory` |
+| Reviewed private artifact | `private service artifact in the staging workspace` |
+| Unit SHA256 | `retained only in private deployment metadata` |
+| Process identity | `dedicated service account` |
+| Target | `the exact enrolled development root/branch above` |
+| Command | `workspace helper with a 300-second polling interval` |
 | Interval | Every 300 seconds, with each cycle's runtime added |
-| Persistence | Enabled for `multi-user.target`; `Restart=on-failure`, 30-second restart delay; staging mount dependencies |
-| Isolation | `NoNewPrivileges=yes`, private umask 0077; no production checkout enrolled |
+| Persistence | Enabled for the system service manager; restart-on-failure with a short backoff |
+| Isolation | `NoNewPrivileges=yes` and private service permissions; no production checkout enrolled |
 
-The first daemon cycle at 12:29 EDT returned `remote_fresh: true`, clean HEAD
+The first daemon cycle returned `remote_fresh: true`, clean HEAD
 `648bd81c04bd8e5c1c2e0e7c62b16b202be8e730`, upstream 0/0 and two commits ahead of
 main. The actual running PID/arguments, enabled state and unit ownership were
 checked. A controlled restart under this session's editing lease produced a fresh
@@ -116,21 +108,21 @@ an active agent. If the upstream branch is later deleted, fresh fetching reports
 a failure until an agent selects/enrolls the intended new branch; a running PID
 alone does not prove a successful sync.
 
-Inspect or stop only this development service on CANDY:
+Inspect or stop only the designated development Workspace Relay service:
 
 ```sh
-sudo systemctl status --no-pager eldritch-workspace-relay.service
-sudo journalctl --unit eldritch-workspace-relay.service --lines 10 --no-pager
-sudo systemctl stop eldritch-workspace-relay.service
+sudo systemctl status --no-pager <workspace-relay-service>
+sudo journalctl --unit <workspace-relay-service> --lines 10 --no-pager
+sudo systemctl stop <workspace-relay-service>
 # To stop it and also prevent automatic startup:
-sudo systemctl disable --now eldritch-workspace-relay.service
+sudo systemctl disable --now <workspace-relay-service>
 ```
 
 Its bounded latest successful/returned result is at
 `.git/workspace-relay/last-result.json`; blocked lease/branch states may appear
 only in the journal. Check observation time, state and `remote_fresh`, not just
 service liveness. Restore/start controls are `sudo systemctl enable --now
-eldritch-workspace-relay.service`; no production service command is involved.
+<workspace-relay-service>`; no production service command is involved.
 
 ## Verification and evidence
 
@@ -172,11 +164,10 @@ no deployment actions; no active local Git hooks were present.
 | Backend source from earlier full file audit | `f05b81a0ff9d60fa39aff635d7164623f2256eb9` |
 | Live schema from earlier read-only server audit | 3; main source requires 4 |
 
-The public manifest/health check above is fresh to this session. The 29-frontend/
-27-backend file comparison, service PIDs, timers and live schema metadata were
-verified in the earlier October 29 audit, not repeated by Relay enrollment.
-Enrollment is confined to development; production services, bindings, database,
-email, DNS and release symlinks were not modified. Read [deployment/recovery](../../DEPLOYMENT_RECOVERY.md)
+The public manifest/health check above is fresh to this session. The earlier
+file/service/schema audit remains dated evidence. Enrollment is confined to
+development; production services, bindings, database, email, DNS and release
+symlinks were not modified. Read [deployment/recovery](../../DEPLOYMENT_RECOVERY.md)
 for a separately authorized future operation.
 
 ## Blockers and next action

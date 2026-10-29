@@ -183,3 +183,24 @@ PR, followed by preparation of a separately reviewed schema-3-to-4 rehearsal and
 compatible recovery release. No rollout is authorized by this task. See
 [DEPLOYMENT_RECOVERY.md](DEPLOYMENT_RECOVERY.md) for reproducible source recovery,
 build, migration rehearsal and rollback procedures.
+
+## Workspace Relay initialization, October 29
+
+At 12:14 EDT (America/New_York), the actual CANDY review checkout was inspected
+against freshly fetched GitHub refs and enrolled as the development worktree for
+`reconcile/candy-recovery-20261029`, accepted base `main`. Its pre-handoff HEAD and
+upstream were `10802d3481d6a687bbe02c6b677f2a06ef57f9c6`; main remained
+`2d708248a9e812195d4e4e9177da85aaa33d7589`. The worktree was clean, upstream
+matched exactly, and its one commit ahead of main required no repair.
+
+[The shared workspace handoff](docs/workspace/HANDOFF.md) records the exact root,
+source baseline, checks, local state, session coordination and next action. Relay
+metadata remains private in Git metadata. A session lease protected documentation
+edits; only its owning session releases it after publication. No continuous
+watcher/scheduler was started and no production checkout was enrolled.
+
+Fresh public manifest/health verification at 12:15 EDT agrees with the production
+releases above. The earlier file/service/schema audit remains dated evidence.
+PR #8's pre-handoff exact head passed CI run 40841655451: build/syntax, 69 backend
+and 30 browser tests; this session did not rerun local application tests for these
+documentation-only edits. The cloud workspace is still pending/offline.

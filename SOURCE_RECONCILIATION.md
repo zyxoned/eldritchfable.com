@@ -132,6 +132,15 @@ configuration are deliberately outside these Git comparisons.
    no duplicate feature merge is required. The new recovery/documentation PR
    remains for review. Production deployment is outside this task's authorization.
 
+## Workspace Relay handoff
+
+The October 29 follow-up enrolls the existing clean CANDY development checkout
+and adds [a shared handoff](docs/workspace/HANDOFF.md). Fresh fetch confirmed
+upstream `10802d3481d6a687bbe02c6b677f2a06ef57f9c6` and main `2d708248`; no repair
+was required. Relay enrollment/session metadata is private, no continuous watcher
+was started, and no production/release worktree was enrolled. The helper comes
+from the explicitly invoked Workspace Relay plugin; application code is unchanged.
+
 ## Exact files in this recovery/documentation PR
 
 The list below is relative to main `2d708248`. Historical payload paths encode the
@@ -146,6 +155,7 @@ changes. `SOURCE_RECONCILIATION.md` is included in its own list without a self h
 | M | `PROJECT_STATE.md` |
 | M | `README.md` |
 | A | `SOURCE_RECONCILIATION.md` |
+| A | `docs/workspace/HANDOFF.md` |
 | M | `recovery/README.md` |
 | A | `recovery/candy-20261028/README.md` |
 | A | `recovery/candy-20261028/blobs/03687e2c3730019318916140fe700b8c4a5d0e64--Storefront.jsx` |
@@ -229,5 +239,5 @@ changes. `SOURCE_RECONCILIATION.md` is included in its own list without a self h
 | M | `standalone/DEPLOYMENT.md` |
 | M | `standalone/TAVERN.md` |
 
-87 files changed. See the PR Files view for exact line changes and
+88 files changed. See the PR Files view for exact line changes and
 [recovery validation](recovery/candy-20261028/validation.json) for archive checks.

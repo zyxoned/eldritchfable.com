@@ -1,189 +1,126 @@
 # Eldritch Fable shared workspace handoff
 
-Observed during a verified development session on a private staging host. Executor: connected SentinelX. This file is the latest task handoff; [PROJECT_STATE](../../PROJECT_STATE.md) records detailed source/production evidence.
+Observed October 29, 2026, about 17:20 EDT (America/New_York), using GitHub,
+omgskills and the connected staging host through SentinelX.
 
-## Project and current task
+## Task and baseline
 
 Repository: https://github.com/zyxoned/eldritchfable.com.git; accepted base: `main`.
-Preserve one authoritative, recoverable Eldritch Fable repository, finish PR #8,
-and enable continuous Workspace Relay checks for the actual development checkout. The approved
-Tavern remains inside the existing React/Vite application in `standalone/`.
-No separate Next.js application, production rollout or live database change is
-part of this work.
+The owner requested a sync/completeness check and skills for a forthcoming
+aesthetic reference, a 100-floor cave, an alternative sky temple the party can
+choose, and improved graphics.
 
-## Source baseline and local state
+Application/source baseline before this documentation handoff:
+`4c54082e55279d1f0efa301a5fd40e198405b8d9`.
+PR #8 is already merged, through
+`08b8d757c7d1b49ebf72ebfeac597c3fe57f2a7f`.
+Its review/merge is no longer a next action.
 
-| Field | Verified value before this handoff |
-| --- | --- |
-| Accepted main | `2d708248a9e812195d4e4e9177da85aaa33d7589` |
-| Main tree | `40647f991fbbcbfcc75cd104106d1a8a26b133ad` |
-| Application/code commit before handoff | `648bd81c04bd8e5c1c2e0e7c62b16b202be8e730` |
-| Task branch | `reconcile/candy-recovery-20261029` |
-| Task upstream | `origin/reconcile/candy-recovery-20261029` at `648bd81c04bd8e5c1c2e0e7c62b16b202be8e730` |
-| Actual development root | `<private development checkout on the staging host>` |
-| Sanitized remote identity | `github.com/zyxoned/eldritchfable.com` |
-| Initial local state | Clean; no staged, unstaged or untracked files; no unpublished commits; no active Git operation; full history |
-| Worktrees in this clone | One, the development root above |
-| Comparison after fresh fetch | Upstream ahead/behind 0/0; task branch 2 commits ahead of main, 0 behind |
-| Integration | [PR #8](https://github.com/zyxoned/eldritchfable.com/pull/8), open, non-draft, mergeable before this handoff |
+## Observed workspaces and coordination
 
-The handoff commit itself is identified by Git history/PR head; the SHA above is
-explicitly the commit before these documentation changes. Re-fetch the PR branch
-to obtain the actual current head rather than treating this dated table as a
-future synchronization guarantee.
+The enrolled staging development checkout matched the accepted main SHA above.
+Its retained branch was `reconcile/candy-recovery-20261029`; upstream
+`origin/reconcile/candy-recovery-20261029` remained at
+`d72ac04447b657efbb2d8ea467a108679f4b3682`. It was two commits ahead of that
+upstream and zero behind; both commits were already published on main.
+Fresh helper `inspect --fetch` reported `remote_fresh: true`,
+main ahead/behind 0/0 and `state: up_to_date`. There were no staged,
+unstaged, untracked or unpublished changes and no active Git operation.
 
-All nine original CANDY checkouts and other historical source remain preserved
-and are listed in PROJECT_STATE.md. They are not enrolled for automatic repair.
-The first audit draft checkout and the fresh archive-verification clone are
-separate evidence copies, not the active development worktree. Do not reset or
-replace them as incidental cleanup.
+The existing development Relay watcher was active/running and enabled. Its
+observed 300-second command targeted only that enrolled development checkout.
+A recent daemon result independently reported fresh/up-to-date state.
+No duplicate watcher, production enrollment, restart or service change occurred.
 
-## Change and Workspace Relay activation
+Documentation work is isolated on `docs/mmo-readiness-20261029`, based on the
+full baseline SHA above. Before edits it was clean, full-history, with no
+upstream/unpublished commits or active Git operation. Its separate worktree was
+inspected with fetch, enrolled for development against the verified remote and
+main, synchronized without repair, and protected by this session's editing
+lease. Exact host paths and private coordination tokens remain in local metadata.
+The original development checkout and historical recovery checkouts were preserved.
 
-The source reconciliation already exists on main through PR #7. PR #8 adds 14
-recoverable historical snapshots, source comparisons, verified production state
-and a reproducible deployment/recovery procedure. This handoff records continuous Relay activation and the latest session
-context; no application code changes are needed.
-Intended files in this follow-up: `docs/workspace/HANDOFF.md`, `PROJECT_STATE.md`
-and `SOURCE_RECONCILIATION.md` (to retain an exact PR file list).
+The managed cloud environment reported `environment_startup_failed` and offline.
+Its checkout/unpublished files remain UNKNOWN; the reachable staging checkout
+does not establish their state.
 
-Only the exact development root/branch above is enrolled, role `development`,
-remote `origin`, accepted base `main`. Helper version 0.1.0 is a verbatim private
-copy of Workspace Relay's skill-bundled helper, SHA256
-`9071aac8285cd7184e09944c793451c9b6d30c2f8b7dcaff65812cd6f5be3d04`.
-The helper is not vendored into the application. Enrollment, latest result,
-editing lease and common repository lock live under Git metadata, outside source
-control. The editing session obtained a lease before these edits. A held-session
-sync check returned `session_active` as intended and did not move HEAD. The lease
-must be released only by its owner after publication; check the actual metadata
-before starting another editing session. Lease tokens are never shared here.
+## Watcher operation and retained history
 
-Initialization ran `inspect --fetch`, `enroll`, `sync`, `hold` and another
-fresh `inspect --fetch`. Sync returned `ahead`, not lag: no repair worktree,
-fast-forward, merge, reset, stash or cleanup was needed. The earlier initialization did not start a continuous watcher.
-The subsequently authorized service activation is recorded below; enrollment
-does not imply synchronization of every machine.
+The existing system-managed watcher is configured for startup at boot and
+restart-on-failure. No reboot was performed as a persistence test. It checks only
+the enrolled development checkout; clean lag can fast-forward with a recovery
+ref, and divergence prepares an isolated repair for an active agent. It does not
+push, merge main, deploy, run tests or resolve semantic conflicts.
 
-For another accessible development checkout, invoke the Workspace Relay skill
-there and inspect/enroll that exact worktree/branch. Do not copy private lease
-metadata or enroll production/release directories. A new branch requires fresh
-inspection and enrollment. Before editing this worktree, use its helper to inspect
-with fetch, sync when no lease is active, and acquire your own editing lease.
+Inspect enrollment and acquire a worktree-specific editing lease before editing.
+A held lease pauses watcher synchronization; check the journal as well as the
+timestamp/state in `last-result.json`. A running process alone does not establish
+a fresh successful fetch. Release only a lease owned by the current session.
 
-## Continuous watcher enabled, October 29
-
-The owner explicitly requested activation after initialization. A dedicated
-system-managed service now runs as the existing development user; it is not a
-systemd user service and no lingering/user-session configuration was changed.
-
-| Setting | Verified value |
-| --- | --- |
-| Service | `workspace-relay` |
-| Effective unit | `systemd unit under the private staging service directory` |
-| Reviewed private artifact | `private service artifact in the staging workspace` |
-| Unit SHA256 | `retained only in private deployment metadata` |
-| Process identity | `dedicated service account` |
-| Target | `the exact enrolled development root/branch above` |
-| Command | `workspace helper with a 300-second polling interval` |
-| Interval | Every 300 seconds, with each cycle's runtime added |
-| Persistence | Enabled for the system service manager; restart-on-failure with a short backoff |
-| Isolation | `NoNewPrivileges=yes` and private service permissions; no production checkout enrolled |
-
-The first daemon cycle returned `remote_fresh: true`, clean HEAD
-`648bd81c04bd8e5c1c2e0e7c62b16b202be8e730`, upstream 0/0 and two commits ahead of
-main. The actual running PID/arguments, enabled state and unit ownership were
-checked. A controlled restart under this session's editing lease produced a fresh
-`session_active` journal record and left the previous successful result unchanged.
-A held lease does not refresh `last-result.json`; use the journal to distinguish
-a paused cycle from a new successful fetch. After publication, release only this
-session's lease and verify a fresh daemon cycle again.
-
-This service persists independently of the chat and is configured to start after
-reboot; no server reboot was performed as a test. It fast-forwards only clean
-enrolled development lag, preserves a recovery ref, and prepares one isolated
-repair when histories diverge. It does not push, auto-merge main, deploy, modify
-production data, send notifications, resolve semantic conflicts or run tests.
-Other editors must honor the editing lease. Conflicts and failed access require
-an active agent. If the upstream branch is later deleted, fresh fetching reports
-a failure until an agent selects/enrolls the intended new branch; a running PID
-alone does not prove a successful sync.
-
-Inspect or stop only the designated development Workspace Relay service:
+Resolve the designated development service name from private host metadata;
+the placeholder below is not a literal unit name. These are operator controls,
+not commands executed during this audit:
 
 ```sh
-sudo systemctl status --no-pager <workspace-relay-service>
-sudo journalctl --unit <workspace-relay-service> --lines 10 --no-pager
-sudo systemctl stop <workspace-relay-service>
-# To stop it and also prevent automatic startup:
-sudo systemctl disable --now <workspace-relay-service>
+sudo systemctl status --no-pager <development-relay-unit>
+sudo journalctl --unit <development-relay-unit> --lines 10 --no-pager
+sudo systemctl stop <development-relay-unit>
+sudo systemctl disable --now <development-relay-unit>
+# Restore the intentionally stopped development watcher:
+sudo systemctl enable --now <development-relay-unit>
 ```
 
-Its bounded latest successful/returned result is at
-`.git/workspace-relay/last-result.json`; blocked lease/branch states may appear
-only in the journal. Check observation time, state and `remote_fresh`, not just
-service liveness. Restore/start controls are `sudo systemctl enable --now
-<workspace-relay-service>`; no production service command is involved.
+The [immutable previous handoff](https://github.com/zyxoned/eldritchfable.com/blob/4c54082e55279d1f0efa301a5fd40e198405b8d9/docs/workspace/HANDOFF.md)
+retains earlier activation, lease/restart verification and archive evidence.
+Its PR status, source SHAs and next actions are historical, not current state.
 
-## Verification and evidence
+## Changes and evidence
 
-Checks run during Relay initialization and this activation session (dated where relevant):
+Intended files: this handoff, `PROJECT_STATE.md` and
+[MMO_SKILL_READINESS.md](MMO_SKILL_READINESS.md).
+The project state now distinguishes current observations from its older audit.
+The brief records the existing Canvas 2D renderer, missing dungeon/party systems,
+verified skill links and the next design decisions. No application code changed.
 
-- Actual root, branch, full HEAD, upstream, status, worktrees and unpublished
-  commits inspected before any edit. Fresh helper fetch compared both upstream
-  and main, with `remote_fresh: true` and no missing commits.
-- Helper source parsed successfully with Python; exact packaged bytes preserved. The new unit passed `systemd-analyze verify`.
-- Enrollment and sync succeeded; held-session protection refused sync as expected.
-- Public HTTPS `/frontend-release.json` and `/api/health` rechecked at
-  2026-10-29 12:15 EDT; manifest identities below match and health is online.
-- Documentation relative links and staged diff reviewed before publication.
+[Exact-baseline CI 40954037828](https://github.com/zyxoned/eldritchfable.com/actions/runs/40954037828/job/123729348898)
+completed successfully. Its logs show dependency installation, build/server
+syntax, 69 backend tests (zero failures/skips), and 30 desktop/mobile browser
+tests. Logs were inspected during this audit. No local application tests were
+rerun for these documentation-only changes. There is no configured lint or
+standalone typecheck script.
 
-Prior exact-head application evidence, not newly run local application tests:
-[CI 40841655451](https://github.com/zyxoned/eldritchfable.com/actions/runs/40841655451)
-on `10802d3481d6a687bbe02c6b677f2a06ef57f9c6` passed locked dependency installation,
-Vite build, server syntax, **69 backend tests and 30 desktop/mobile browser tests**.
-Pre-activation [CI 40910338605](https://github.com/zyxoned/eldritchfable.com/actions/runs/40910338605)
-on `648bd81c04bd8e5c1c2e0e7c62b16b202be8e730` also passed build/syntax, 69 backend
-and 30 browser tests. No local application tests were rerun for service/docs setup.
-The fresh public GitHub clone recovery check restored all 14 snapshots / 1,069
-source aliases with exact hashes/modes and left the clone clean. The archive
-validation file records the independent earlier restoration checks.
+The sole CI workflow contains no deployment actions; no active Git hooks were
+found. Documentation receives diff, relative-link and content review before
+publication. The documentation commit is identified by Git history and its
+published task branch, not a self-referential SHA in this file.
+Before a later session edits, inspect the current enrollment and lease metadata.
+Publication must verify the remote ref and release only the current session's lease.
 
-This follow-up changes documentation only. The existing PR includes standalone
-Markdown, so normal PR CI runs again; its final result belongs in the PR Checks.
-There is no configured lint or standalone typecheck script. Do not claim that
-Relay's `handoff --check` text executed those checks. The actual workflow contains
-no deployment actions; no active local Git hooks were present.
+## Production observed separately
 
-## Production: separately observed
+Fresh public HTTPS health was online. The manifest reported:
 
-| Component | Evidence |
-| --- | --- |
-| Public frontend commit | `2011d09558baa37d90820aeae4aab3eab473e6b6` |
-| Public frontend release | `welcome-2011d09558ba-20261027T064119Z` |
-| Public backend release | `f05b81a0ff9d-20261027013515284` |
-| Backend source from earlier full file audit | `f05b81a0ff9d60fa39aff635d7164623f2256eb9` |
-| Live schema from earlier read-only server audit | 3; main source requires 4 |
+- Frontend: `2011d09558baa37d90820aeae4aab3eab473e6b6`.
+- Frontend release: `welcome-2011d09558ba-20261027T064119Z`.
+- Backend release: `f05b81a0ff9d-20261027013515284`.
 
-The public manifest/health check above is fresh to this session. The earlier
-file/service/schema audit remains dated evidence. Enrollment is confined to
-development; production services, bindings, database, email, DNS and release
-symlinks were not modified. Read [deployment/recovery](../../DEPLOYMENT_RECOVERY.md)
-for a separately authorized future operation.
+API/web/tunnel services were active/running and enabled; mail/backup/healthcheck
+timers were active/waiting and enabled. This establishes current availability,
+not deployment of main, complete game/commerce flows or fresh inbox delivery.
+Live database schema was not re-queried; the older schema-3 evidence in
+[PROJECT_STATE.md](../../PROJECT_STATE.md) remains dated.
+No rollout, database migration, mail send, DNS change or production restart occurred.
 
-## Blockers and next action
+## Next executable action
 
-No drift or merge conflict blocks this documentation handoff. The managed cloud
-`/workspace` environment still reports pending/offline; its checkout and unpublished
-contents remain UNKNOWN. Existing accessible CANDY source was independently
-preserved; a fresh clone does not prove anything about that inaccessible workspace.
+Read the owner's next aesthetic reference and the [skill-readiness brief](MMO_SKILL_READINESS.md).
+Use Superpowers brainstorming to define the design and gameplay requirements
+before implementation. The current shared realm has no formal party route
+selection, dungeon instances, 100-floor cave or sky temple. Their progression,
+checkpoints, encounters and persistence require project-specific work.
 
-Production remains schema 3 and lacks main's schema-4 expansion/phone fix. A future
-rollout needs private schema-3-to-4 rehearsal, schema-compatible fallback and old
-hashed-asset retention. Real catalog/inventory, checkout/payment/fulfillment,
-physical redemption and other commerce work remain incomplete. See the exact
-[remaining differences](../../SOURCE_RECONCILIATION.md).
-
-**Next action:** review PR #8's exact file list and final green Checks for integration
-into `main` through the normal reviewed workflow. Do not deploy or auto-merge as
-part of Relay initialization. GitHub is the shared handoff channel; no messages
-were sent to other people or other GPT/Codex conversations.
+Skills were searched/read, not installed. Prefer the Canvas 2D/game-UI and
+engine-agnostic level-design candidates first; Three.js/R3F/material skills are
+conditional on a separate renderer decision. No art style or renderer migration
+has been selected. Production rollout remains a separate operation governed by
+[the deployment/recovery procedure](../../DEPLOYMENT_RECOVERY.md).

@@ -1,5 +1,27 @@
 # Eldritch Fable project state
 
+## Private authoring continuation — October 30, 2026
+
+The owner has resolved the concealed narrative continuation and ending. The
+private authoring record and integrity index have been updated outside Git.
+Its identities, destinations, triggering conditions, dialogue and reveal sequence
+remain absent from public source, PR text, fixtures and frontend assets.
+
+[The public design](docs/superpowers/specs/2026-10-30-eldritch-expeditions-design.md)
+now includes the resulting infrastructure scope: durable class-specific equipment
+ownership/equipping and transactional authored-event stages. This supersedes its
+earlier catalog-only equipment boundary. One participant-eligibility policy is
+awaiting the owner's answer; detailed item balance and scene-reset flags remain
+proposals. Ruined Mossvale, free exploration and per-hero spoiler protection stand.
+
+Observed October 30 at 06:57 EDT through connected staging/GitHub tools:
+main remains `4c54082e55279d1f0efa301a5fd40e198405b8d9`; the task worktree
+was clean at `a863ebb7d729e0a281537f550f49ae39f5188053`, matching upstream
+0/0 and four documentation commits ahead of main, zero behind. Document checks
+and independent review apply to this revision; application tests and production
+checks were not rerun. This is a design update, not implementation or deployment.
+Older pending-ending and equipment-exclusion statements below are historical.
+
 ## Discovery-first ruined Mossvale — October 30, 2026
 
 The owner now requires a ruined-Mossvale free-roam start, optional hooks,

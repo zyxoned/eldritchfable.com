@@ -3,7 +3,7 @@
 Date: October 30, 2026 (America/New_York).
 Status: **Owner-confirmed direction; revised mechanics remain a proposal.**
 Application baseline: `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
-Documentation parent: `8e967b2ac26f43f33c47947e8f57ec93c0be7832`.
+Documentation parent: `a863ebb7d729e0a281537f550f49ae39f5188053`.
 
 ## 1. Intent and decisions
 
@@ -29,8 +29,10 @@ locates that private source; it is deliberately excluded from public Git.
 The earlier route ballot, named cave-versus-temple cards at arrival, automatic
 group advancement and one-floor-for-everyone assumption are superseded.
 Physical travel expresses consent; a party member is not a movement command
-for everyone else. No endgame identity, future encounter list or explanation
-is delivered to a first-time hero.
+for everyone else. Any private authored transition is an explicit, narrowly scoped
+exception defined in the private contract; it cannot justify forced onboarding or
+remote movement of unrelated heroes. No endgame identity, future encounter list
+or explanation is delivered to a first-time hero.
 
 ### Approaches
 
@@ -49,7 +51,10 @@ Retain the existing XP units/exchange and durable financial history. Recovery
 offers affected heroes a return to ruined Mossvale and later journeys to earned,
 personally known anchors, plus safe in-place recovery when companions clear
 the encounter; it never automatically restarts an expedition.
-The final narrative resolution remains an author decision in private notes.
+The owner has now specified the concealed continuation and ending in the private
+authoring record. One participant-eligibility policy remains an owner question.
+The new direction also requires real, durable class-specific equipment ownership;
+that expands the earlier catalog-only scope. Exact item balance remains proposed.
 
 ## 2. Existing foundations and boundaries
 
@@ -74,8 +79,11 @@ Preserve:
 - Existing authoritative movement, skills, range/cooldown checks and mutation receipts.
 - Existing storefront navigation, search, collections, wishlist, bag and disabled-checkout behavior.
 
-There is no new payment, inventory-ownership, equipment-stat, PvP, jumping/falling
-or real-time physics system in this scope.
+Add bounded, durable class-specific game equipment required by private authoring,
+including ownership, equip validation and authored effects. Existing class-catalog
+metadata alone does not prove ownership. Do not turn this into a general trading,
+crafting or loot-market project. No new payment, PvP, jumping/falling or real-time
+physics system is required.
 
 
 ## 3. Visual design and storefront fidelity
@@ -384,8 +392,10 @@ Proposed expedition reward profile `v1`:
   per eligible hero. Guardians occupy one slot rather than adding a bonus.
 - One primary-completion reward of 10 XP per eligible hero on an encounter floor.
   Pure rest/camp scenes have no completion reward.
-- No depth multiplier, clear bonus, new currency, tradable drop or equipment-stat
-  ownership. Chapter/route milestones unlock journal seals/completion records.
+- No depth multiplier, clear XP bonus, new currency or tradable ordinary-floor drop.
+  Chapter/route milestones unlock journal seals/completion records. Separately
+  authored equipment uses the durable ownership contract below; it is not an
+  additional ordinary-floor XP award.
 - Hard ceilings are 85 XP per hero per floor, 8,500 per full cave run and 1,700
   per full temple run. Actual authored budgets may be lower; resumed runs award
   only the remaining eligible content, never the ceiling automatically.
@@ -432,11 +442,49 @@ Exact enemy HP/damage tuning is delegated to playtesting within these reward cap
 
 
 
+### Durable class equipment and authored transitions
+
+The private authoring contract now requires persistent class-specific equipment.
+The public design deliberately omits its source, discovery conditions and names.
+Model item definitions separately from hero-owned instances/entitlements and
+equipped slots. Validate the saved hero class and ownership on the server; an
+item ID sent by the client or an entry in the shared catalog is not an entitlement.
+Capture the relevant class at grant admission and enforce a unique canonical
+grant identity per hero. Request retries, recovery, reconnect, class metadata
+edits and process restarts cannot mint another copy.
+
+Proposed defaults: class-bound and nontradable, retained through narrative
+recovery, with at most one instance per canonical entitlement. "Unique" does not
+silently mean a globally exclusive copy. Availability beyond the authored grant,
+specific slots, stat budgets and effects remain private authoring/balance work.
+Equipment is game state, not money: no sale, XP/copper conversion, checkout or
+shop-credit value is introduced. Preserve the existing lifetime-XP level/damage
+formula; item effects must be explicit additions, not a replacement progression
+or an undisclosed cap.
+
+Use a durable authored-event state machine for admission, placement, encounter
+resolution, witnessed content, grant and recovery. Private content defines exact
+conditions and outcomes. Resolve competing event claims atomically, fix the
+participant roster at the appropriate boundary and persist it across retries/
+restarts. Social membership, global world flags and spectatorship alone cannot
+pull distant heroes or grant them rewards and knowledge. Do not consume special
+customer progression with the privileged avatar. A crash resumes durable pending
+state rather than rerunning a grant or selecting a different claimant.
+
+The owner has specified the concealed narrative outcome. The exact cohort-
+eligibility rule remains pending and must be resolved before implementing its
+transition. Distinguish immutable route-completion history from resettable scene/
+cycle state; define the latter explicitly without clearing durable hero knowledge,
+equipment, finances or another group's run. A completed scene may deliver only
+what that hero witnessed, with reconnect behavior that neither skips a pending
+stage nor repeats its side effects.
+
 ## 8. Server authority, knowledge and persistence
 
 Add social-party membership, invitations, runs, per-floor states/participants,
 per-hero location, discovered facts, choice history, safe anchors and completion
-records. Runs retain route, seed, content/reward versions and frontier. Each floor
+records, equipment ownership/equipped slots and durable authored-event stages.
+Runs retain route, seed, content/reward versions and frontier. Each floor
 retains encounter/objective/scene state and its own revision. Each hero has one
 authoritative current location/HP and active run assignment; do not create a
 second wallet or independently editable health store.
@@ -542,7 +590,8 @@ Delivery order, not an implementation task plan:
    cave and temple segments with multi-location party support.
 3. Correct recovery/replay, per-viewer revelations, rewards and measured rendering.
 4. Author/validate all 100 cave floors and proposed 20 temple chambers, with
-   private canon integrated at earned reveal points and complete route finales.
+   private canon integrated at earned reveal points, its required equipment and
+   durable staged transitions, and complete authored continuation.
 
 Acceptance must show:
 
@@ -551,7 +600,8 @@ Acceptance must show:
 - Meaningful authored choices change access, clues, relationships or local outcomes;
   alternatives avoid a single compulsory NPC/quest path.
 - Solo, group, split-party/different-run and different-floor occupancy work within
-  six global live seats. No leader or timer moves a non-consenting hero.
+  six global live seats. No leader or timer moves a non-consenting hero;
+  narrow privately authored transitions affect only their eligible participants.
 - All authored route ordinals have connected entry/objective/exit paths, reproducible
   content and reachable finales; unknown maps/encounters are not sent upfront.
 - A newcomer with a veteran sees only earned knowledge; account/device switching,
@@ -563,6 +613,9 @@ Acceptance must show:
   responses preserve receipts/credits/discoveries and cannot duplicate rewards.
 - Checkpoint/completion recipients are distinct from witnesses; offline or elsewhere
   members do not gain rewards, unseen story facts or unearned completion.
+- Equipment grants/equips reject forged ownership, wrong classes and duplicate
+  replayed claims; durable event stages survive concurrent admission and crashes
+  without resetting unrelated state or publishing concealed content.
 - Existing account, Guardian, stash, search/catalog/bag and admin behavior survives.
 - Desktop/mobile reference review, real asset loading, controls, reduced motion
   and actual declared performance measurements pass.
@@ -575,7 +628,8 @@ There is no configured lint or standalone typecheck script.
 ## 11. Migration and operational boundary
 
 Source main requires schema 4. The forward migration adds expedition/discovery/
-choice state and carefully widens hero HP while preserving existing rows,
+choice state, equipment ownership and authored-event records, and carefully widens
+hero HP while preserving existing rows,
 references, account/session/mail state, Guardian progress, ledger and receipts.
 Rehearse upgrades from schema 4 and schema 3→4→new schema on private disposable
 copies. Do not populate story knowledge just from character level or an old
@@ -595,10 +649,13 @@ unattended scheduler is required for design.
 The owner has specified ruined Mossvale, free exploration, action-driven direction,
 spoiler protection and concealed story canon. The approved art direction remains.
 
-Temple length, safe-anchor spacing, recovery details and bounded rewards remain
-proposals. The private authoring source records the unresolved consequence of a
-final victory; do not invent a permanent global ending, require the other route
-or reveal future content to fill that gap. Final story writing follows the owner.
+Temple length, safe-anchor spacing, ordinary recovery details and bounded XP
+rewards remain proposals. The owner has resolved the concealed narrative outcome
+in the private authoring record. Do not publish it or invent a permanent global
+ending. One participant-eligibility question remains with the owner. Resettable
+scene flags/checkpoint reuse and equipment availability/balance must be explicit
+in the private implementation design; durable hero records remain preserved by
+the proposed contract. Final story writing follows the owner.
 
 The builder may settle module/table/endpoint names, asset packing, typography
 fallback, animation, exact objective patterns, enemy tuning and caches within

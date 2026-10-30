@@ -1,5 +1,19 @@
 # MMO expansion and visual skill readiness
 
+## Private authoring scope update — October 30, 2026
+
+The owner supplied the concealed narrative continuation and ending; the private
+authoring record has been updated. Keep those details out of public source and
+player previews. The public design now requires durable class-specific game
+equipment ownership/equipping and staged, transactional authoring events in
+addition to the existing discovery/expedition work. Earlier equipment exclusions
+are superseded. One participant-eligibility policy is awaiting the owner.
+
+The selected Canvas/game UI/art/level/encounter guidance still fits. Real item
+ownership and event persistence require project-specific server work; another
+skill or catalog entry does not implement them. No new skill search, installation,
+dependency change or product implementation was needed for this design revision.
+
 ## Ruined-Mossvale discovery revision — October 30, 2026
 
 The owner has refined the accepted 2D direction: start freely in ruined Mossvale,

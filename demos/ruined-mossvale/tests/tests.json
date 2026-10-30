@@ -1,0 +1,103 @@
+[
+  {
+    "name": "Explore freely and retain a local hero",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "free movement without a quest",
+      "optional journal",
+      "hero class selection",
+      "local save after reload",
+      "truthful solo prototype"
+    ],
+    "description": "Verifies a new visitor can immediately move and keep a chosen class and discoveries without accepting a quest.",
+    "steps": [
+      "Choose Mage in the hero-class selector.",
+      "Click visible ground north of the hero and let the hero walk a short distance.",
+      "Open Journal, read the encountered entries, and choose Back to the road.",
+      "Reload the page."
+    ],
+    "expected": "The hero remains a Mage at the saved position, the journal retains encountered entries, and there was no compulsory introduction or destination-selection screen."
+  },
+  {
+    "name": "Discover the western passage through the world",
+    "viewport": "desktop",
+    "covers": [
+      "physical cave discovery",
+      "optional signpost interaction",
+      "click-to-walk pathfinding",
+      "scene transitions",
+      "return travel",
+      "per-place journal"
+    ],
+    "description": "Verifies a player can follow the western road into the short cave scene and return.",
+    "steps": [
+      "Approach the weathered signpost north of the starting hearth using movement or ground clicks.",
+      "Interact with the signpost and choose Follow the western road.",
+      "Wait for the hero to arrive on foot, then choose Step through.",
+      "Explore the cave entrance and open Journal.",
+      "Close Journal, open Pause and settings, and choose Return to Mossvale."
+    ],
+    "expected": "The cave scene shows The Amber Hollows with its own stone environment and local discovery entry, and returning restores Ruined Mossvale without erasing the journal."
+  },
+  {
+    "name": "Choose the high road independently",
+    "viewport": "desktop",
+    "covers": [
+      "independent temple discovery",
+      "optional route order",
+      "temple environment",
+      "declining travel",
+      "completed save continuity"
+    ],
+    "description": "Verifies the high road can be chosen without first completing the cave and that an entrance can be declined.",
+    "steps": [
+      "Approach and interact with the weathered signpost north of the hearth.",
+      "Choose Follow the high steps and let the hero walk to the entrance.",
+      "Choose Keep exploring here to decline entry.",
+      "Interact with the nearby entrance again and choose Step through.",
+      "Explore the terrace briefly, then use Pause and settings to Return to Mossvale."
+    ],
+    "expected": "Declining keeps the hero in Mossvale; entering later shows The Windward Terrace without requiring cave completion, and returning preserves the discovered places."
+  },
+  {
+    "name": "Move and fight with touch controls",
+    "viewport": "mobile",
+    "covers": [
+      "touch direction controls",
+      "class ability",
+      "combat feedback",
+      "health and recovery",
+      "responsive playable layout"
+    ],
+    "description": "Verifies mobile directional/action controls support movement and a readable encounter.",
+    "steps": [
+      "Hold a direction-pad button and verify the hero moves; release it and verify movement stops.",
+      "Choose Ranger if available, approach the signpost, and follow either road into a short encounter.",
+      "Move toward a visible enemy; use Attack and Piercing shot while staying clear of red warning circles.",
+      "If the hero falls, choose Wake in Mossvale; otherwise retreat using Pause and settings, Return to Mossvale.",
+      "Open Journal."
+    ],
+    "expected": "Touch controls work without horizontal scrolling, attacks produce visible damage and vitality feedback, returning or waking remains playable, and discoveries survive."
+  },
+  {
+    "name": "Pause safely and protect the local save from accidental reset",
+    "viewport": "mobile",
+    "covers": [
+      "modal input isolation",
+      "reduced motion setting",
+      "reset cancellation",
+      "confirmed local reset",
+      "save guardrail"
+    ],
+    "description": "Verifies menus pause play and clearing the demo requires an explicit confirmation.",
+    "steps": [
+      "Move a short distance, open Journal, and verify the hero does not continue walking under it.",
+      "Close Journal and open Pause and settings.",
+      "Enable Reduce ambient motion and effects.",
+      "Choose Start a fresh demo, then Keep exploring.",
+      "Open Pause and settings again, choose Start a fresh demo, and confirm Start again."
+    ],
+    "expected": "Menus isolate movement; canceling retains the current journey, while confirming starts at the Mossvale hearth with fresh local discoveries and does not affect any live account."
+  }
+]

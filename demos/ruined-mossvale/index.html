@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101711">
+  <meta name="description" content="A small, playable journey through ruined Mossvale. Explore at your own pace.">
+  <title>Eldritch Fable — Mossvale Demo</title>
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <div id="app">
+    <main class="game-shell">
+      <header class="masthead">
+        <div class="wordmark"><span class="crest" aria-hidden="true">✧</span><div>Eldritch Fable<small>A JOURNEY THROUGH THE RUINS</small></div></div>
+        <div class="demo-label"><span></span> PLAYABLE PROTOTYPE · SOLO</div>
+        <nav aria-label="Game menus">
+          <button id="journal-button" class="quiet-button" aria-label="Open journal"><span aria-hidden="true">▤</span><span class="menu-label">Journal</span><kbd>J</kbd></button>
+          <button id="help-button" class="quiet-button" aria-label="Controls and help"><span aria-hidden="true">?</span></button>
+          <button id="pause-button" class="quiet-button" aria-label="Pause and settings"><span aria-hidden="true">Ⅱ</span></button>
+        </nav>
+      </header>
+      <section class="playfield" aria-label="Mossvale exploration">
+        <canvas id="world" tabindex="0" aria-label="Explorable world. Move with WASD or arrow keys; E interacts, Space attacks, Q uses your ability."></canvas>
+        <div class="location-hud" aria-live="polite">
+          <span class="eyebrow" id="region-kind">THE RUINS</span>
+          <h1 id="location-name">Ruined Mossvale</h1>
+          <span class="location-rule" aria-hidden="true">◆</span>
+        </div>
+        <aside class="hero-hud" aria-label="Your hero">
+          <span class="hero-medallion" id="hero-symbol" aria-hidden="true">➶</span>
+          <div class="hero-details">
+            <label class="sr-only" for="class-select">Hero class</label>
+            <select id="class-select" aria-label="Hero class"></select>
+            <div class="health-row"><span>VITALITY</span><span id="health-text">100 / 100</span></div>
+            <div class="health-track" role="progressbar" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="health-bar"><span></span></div>
+          </div>
+        </aside>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+        <div class="interaction-prompt" id="interaction-prompt" hidden><kbd>E</kbd><span id="interaction-label"></span></div>
+        <div class="direction-pad" aria-label="Touch movement">
+          <button class="move-button north" data-move="up" aria-label="Move north">↑</button>
+          <button class="move-button west" data-move="left" aria-label="Move west">←</button>
+          <span class="pad-center" aria-hidden="true">◇</span>
+          <button class="move-button east" data-move="right" aria-label="Move east">→</button>
+          <button class="move-button south" data-move="down" aria-label="Move south">↓</button>
+        </div>
+        <div class="action-bar" aria-label="Hero actions">
+          <button id="attack-button" class="action-button"><span aria-hidden="true">⚔</span><strong>Attack</strong><kbd>SPACE</kbd></button>
+          <button id="ability-button" class="action-button"><span aria-hidden="true">✦</span><strong id="ability-name">Piercing shot</strong><kbd>Q</kbd><span class="cooldown-label" id="ability-cooldown"></span></button>
+          <button id="interact-button" class="action-button"><span aria-hidden="true">◇</span><strong>Interact</strong><kbd>E</kbd></button>
+        </div>
+        <div class="walking-hint" id="walking-hint">WASD / ARROWS <span>to wander</span> <i>·</i> CLICK <span>to walk</span></div>
+        <div class="save-status" id="save-status">Your progress stays in this browser</div>
+      </section>
+    </main>
+    <dialog id="game-dialog" aria-labelledby="dialog-title">
+      <div class="dialog-ornament" aria-hidden="true">✧</div>
+      <button class="dialog-close" id="dialog-close" aria-label="Close dialog">×</button>
+      <p class="eyebrow" id="dialog-eyebrow">MOSSVALE</p>
+      <h2 id="dialog-title"></h2>
+      <div id="dialog-content" class="dialog-content"></div>
+      <div id="dialog-actions" class="dialog-actions"></div>
+    </dialog>
+    <div class="sr-only" id="world-status" aria-live="polite"></div>
+  </div>
+  <script type="module" src="./src/game.js"></script>
+</body>
+</html>

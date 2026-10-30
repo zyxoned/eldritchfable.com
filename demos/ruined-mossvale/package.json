@@ -1,0 +1,1 @@
+{"name":"eldritch-fable-mossvale-demo","private":true,"type":"module","scripts":{"test":"node --test tests/world.test.mjs"}}

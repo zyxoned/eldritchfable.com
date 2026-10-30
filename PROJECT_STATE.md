@@ -1,5 +1,28 @@
 # Eldritch Fable project state
 
+## Playable ruined-Mossvale demo — October 30, 2026, 08:35 EDT
+
+The owner accepted the design and requested an actual demo.
+[The isolated playable preview](https://eldritch-fable-mossvale-demo-yizzwe.v2.appdeploy.ai/)
+is ready: solo free exploration, optional hooks, two physically discoverable short
+encounters, prototype classes/combat, journal, recovery and local saves.
+[Source and controls](demos/ruined-mossvale/README.md) and the
+[demo plan](docs/superpowers/plans/2026-10-30-ruined-mossvale-demo.md) record its scope.
+
+AppDeploy app `eldritch-fable-mossvale-demo-yizzwe`, snapshot
+`1793363480954`, returned ready and no frontend/network/runtime errors.
+Six focused rules tests, syntax checks, desktop route journeys, mobile/reset
+checks and live combat/recovery/touch checks passed. Five preview QA workflow
+definitions are included; detailed five-test pass results were not returned.
+This is a standalone prototype, not the full MMO, server progression or campaign.
+
+Fresh main before this work: `68f91c4531e01ab669953041c5257b3678b8c208`.
+Its source tree equals the prior design head
+`298672a14036998202a035b9d01c8755a03431a4`; histories are preserved.
+Task branch `demo/ruined-mossvale-20261030` starts from that fresh main.
+Only demo source, its plan and handoff/state notes change. The older preview
+and production/customer data remain untouched; production was not re-verified.
+
 ## Private authoring decisions resolved — October 30, 2026
 
 The owner has resolved the private participant policy and new persistent-effect

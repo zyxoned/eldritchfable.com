@@ -1,45 +1,55 @@
-# Eldritch Fable: illustrated expeditions design
+# Eldritch Fable: illustrated discovery and expeditions design
 
 Date: October 30, 2026 (America/New_York).
-Status: **Design for owner review; gameplay defaults below are proposals.**
-Source baseline: `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
-Documentation parent: `9e0c7db38fc3b91bb62caa42f6cc17669c70041b`.
+Status: **Owner-confirmed direction; revised mechanics remain a proposal.**
+Application baseline: `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
+Documentation parent: `8e967b2ac26f43f33c47947e8f57ec93c0be7832`.
 
 ## 1. Intent and decisions
 
-Make the supplied "Adventures Become Real" storefront reference feel like the
-entrance to the same illustrated fantasy world players explore together.
+Players begin in **ruined Mossvale**, free to look around, speak to people,
+investigate, follow a path, return, ignore a hook or stop playing. Their actions
+and decisions shape what they discover and where they go. There is no compulsory
+route election, main-quest acceptance or opening plot explanation.
 
-The owner approved the recommendation of **illustrated top-down 2D with layered
-depth**, antique-gold/black framing, candlelit cave stone and pale temple ruins
-above twilight clouds. The requested cave has **100 dungeon floors** and the
-party can choose it or a sky temple. One hundred floors does not set a character
-level cap. The image and visual approach are decided; the owner has not yet
-approved the detailed party, checkpoint, reward or temple-size policies below.
+The owner approved illustrated top-down 2D with layered depth, matching the
+"Adventures Become Real" reference: black/antique-gold framing, candlelight,
+ivory headings, parchment and restrained violet. The requested cave has 100
+floors, and a sky-temple route is also discoverable. These are authoring facts,
+not a newcomer-facing menu or complete map.
 
-This is a substantial feature project within the existing React/Vite and
-Node/SQLite application. It includes a targeted storefront fidelity pass, a shared
-visual language for the game and a complete expedition system. It is not a claim
-that any of those new systems have been implemented.
+The owner supplied concealed narrative canon separately. Its identities, final
+encounter details and explanation of recovery/replay stay out of this public
+document and public assets. Authorized builders must consult the private
+authoring source before final story content. A local task Git-metadata index
+locates that private source; it is deliberately excluded from public Git.
 
-### Approaches considered
+### What changed after owner feedback
+
+The earlier route ballot, named cave-versus-temple cards at arrival, automatic
+group advancement and one-floor-for-everyone assumption are superseded.
+Physical travel expresses consent; a party member is not a movement command
+for everyone else. No endgame identity, future encounter list or explanation
+is delivered to a first-time hero.
+
+### Approaches
 
 | Approach | Tradeoff | Decision |
 | --- | --- | --- |
-| Illustrated Canvas 2D, layered scenery and DOM interface | Reuses the running stack, keeps readable tile combat and supports rich authored art; lighting/material depth must be illustrated or composited | Owner accepted this recommendation |
-| Full 3D characters, environments and movable camera | Adds a renderer, modeling/rigging/animation pipeline and camera/physics decisions; materially enlarges the rebuild | Not selected |
+| Illustrated Canvas 2D with layered art and DOM UI | Reuses the stack and tile combat; depth is authored/composited | Owner accepted |
+| Full 3D renderer/models/camera | Substantial engine and asset rebuild | Not selected |
+| Discovery through playable ruins and physical entrances | Requires per-hero knowledge, consequences and location-aware projections | Owner-directed experience |
+| Upfront route selection with plot summaries | Easier coordination, but directs and spoils the first experience | Replaced |
 
-### Proposed defaults requiring review
+### Proposed defaults, not additional owner canon
 
-- Cave: ten chapters of ten floors; checkpoints every five, guardian every ten.
-- Sky temple: twenty chambers in four five-chamber sanctums, a shorter complete route.
-- Route selection at the hub uses a timed party ballot, followed by individual departure confirmation.
-- Progress belongs to saved heroes/accounts; parties own the current expedition.
-- Existing redeemable XP units and exchange rules remain; no depth multipliers, new currency or tradable loot.
-- Defeat returns the party to its current checkpoint, without removing credited XP.
-
-Implementation may settle the details explicitly delegated in section 12.
-Changes to these behavioral defaults require updating the design.
+Keep ten ten-floor cave chapters, five-floor safe anchors and guardians every
+ten floors. The temple is currently proposed as twenty chambers in four sanctums.
+Retain the existing XP units/exchange and durable financial history. Recovery
+offers affected heroes a return to ruined Mossvale and later journeys to earned,
+personally known anchors, plus safe in-place recovery when companions clear
+the encounter; it never automatically restarts an expedition.
+The final narrative resolution remains an author decision in private notes.
 
 ## 2. Existing foundations and boundaries
 
@@ -66,6 +76,7 @@ Preserve:
 
 There is no new payment, inventory-ownership, equipment-stat, PvP, jumping/falling
 or real-time physics system in this scope.
+
 
 ## 3. Visual design and storefront fidelity
 
@@ -100,10 +111,14 @@ then one column without shrinking readable text or overflowing the page.
 
 ### Game shell
 
-The hub, route cards, welcome, class details, stash and journal share the same
+The ruined settlement, discovered-entrance interactions, class details, stash
+and journal share the same
 dark/gold/ivory materials. Inventory/journal surfaces may use restrained parchment.
-The combat HUD is quieter: compact health, party state, abilities and current
-objective; journal/lore/settings live in drawers. Keep the playfield clear.
+Ruins should include broken streets, moss-covered masonry, damaged landmarks,
+warm refuges and visible outward paths. The opening is playable rather than a
+mandatory explanatory cutscene. The combat HUD is quieter: compact health, party state, abilities and current
+objective only when the hero has engaged with or chosen to track it; journal,
+lore and settings live in drawers. A fresh arrival has no compulsory main-quest tracker. Keep the playfield clear.
 
 Cave art uses layered rock/ruins, readable ground and localized amber light with
 occasional violet relics. Sky art uses pale weathered stone, gold astronomical
@@ -114,54 +129,80 @@ Use authored sprite atlases, material textures, baked directional highlights,
 contact shadows, cached scenery and bounded light overlays. This is the graphics
 upgrade; native bump/normal-map shaders are not a prerequisite.
 
-## 4. Player journey and party decisions
 
-Mossvale remains the hub and its Guardian quest remains available. Verified,
-enabled accounts enter through existing account/game flows.
+## 4. Ruined Mossvale, exploration and decisions
 
-A hero can belong to one party and participate in one unfinished expedition.
-Parties contain one to six ordinary heroes, subject to the six global live seats.
-Solo expeditions are supported. Invitation links identify an invitation, require
-authenticated acceptance and cannot enroll an account merely by being opened.
+### First arrival
 
-The creator leads initially. Invitations, removing a member and leadership
-transfer are available in the hub or at a cleared checkpoint, not during combat.
-A member can leave voluntarily at any time; leaving never deletes hero progress
-or another member's expedition. If the leader leaves or loses presence, the
-longest-tenured present member becomes acting leader. Expedition succession
-considers only its retained run participants, not party members who stayed in
-the hub. A fully offline party/run pauses and remains resumable.
+Proposed implementation: enter a playable safe refuge among the ruins. Offer brief optional controls,
+not a mandatory plot cinematic, route carousel or quest checklist. Do not name
+undiscovered destinations, their length, their finales or the hidden cause of
+events. The hero can move before accepting a quest.
 
-### Route ballot
+Proposed opening content: local exploration, optional survivor interactions and
+at least two walkable outward approaches. These are authored playable spaces leading to
+discoveries and optional activities, not a promise of an unlimited continent.
+Walking away from one hook must not make that hook intercept the hero everywhere.
+Declining a conversation is a valid choice. Do not punish it with a dead UI.
 
-The leader proposes a route at the hub. Freeze the ordinary-party roster for
-a 20-second ballot: each member can choose cave, sky or abstain and may change
-the choice before closing. A route needs strictly more than half of the frozen
-roster. A tie or no majority cancels the ballot. Roster changes cancel it.
-One hero's vote counts once across tabs; the administrator avatar has no vote.
+The existing Guardian progress and saved hero remain intact. Adapt old quest
+presentation to the ruined setting without announcing new completion goals or
+erasing earned progress. Audit the fixed story banner, class lore and intro
+cutscene for future claims; browser "intro seen" flags cannot grant story facts.
 
-After a winner, show route, selected shared checkpoint, participant list and
-departure confirmation. Each member chooses Join or Stay in hub. Wait until
-all have responded or 60 seconds elapse; silence means Stay. At least one
-confirmed, present member is required to launch. Never move a dissenting or
-unconfirmed player into an expedition.
+### Consequences
 
-The launch leader is the current leader if confirmed, otherwise the longest-
-tenured confirmed member. It is presentation/control ownership, not authority
-to bypass server rules. Members who stay may leave the party to form another;
-one party can own only one unfinished run.
+Use authored consequences, not just different text followed by an identical
+forced route. Proposed examples include helping a survivor who shares a landmark,
+investigating a damaged ward that exposes an entrance, preserving evidence, or
+choosing which local commitment to pursue first. Offer alternate ways to find
+important paths so ignoring one NPC does not secretly lock the whole game.
 
-A group may resume a checkpoint unlocked by every departing hero. New parties
-use the intersection of the departing heroes' unlocked checkpoints. The default
-is the latest shared checkpoint; beginning at floor/chamber one is always offered.
-The cave's latest start is camp 95, the temple's is camp 15: completed route
-markers 100/20 cannot produce an empty, automatically completed run.
+Every choice defines its scope and reset policy:
 
-Route changes occur after returning to the hub and explicitly abandoning or
-completing the current run. Abandonment preserves already credited XP and
-personal checkpoint unlocks; it cannot reset reward identities inside that run.
+- **Personal:** knowledge, trust/history, remembered evidence and route access facts.
+- **Expedition/scene:** a chosen passage, ward state or local objective outcome.
+- **Shared settlement:** only explicitly designed non-destructive common state.
 
-## 5. Content, progression and checkpoints
+Default to personal/expedition effects. Do not let one hero permanently ruin
+another's starter area, kill a necessary shared NPC or overwrite everyone else's
+history. Keep shared outdoor walkability coherent; personalized access is an
+explicit entrance/interaction condition, not a misleading invisible wall.
+Record choice history durably. Replayable scene state may reset as authored;
+remembered choices and knowledge are not erased by a loss.
+
+### Parties and physical entry
+
+A social party has one to six ordinary heroes, subject to the existing global
+six-seat limit. Heroes roam independently. Members may stay in Mossvale, follow
+different approaches, leave a group or choose separate expeditions. A social
+party may therefore have multiple expedition runs. One hero has at most one
+active run assignment/location at a time; both routes' earned progress remains.
+
+Invitations require authenticated acceptance. Opening a link does not enroll,
+move or reveal a destination to its recipient. Creators initially coordinate;
+leadership is not power to teleport members, reveal their private journal or
+commit their story choices. Run leadership passes to a present retained participant,
+not to a party member who stayed elsewhere.
+
+At an observed entrance, the server presents only what that hero can know.
+Entering enrolls that hero and explicitly consenting nearby companions in the
+same run, or creates a solo run. Require physical range, discovery/access
+conditions and current consent for each traveler. Silence, a leader click or
+a countdown is never consent. No global cave-versus-temple ballot is required.
+
+A member who stays behind keeps playing where they are. Leaving an active
+expedition frees that hero to explore or enter another route; it does not erase
+saved checkpoints or abandon everyone else's run. Rejoining uses a physically
+known entrance/anchor and current membership/capacity rules. New heroes cannot
+select undiscovered high checkpoints; discovered, earned anchors may be offered
+locally when relevant. Completed-route markers cannot create an empty run that
+auto-grants completion. Under the current content proposal, entrance camp 0
+starts floor 1, the latest cave resume camp is 95 and the latest temple resume
+camp is 15; the 100/20 completion markers are not empty launch destinations.
+
+## 5. Authored route content and individual travel
+
 
 ### Cave: 100 numbered floors
 
@@ -196,8 +237,8 @@ camps after the floor is cleared. Camp 0 is the entrance; camps 5 through 95
 allow resumption; floor 100 completes the route.
 
 Target roughly 25–35 minutes per ten-floor chapter and 4–6 hours across visits,
-with ordinary wipe replay limited to the previous five-floor segment. These are
-balancing targets, not timers or reasons to add filler.
+with replay limited to the failed encounter while cleared floors remain cleared.
+These are balancing targets, not timers or reasons to add filler.
 
 ### Sky temple: 20 chambers
 
@@ -210,124 +251,136 @@ puzzles. Floating architecture remains ordinary walkable tiles. There are no
 fall deaths, jumping controls or hidden twitch timing requirements. Target
 40–60 minutes overall, with five-chamber checkpoint segments.
 
-Both routes are available from the hub. Completing the cave is not a prerequisite
+Both routes are discoverable through the world. No initial screen lists both routes or their endings. Completing the cave is not a prerequisite
 for entering the temple, and the temple is not a replacement ending for the cave.
 
-### Floor completion and transfer
 
-The server decides when the primary objective and required encounters are complete.
-Commit eligible rewards and journal progress before enabling the exit.
 
-Any living present participant may activate a cleared exit. Show a five-second
-departure countdown. During it a member may choose Return to hub instead of
-advancing; no additional unanimous vote is required for every floor.
-Transfer remaining participants together exactly once, including present downed
-heroes. Reconcile disconnected members to the new floor on reconnect.
+### Discovery versus an authoring roadmap
 
-At normal floor boundaries living heroes retain HP; downed heroes return at
-100 HP, preserving the existing full-health/no-XP-loss recovery principle.
-These authoritative transitions apply to retained in-run participants, including
-network-absent heroes; voluntary hub visitors are not transported back.
-At safe camps all retained in-run participants recover to 100 HP. Tune difficulty around this explicit
-behavior rather than adding unannounced death penalties or consumable charges.
+The chapter counts and names above guide content production. The player's map,
+journal and HUD show only observed places and current objectives. Show current
+depth when useful, not a checklist of all hundred floors or hidden encounters.
+Routes acquire names through observation/dialogue rather than an arrival menu.
 
-The current combat cadence remains action-triggered and server-authoritative.
-Guardian variation may use ward phases, marked targets, add waves and visible
-objective states. Cosmetic windups must not invent damage or imply an autonomous
-simulation that the server does not provide. Timed floor departures may use a
-bounded persisted deadline; combat does not require a new high-frequency loop.
+### Floor state and crossing
 
-## 6. Defeat, leaving, disconnect and resumption
+A run stores a cleared frontier and durable floor states keyed by ordinal,
+rather than one current floor that forces every hero to share a location.
+Heroes in the same run may occupy different already accessible floors.
+An exit unlocks through actual objective completion; crossing it moves only
+heroes who physically cross and affirm entry. Others can investigate, return,
+wait or leave. Do not destroy their occupied floor when a companion advances.
 
-Inside an expedition, zero HP produces a saved downed state rather than instantly
-warping a hero to Mossvale. Current schema 4 constrains normal HP to 1–100;
-the new migration must preserve/rebuild that constraint as 0–100, retain every
-existing row/reference, and allow HP=0 only for an expedition downed state.
-The server keeps Mossvale's existing immediate 100-HP recovery transaction.
-HP remains the one authoritative health value; do not add a divergent HP store. A downed hero can observe, chat and maintain presence
-but cannot move, activate objectives/exits, or perform any combat/skill action,
-including healing, buffs and wards. Ordinary healing must exclude HP=0/downed
-targets; a heal cannot resurrect them. Recovery is allowed only at the defined
-floor/camp/wipe transition, not through a combat query that currently heals all
-nearby active characters.
+Cleared connections remain traversable in both directions as authored. Reaching
+a sealed door can honestly require an objective; it must not demand acceptance
+of a prescribed story interpretation. A newly joined hero can catch up through
+accessible cleared spaces; no teleport into a remote unseen encounter or
+retroactive reward is granted. A hero physically joining an ongoing encounter
+uses its existing difficulty snapshot and earns only currently eligible rewards.
 
-If all present combat participants are downed, atomically reset the run to the
-latest cleared camp, restore 100 HP and reload the next floor in that segment.
-Keep credited XP and reward receipts. On replay, identical encounters use the
-same reward identities; previously credited rewards are not paid again.
+Only player-occupied/active floor instances need live processing. With six live
+regular seats, at most six occupied expedition floors need live simulation;
+persist inactive floors. Each floor has its own revision, entities, effects and
+combat membership. Party social membership is not combat range or floor presence.
 
-Retain the current 75-second seat lease and 20-second heartbeat. A lost SSE
-connection alone does not abandon a hero or grant a heal. After the lease expires,
-the hero is absent from targeting and active membership projections but remains
-a run participant. Reconnection rechecks the six global regular seats. If they have been filled,
-return the existing full-realm/waiting state while preserving run membership;
-never reserve or create a seventh seat. When admitted, restore the same hero
-and the run's canonical location and health state. Network loss alone does not
-heal; subsequent floor/camp/wipe transitions may legitimately have changed
-that saved HP/downed state while the hero was absent.
+When a floor clears, commit eligible XP, choice/objective results and progression
+before opening the exit. Present downed heroes may choose recovery once the floor
+is safe; living heroes can continue or leave. No automatic five-second group
+transfer or vote on every floor is part of this revision.
 
-If nobody is present, pause instead of treating disconnection as a wipe. Resume
-durable state after restart. Expired departure deadlines are reconciled once
-when the run is recovered. A reconnect cannot replay an old countdown/advance.
+## 6. Loss, recovery, absence and progress
 
-Distinguish three operations in the UI and state machine:
+### Diegetic recovery with free choice afterward
 
-- **Return to hub:** retreat but retain party/run membership. The hero receives
-  normal hub recovery and cannot re-enter the active encounter; re-entry is at
-  a cleared camp. If this removes the last present in-run hero, reset the current
-  segment to its last cleared camp and mark the run paused-at-camp. Reset enemies/
-  objectives with the same run/reward identities; keep credited XP. This gives
-  the party an actual safe place to re-enter instead of stranding a run mid-floor.
-- **Leave party:** remove membership and mark that participant left. If nobody
-  remains a member, mark the run abandoned. A new invitation later is a new
-  participant admission and follows shared-checkpoint rules.
-- **Network absence:** preserve membership and encounter state. If all heroes
-  simply lose presence, pause at the current encounter rather than rewinding.
+Treat the first return as an observed mystery, not an explanation. The concealed
+cause and its later confirmation are private authoring content. Do not display
+an explanatory death tip, villain-named reset, full loop counter or future finale.
 
-Retained members returning from the hub may rejoin their existing run at its next
-cleared camp even if their personal checkpoint is older; they do not receive
-missed checkpoint awards merely by returning. They cannot rejoin during combat.
-These distinctions prevent leave/rejoin healing of an ongoing encounter.
+A defeated hero may choose to wake in ruined Mossvale. They are free to explore,
+pursue something else, leave or deliberately resume an expedition via an earned,
+personally known anchor. Never auto-queue them back into the same run. If companions
+clear the floor while that hero remains downed, offer safe in-place recovery too.
+These recovery choices restore 100 HP; credited XP is not removed.
 
-New participants may join a party only at hub/camp and enter the expedition only
-at a cleared camp, after accepting the route and checkpoint. No mid-fight carry
-or late reward claim is permitted. New lower-progress participants cannot enter a camp they have not unlocked.
-To include them, complete or explicitly abandon the current run, then launch a
-new run from an earlier shared camp. Do not rewind the same unfinished run to
-admit a newcomer. Only wipe/last-member retreat resets its current segment,
-using the same IDs; an explicitly new run has a new ID.
+Within combat, HP=0 is downed. The new migration must widen the existing 1–100
+hero HP constraint to 0–100 while preserving rows/references, and permit zero
+only for expedition downed state. Keep Mossvale's existing immediate recovery.
+Downed heroes cannot move, activate objectives/exits or cast any combat/skill,
+including healing/buffs/wards. Ordinary heals exclude downed targets; there is
+no accidental mid-fight resurrection.
 
-### Who receives progress
+A floor encounter is defeated only when its nonempty present combat cohort is
+entirely downed, not when heroes elsewhere are downed. An empty floor pauses.
+Persist a defeated/pending-recovery phase so repeated heartbeats or downed
+observers cannot trigger another reset. Rearm a new attempt only after valid
+recovery and physical re-entry, or when an eligible living companion physically
+enters from another floor; preserve canonical reward identities. Downed observers
+do not have to all leave before that legitimate new attempt.
+Reset only the failed encounter's replayable state under stable run/floor/reward
+identities. Previously cleared
+floors, occupied neighboring floors and other runs are unaffected. The heroes'
+choice of when/where to recover is not a command to relocate unrelated members.
 
-Personal checkpoint progression is separate from XP eligibility. At a five-floor
-camp clear, award the checkpoint only to retained participants who are present
-under the active lease and made at least one real combat, effective-support or
-required-objective contribution during that five-floor segment. A present downed
-hero may qualify; a network-absent or voluntary hub visitor does not. Merely
-voting, moving, standing nearby or readying is not a contribution.
+Financial receipts, credited XP/copper, lifetime XP, discoveries, remembered
+choices and earned progression survive. Reset only authored encounter/scene
+state. Retrying the same failed encounter cannot pay its rewards again.
 
-Store a monotonic highest checkpoint per hero/route; earning a later checkpoint
-also makes earlier camps available. Reset the segment-participation marker only
-at a committed camp boundary. Route completion additionally requires presence
-and a qualifying contribution during the final guardian encounter. Downed heroes
-can qualify; absent heroes do not receive a completion seal automatically.
-Reconnecting to the same ongoing run remains possible without receiving missed
-personal unlocks. A later eligible camp can advance their personal checkpoint.
+### Network absence and leaving
 
-If the party disbands, retain each hero's personal unlocked checkpoints and
-completion records. Completed/abandoned runs stay auditable; no automatic
-deletion of financial ledger or replay-protection records is introduced.
+Keep the 75-second presence lease and 20-second heartbeat. Losing SSE alone does
+not mean death, abandonment, discovery, a new heal or voluntary departure.
+After lease expiry, the hero is absent from targeting but retains run history.
+Re-admission rechecks all six regular seats; if full, wait/return the existing
+full-realm state without deleting progress or making a seventh seat.
+
+When no one is present on a floor, pause/save it rather than treating absence
+as defeat. Reconnect restores the hero's authoritative location and health,
+subject to legitimate intervening outcomes, without pulling them to the party
+leader. Offline heroes receive no new story facts or progression merely because
+companions advanced somewhere else.
+
+**Return to Mossvale** clears active run assignment but retains membership/history.
+The old encounter is paused when empty, not rewound merely to manufacture a safe
+re-entry or a new reward. New travel may use another run. **Leave party** removes
+social membership without deleting saved hero progress. Explicitly abandoning a
+run is separate; no leader may erase another participant's retained progress.
+An empty run remains resumable unless its participants explicitly abandon it.
+
+Re-enter only through the hero's discovered entrance or earned anchor, with an
+active living hero. No client-supplied remote floor jump. A new run has a new ID;
+re-entering an existing run, including after recovery, retains its reward IDs.
+
+### Who earns progress and knowledge
+
+At a five-floor safe anchor, earn a personal checkpoint only while physically
+present under the active lease and after a real combat, effective-support or
+required-objective contribution in that segment. Present downed heroes can
+qualify after the safe boundary is resolved. Heroes elsewhere or absent do not.
+A monotonic highest earned checkpoint makes earlier earned-path starts available;
+it does not populate unknown journal entries or remotely activate unseen objects.
+
+Route completion requires presence and a qualifying contribution in the final
+encounter. A companion completing it elsewhere cannot grant a seal or reveal it.
+
+Discovery is different from financial/progression eligibility. A hero may learn
+what they directly witness or inspect without dealing damage; a healer/newcomer
+does not have to earn XP to see the visible world. Store separate server-owned
+facts for observed landmark, inspected clue, discovered entrance, entered place,
+witnessed event and confirmed explanation. Every fact has an explicit spatial/
+interaction trigger; missed scenes are not auto-filled by party membership.
 
 ## 7. Rewards, difficulty and fairness
 
-Current Mossvale rewards remain unchanged: 15 XP per eligible thornling spawn,
+
+Existing Mossvale award units remain unchanged: 15 XP per eligible thornling spawn,
 10 XP per unique crystal/account and 100 XP once for the Guardian quest.
 Mossvale Guardian objectives remain scoped to Mossvale. Dungeon actions must not
 silently satisfy its crystals/shrine/kill prerequisites.
 
 Proposed expedition reward profile `v1`:
 
-- At most five reward-bearing enemy slots per floor/chamber, each worth 15 XP
+- At most five reward-bearing enemy slots per run/floor or run/chamber, each worth 15 XP
   per eligible hero. Guardians occupy one slot rather than adding a bonus.
 - One primary-completion reward of 10 XP per eligible hero on an encounter floor.
   Pure rest/camp scenes have no completion reward.
@@ -360,179 +413,209 @@ contributors. For this scope, the seventh avatar cannot enter expedition combat
 or perform expedition mutations at all. Reject privileged damage, execution,
 healing, movement/teleport, objective, completion and checkpoint commands there;
 this prevents an administrator clearing encounters on behalf of reward-eligible
-customers. It cannot vote, occupy a regular seat or collect customer rewards.
+customers. It cannot collect customer rewards or occupy a regular seat.
 Any future spectator access is read-only and must retain instance isolation.
 Current privileged Mossvale behavior remains separate.
 
 Preserve permanent character levels and their existing damage bonus. Floor
 difficulty is content depth, not a new character level. Use authored depth
-profiles and bounded party-size scaling fixed at floor entry. Count retained
-in-run participants, including network-absent members, and exclude voluntary
-hub visitors or members who left. Reconnecting cannot exploit solo scaling.
+profiles and bounded party-size scaling frozen at the encounter's first hostile
+action. Count its floor-local participants, retaining temporarily disconnected
+members associated with that encounter. Exclude heroes on other floors, in the
+hub, assigned to another run or present only in historical membership records.
+Splitting elsewhere cannot inflate a companion's fight. Late physical arrivals
+use the frozen profile; no HP/reward change happens during combat.
 Do not rescale
 HP/rewards mid-fight when someone disconnects. Do not silently cap/replace
 lifetime XP, reset heroes or rubber-band rewards to their wallet.
 Exact enemy HP/damage tuning is delegated to playtesting within these reward caps.
 
-## 8. Server authority, persistence and privacy
 
-Add parties, invitation/membership, runs, participants, per-hero route checkpoints
-and journal completion records. An unfinished run stores its route, seed,
-content/reward versions, current ordinal, checkpoint, status, current encounter
-state, objective progress, departure deadline and instance revision.
 
-There is one authoritative current location/HP/position for a normal hero.
-Do not create competing balances or two independently editable hero health states.
-The builder may choose table/column layout, but membership, downed state and
-location changes must commit consistently with the existing saved hero.
+## 8. Server authority, knowledge and persistence
 
-Every enemy, effect, contribution, heal target, combat message and action is
-scoped to the current hub or expedition floor. Existing "nearby party heal"
-must use actual party/run membership inside expeditions. Private party/run
-messages cannot appear in other parties' SSE snapshots. Wallets, account IDs,
-email and invitation secrets never enter public projections.
+Add social-party membership, invitations, runs, per-floor states/participants,
+per-hero location, discovered facts, choice history, safe anchors and completion
+records. Runs retain route, seed, content/reward versions and frontier. Each floor
+retains encounter/objective/scene state and its own revision. Each hero has one
+authoritative current location/HP and active run assignment; do not create a
+second wallet or independently editable health store.
 
-Mutations express intent and include a 16–80 character request ID, expected
-location/run/floor and instance revision where applicable. Revalidate current
-session/account, membership, phase, permissions, range and cooldown server-side.
-Bind receipts to the path/input hash; changed payloads under the same ID conflict.
-After current authentication/authorization, resolve an existing receipt before
-new-action floor/revision preconditions; otherwise a successful transition replay
-would incorrectly fail as stale. Return only a currently authorized projection,
-never an old private run snapshot to a member who has left. Retry an uncertain
-mutation with its original ID rather than generating a new one.
+Scope enemies, contribution, heals, effects, objective mutation and local messages
+to the hero's actual floor/instance. Historical membership alone grants no remote discovery, mutation or travel.
+Every new action requires the hero's current active assignment, actual floor,
+valid state/range, and current access/consent. Social party chat can be a deliberately
+separate channel; server-generated messages must not reveal unknown places or
+events elsewhere. Roster labels may say a companion is elsewhere without naming
+undiscovered destinations. Wallets, emails, invitation secrets and private account
+or narrative facts never enter a shared projection.
 
-Floor advancement is a conditional, transactional state change. Commit rewards,
-completion/checkpoint records, placements, revision and new encounter state
-together. Concurrent exits, repeated countdowns and stale requests cannot advance
-twice. Use the existing SQLite `BEGIN IMMEDIATE`/receipt/ledger patterns.
+### Per-viewer discovery
 
-Version snapshots with a server-owned, monotonic per-hero location epoch plus
-`(instanceId, revision)`. Increment the epoch on committed location/floor transfer
-or rewind. A new instance may have a lower local revision; reset its caches, but
-reject delayed responses/streams from an older epoch so an old request cannot
-switch the client back to the location it just left. Within the same epoch,
-accept only the current instance and nondecreasing revision. Reset identity/epoch
-tracking on account change. SSE reconnect obtains a fresh authoritative snapshot;
-this scope does not require a replayable event-log transport.
+Every initial snapshot, action response, replay response and SSE publication is
+projected for the authenticated viewer's current location and knowledge.
+The present global realm()/publish() approach sending one identical object to
+every stream is insufficient. A veteran cannot silently upgrade a newcomer's
+journal, intro, names, achievements or explanatory dialogue.
 
-Persist content versions/seeds so an existing run remains reproducible. Do not
-regenerate its rooms against a newer template version after restart. Keep a
-single authoritative Node process; multiple workers require a separate ownership/
-publication design.
+Use revelation stages such as observed phenomenon, tentative interpretation,
+supporting evidence and confirmed explanation. Stage labels need not be exposed
+as a checklist. Keep immediate attack telegraphs, visible entity roles and controls
+fair/readable even while plot meaning remains unknown. Knowledge persists across
+devices through the saved hero, not localStorage-only flags.
+
+Hide undiscovered content before delivery, not with CSS. Inspect JSON fields,
+errors, receipt notices, NPC/system dialogue, maps, party/achievement previews,
+alt/ARIA text, localization catalogs, bundles/source maps and asset URLs/preloads.
+Use neutral public test fixtures and opaque non-revealing asset identifiers.
+Do not send a secret encounter or its named asset until its viewing condition
+is met; keep its authoring data outside the public frontend and public repository.
+
+Public technical docs must not contain private author canon. The existing
+private authoring bundle is indexed in local Git metadata; it is not a frontend
+dependency, public PR attachment or test fixture. At implementation time, load
+concealed content server-side with appropriate access, so an ordinary first visit
+does not fetch the entire future story. This protects game-delivered revelations;
+it does not claim to control what other people say in free-form chat.
+
+### Transactions, replays and ordering
+
+Keep 16–80 character request IDs, input/path hashes, current authentication/
+authorization and semantic ledger uniqueness. Resolve authorized existing receipts
+before new-action stale-state checks; return a currently authorized projection,
+not an old private snapshot from a departed run. Retain request IDs across retries.
+
+Commit encounter resets, rewards, progression, placements and revisions atomically
+using existing SQLite transaction patterns. A replayed reset or exit cannot execute
+twice. Enforce expected hero location/instance and action preconditions server-side.
+
+Use a monotonic per-hero location epoch plus instance ID/revision and a private
+knowledge revision. Travel/recovery/rewind advances relevant epochs/revisions.
+Order world responses by location epoch first, then current instance/revision.
+Ignore delayed old-context world payloads. Merge the authenticated hero's
+knowledge independently and monotonically; an equal/older floor reply must not
+erase a newer journal fact or confirmation stage. Clear queued movement, targets,
+pathfinding, interpolation and scenery caches on transfer/rewind; reset identity/
+knowledge caches on account change. Rotation/resize changes coordinate transforms,
+not discovery or world state. Locale cannot bypass reveal gates.
+
+Narrative recovery never rewinds wall-clock sessions, leases, authoritative cooldowns,
+ledger timestamps or request receipts. Do not reset the shared server world or
+other parties to explain one group's replay. Keep one authoritative Node process;
+multiple-worker instance ownership remains a separate scaling problem.
 
 ## 9. Rendering, assets and accessibility
 
-Replace fixed Mossvale map imports/caches with a versioned location description:
-route/floor identity, dimensions, walkability, scenery, objectives, entities and
-visual kit. Keep collision and accepted movement server-owned; client art cannot
-introduce walkable shortcuts. Mossvale remains a supported location.
+Parameterize location descriptions/dimensions, terrain caches, collisions,
+scenery and objectives rather than using fixed Mossvale imports. Preserve
+server-owned movement. Rehome a legacy hero only if a revised ruin map makes
+their saved position invalid; do not reset identity, wallet, earned history or
+story facts.
 
-For initial budgeting, cap generated floor maps at 48×36 tiles, preserve the
-existing logical tile unit, and use a clamped top-down camera that keeps the
-local hero visible. Rebuild cached layers when location/content changes.
-Use a consistent art scale and readable silhouettes; decorative foreground may
-fade near players/hazards and must not hide exits.
+Keep the initial floor budget <=48×36 logical tiles with a clamped top-down camera.
+Cache scenery by location/content version. Use painted sprites/materials, baked
+highlights, contact shadows and bounded light overlays. Player silhouettes,
+walkable ground, hazards and exits outrank filigree or decorative darkness.
 
-Proposed content budget: five cave material kits plus a temple kit, about 24
-reusable room layouts, eight ordinary enemy families and a limited guardian
-roster with ten cave/four temple encounter definitions. Distinct guardians may
-reuse animation rigs/sprites where silhouettes/phase behavior remain clear.
+Budget five cave material kits, a temple kit and a distinct ruined-Mossvale kit,
+about 24 reusable room layouts and a limited enemy/guardian roster with authored
+behaviors. Later chapters must change decisions, layout and combinations, not
+only recolor a room. Load current-region and authorized nearby assets; final
+encounter assets are reveal-gated rather than globally prefetched.
 
-Load the current region and the next needed kit, rather than all 100 floors'
-art. Use compressed backgrounds, alpha sprites/atlases with <=2048px pages,
-pooled effects and a bounded visible effect count. Exact asset dimensions and
-cache eviction are builder decisions within measured device budgets.
+Target 60 FPS on an ordinary desktop, with a 30 FPS reduced-effects mode and
+declared measured device/browser profiles. Use compressed backgrounds, <=2048px
+atlas pages, pooled effects and bounded caches. Build success is not performance
+evidence.
 
-Target 60 FPS on an ordinary desktop with a 30 FPS reduced-effects mode;
-current rendering is roughly 30 FPS. Measure frame times on declared browser/
-device profiles and distinguish emulation from actual phone evidence.
-Do not claim a target was achieved from build success alone.
+Menus/journal/interactions use real DOM text/controls. Preserve keyboard focus,
+movement/interaction, readable text and touch targets. Danger/ally/selection cues
+also use shapes or labels. Respect reduced motion for flicker/particles/shake.
+Optional onboarding explains controls and immediate safety without story spoilers.
 
-Use real DOM buttons/text for menus, vote/ready state, inventory and dialogs.
-Provide keyboard movement/actions/focus restoration, visible selected/disabled
-states, readable small text, comfortable touch targets and non-color cues.
-Candle flicker, particles, parallax and shake respect reduced motion/settings.
-A floor objective, exit direction and party status must remain understandable
-without decorative animation.
+## 10. Delivery and acceptance
 
-## 10. Delivery order and acceptance
+Delivery order, not an implementation task plan:
 
-This is delivery sequencing for the design, not an implementation task plan:
+1. Ruined-Mossvale exploration, optional controls and the shared art language.
+2. Discovery/choice persistence and physical, consent-based travel; representative
+   cave and temple segments with multi-location party support.
+3. Correct recovery/replay, per-viewer revelations, rewards and measured rendering.
+4. Author/validate all 100 cave floors and proposed 20 temple chambers, with
+   private canon integrated at earned reveal points and complete route finales.
 
-1. Shared visual foundations and storefront fidelity; preserve existing flows.
-2. One playable cave segment and one temple segment with explicit parties,
-   route selection, isolation, persistence and final-quality representative art.
-3. Validate checkpoint/reconnect/reward semantics and measured rendering.
-4. Author/validate all 100 cave floors and all 20 temple chambers, their guardians
-   and complete route endings. A sample segment is not completion of this project.
+Acceptance must show:
 
-Acceptance must demonstrate:
+- A fresh hero can immediately explore or leave Mossvale, decline hooks and return,
+  with no route picker, mandatory quest/cinematic or future-plot exposition.
+- Meaningful authored choices change access, clues, relationships or local outcomes;
+  alternatives avoid a single compulsory NPC/quest path.
+- Solo, group, split-party/different-run and different-floor occupancy work within
+  six global live seats. No leader or timer moves a non-consenting hero.
+- All authored route ordinals have connected entry/objective/exit paths, reproducible
+  content and reachable finales; unknown maps/encounters are not sent upfront.
+- A newcomer with a veteran sees only earned knowledge; account/device switching,
+  journal access, hidden achievements, asset preloads, UI/ARIA and receipt replays
+  do not reveal future identities.
+- Current-location attacks/heals/effects stay isolated; downed skills/healing,
+  privileged expedition mutations and remote travel attempts are rejected.
+- Defeat, retries, reconnect, restart, abandoned transport and stale pre-rewind
+  responses preserve receipts/credits/discoveries and cannot duplicate rewards.
+- Checkpoint/completion recipients are distinct from witnesses; offline or elsewhere
+  members do not gain rewards, unseen story facts or unearned completion.
+- Existing account, Guardian, stash, search/catalog/bag and admin behavior survives.
+- Desktop/mobile reference review, real asset loading, controls, reduced motion
+  and actual declared performance measurements pass.
 
-- Screenshot/reference review at desktop and narrow phone widths across storefront,
-  hub/route choice, cave, temple, HUD, class details and stash.
-- All cave ordinals 1–100 and temple ordinals 1–20 have valid connected entry/
-  objective/exit paths, reproducible seeds and reachable finales.
-- Solo and up-to-six-person play, two separate parties, capacity limits,
-  invitation acceptance, ballot ties/timeouts, opt-out and safe roster changes.
-- No cross-instance healing, targeting, chat/effects, cache ordering or private-data leaks.
-- Exactly-once advancement/rewards under retries, concurrent exits, party wipes,
-  reconnect, process restart and privileged intervention.
-- Correct checkpoint/completion recipients, retreat versus network-pause lifecycle,
-  six-seat re-admission, no-XP-loss recovery, support eligibility, per-floor/run caps
-  and unchanged XP/copper exchange/lifetime progression.
-- Existing account, Guardian, stash, catalog/search/bag and admin tests remain valid.
-- Real asset loading, keyboard/mobile flows, reduced motion and declared performance
-  measurements, not a screenshot-only simulation.
-
-Use meaningful unit/integration coverage for generation, state transitions and
-ledger semantics, plus end-to-end browser coverage of real expedition journeys.
-Use disposable SQLite and disabled email. Preserve the package lock; existing
-required checks are `npm ci`, `npm test`, `npm run build` and the browser suite
-inside `standalone/`. There is no configured lint/standalone typecheck script.
+Use disposable SQLite and disabled email for meaningful state/ledger integration
+and end-to-end journeys. Preserve the package lock. Existing required package
+commands in standalone/ remain npm ci, npm test, npm run build and the browser suite.
+There is no configured lint or standalone typecheck script.
 
 ## 11. Migration and operational boundary
 
-Main requires schema 4 and rejects an unmigrated database. The expansion needs
-a forward migration after it: add expedition state and carefully widen the
-normal-hero HP constraint while preserving all existing rows/references. Preserve account/session/mail rows, hero IDs,
-Guardian progress, balances, ledger and receipts. Verify both schema-4 upgrade
-and a rehearsed schema-3→4→new-schema path using private disposable copies.
+Source main requires schema 4. The forward migration adds expedition/discovery/
+choice state and carefully widens hero HP while preserving existing rows,
+references, account/session/mail state, Guardian progress, ledger and receipts.
+Rehearse upgrades from schema 4 and schema 3→4→new schema on private disposable
+copies. Do not populate story knowledge just from character level or an old
+browser intro preference.
 
-Production's older schema/release observations remain dated; this design does
-not re-verify or deploy production. A future rollout needs current identities,
-schema-compatible fallback, retained hashed assets and preservation of subsequent
-customer writes. Do not treat an old database restore as a safe code rollback.
+Earlier production release/schema observations remain dated. This design does
+not deploy or re-verify production. Rollout needs current identities, compatible
+fallback, retained hashed assets and preservation of subsequent customer writes.
 
-The frontend can advertise expeditions only when the server exposes matching
-capabilities. Against an older server, keep existing play available and explain
-that expeditions are unavailable; do not render a working-looking route that
-cannot be entered. No new service, scheduler, email or paid integration is required
-for the design review.
+Only advertise working travel when the server exposes matching capabilities.
+Against an old backend, preserve existing play with truthful availability feedback,
+not an apparently functional new entrance. No new paid provider/service or
+unattended scheduler is required for design.
 
-## 12. Builder discretion and remaining owner decision
+## 12. Builder discretion and remaining owner decisions
 
-Within this approved shape, the builder can settle module/table names, endpoint
-paths, exact asset packing, font fallback, animations, objective configurations,
-enemy tuning and cache internals. Document material deviations and verify them.
+The owner has specified ruined Mossvale, free exploration, action-driven direction,
+spoiler protection and concealed story canon. The approved art direction remains.
 
-The owner is now asked to review the full design, especially the proposed
-20-chamber temple, five-floor checkpoints, party ballot/opt-in policy, downed
-recovery and bounded reward/support rules. Approval of the visual recommendation
-does not retrospectively approve those newly specified mechanics.
+Temple length, safe-anchor spacing, recovery details and bounded rewards remain
+proposals. The private authoring source records the unresolved consequence of a
+final victory; do not invent a permanent global ending, require the other route
+or reveal future content to fill that gap. Final story writing follows the owner.
 
-After design approval, use Superpowers writing-plans to produce the build plan.
-No product implementation or dependency/skill installation has been authorized
-by this document alone.
+The builder may settle module/table/endpoint names, asset packing, typography
+fallback, animation, exact objective patterns, enemy tuning and caches within
+these contracts. A sample area is not completion of the whole project.
+
+After the revised written design is approved, use Superpowers writing-plans.
+No product code, skill/dependency installation or deployment occurs during this
+document revision.
 
 ## Source and skill references
 
-- [Current agent instructions](https://github.com/zyxoned/eldritchfable.com/blob/4c54082e55279d1f0efa301a5fd40e198405b8d9/AGENTS.md)
-- [Game server and receipts/rewards](https://github.com/zyxoned/eldritchfable.com/blob/4c54082e55279d1f0efa301a5fd40e198405b8d9/standalone/server/game.mjs)
-- [Game schema](https://github.com/zyxoned/eldritchfable.com/blob/4c54082e55279d1f0efa301a5fd40e198405b8d9/standalone/server/migrations/003-game-stash.sql)
-- [Existing renderer](https://github.com/zyxoned/eldritchfable.com/blob/4c54082e55279d1f0efa301a5fd40e198405b8d9/standalone/src/game/GameCanvas.tsx)
-- [Verified skill shortlist](../../workspace/MMO_SKILL_READINESS.md)
+- [Agent instructions](https://github.com/zyxoned/eldritchfable.com/blob/4c54082e55279d1f0efa301a5fd40e198405b8d9/AGENTS.md)
+- [Current game server](https://github.com/zyxoned/eldritchfable.com/blob/4c54082e55279d1f0efa301a5fd40e198405b8d9/standalone/server/game.mjs)
+- [Game persistence](https://github.com/zyxoned/eldritchfable.com/blob/4c54082e55279d1f0efa301a5fd40e198405b8d9/standalone/server/migrations/003-game-stash.sql)
+- [Current renderer](https://github.com/zyxoned/eldritchfable.com/blob/4c54082e55279d1f0efa301a5fd40e198405b8d9/standalone/src/game/GameCanvas.tsx)
+- [Selected skill guidance](../../workspace/MMO_SKILL_READINESS.md)
 
-Selected skill guidance: Game UI Frontend, Game Engine, Game Art, Level Design
-and Encounter Design. Read their pinned content before application; do not
-install an entire catalog or invoke 3D material workflows for this 2D design.
+Use Game UI Frontend, Game Engine, Game Art, Level Design and Encounter Design
+after the process gates. The private authoring source is deliberately not linked
+from this public document.

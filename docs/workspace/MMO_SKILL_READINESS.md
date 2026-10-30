@@ -1,5 +1,30 @@
 # MMO expansion and visual skill readiness
 
+## Ruined-Mossvale discovery revision — October 30, 2026
+
+The owner has refined the accepted 2D direction: start freely in ruined Mossvale,
+discover paths through actions, permit exploration/withdrawal/split travel, and
+protect the first experience from plot spoilers. Upfront route ballots, named
+destination cards and automatic party transport are no longer the proposed flow.
+
+[The revised player-safe design](../superpowers/specs/2026-10-30-eldritch-expeditions-design.md)
+adds per-hero knowledge/consequences, local recovery, multi-location party state
+and reveal-gated client content. Concealed author canon is stored privately and
+must not be included in public source, fixtures or asset metadata.
+
+Selected Game UI Frontend, Game Engine, Game Art, Level Design and Encounter
+Design guidance remains applicable; narrative/quest guidance can supplement it.
+No skill installation or product implementation has occurred. Older route-card/
+ballot suggestions below are historical and superseded by the current design.
+
+Optional narrative diagnostic:
+[`interactive-fiction`](https://github.com/jwynia/agent-skills/blob/e02ec7e226a6e4f8419fd3b88a1d8e472d421b32/skills/creative/fiction/application/interactive-fiction/SKILL.md)
+was found through omgskills and read at its pinned, hash-verified commit. It
+helps review meaningful choices, consequence flags, relationships and storylet
+conditions without compulsory lore dumps. It diagnoses narrative design; it
+does not author the complete quest graph or replace multiplayer/discovery logic.
+No installation occurred.
+
 ## Direction accepted — October 30, 2026
 
 The owner accepted illustrated top-down 2D with layered depth and the supplied

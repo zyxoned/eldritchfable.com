@@ -1,5 +1,40 @@
 # Eldritch Fable shared workspace handoff
 
+## Latest reference intake — October 29, 2026, 21:57 EDT
+
+The owner has now supplied the "Adventures Become Real" storefront image.
+[MMO_SKILL_READINESS.md](MMO_SKILL_READINESS.md) records its material/layout
+language, the differences from historical reference images, and the selected
+Canvas 2D/game-UI/level-design/game-art skills. Proposed cave and sky-temple
+treatments are labeled as proposals. The game-graphics approach was asked as an
+optional preference; no renderer choice or design approval is assumed.
+
+Fresh GitHub evidence still places main at
+`4c54082e55279d1f0efa301a5fd40e198405b8d9`.
+The task branch `docs/mmo-readiness-20261029` and its upstream were clean and
+identical at `be5fb14140596c90338059cf80db1f2f4e24fac7` before this intake,
+one documentation commit ahead of main and zero behind. PR #9 remains open/draft.
+The existing separate task worktree was synchronized without repair and protected
+by this session's own lease. Host paths and lease tokens remain private.
+
+This follow-up updates the three documentation files already in PR #9.
+No application, dependency, skill installation, production or live data change
+is part of reference intake. Current source was inspected; application tests and
+production availability checks below belong to the earlier dated audit and were
+not rerun for this intake. The managed environment was pending/offline when
+checked during this session; it was not required for the connected-source work.
+
+The existing host Git push-credential limitation is handled through the connected
+GitHub app. Publish only this documentation branch with an expected-head check,
+fetch/fast-forward the clean task checkout, verify exact file contents and release
+only this session's lease. The original development/recovery checkout is preserved.
+
+Next action: confirm the game-graphics approach, then write a project-specific
+visual/gameplay design for review before implementation. The screenshot alone
+does not specify party ownership, route voting, checkpoints or sky-temple scope.
+
+## Earlier readiness handoff
+
 Observed October 29, 2026, about 17:20 EDT (America/New_York), using GitHub,
 omgskills and the connected staging host through SentinelX.
 
@@ -113,7 +148,7 @@ No rollout, database migration, mail send, DNS change or production restart occu
 
 ## Next executable action
 
-Read the owner's next aesthetic reference and the [skill-readiness brief](MMO_SKILL_READINESS.md).
+Use the owner's supplied aesthetic reference and the [skill-readiness brief](MMO_SKILL_READINESS.md).
 Use Superpowers brainstorming to define the design and gameplay requirements
 before implementation. The current shared realm has no formal party route
 selection, dungeon instances, 100-floor cave or sky temple. Their progression,
@@ -121,6 +156,6 @@ checkpoints, encounters and persistence require project-specific work.
 
 Skills were searched/read, not installed. Prefer the Canvas 2D/game-UI and
 engine-agnostic level-design candidates first; Three.js/R3F/material skills are
-conditional on a separate renderer decision. No art style or renderer migration
-has been selected. Production rollout remains a separate operation governed by
+conditional on a separate renderer decision. The supplied image now defines the visual target; the game renderer choice
+remains open. Production rollout remains a separate operation governed by
 [the deployment/recovery procedure](../../DEPLOYMENT_RECOVERY.md).

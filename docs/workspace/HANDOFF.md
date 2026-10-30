@@ -1,13 +1,53 @@
 # Eldritch Fable shared workspace handoff
 
+## Current task: written design — October 30, 2026
+
+The owner accepted the illustrated top-down 2D recommendation. This resolves
+the earlier renderer preference. The supplied "Adventures Become Real" image
+remains the visual target.
+
+[The full design](../superpowers/specs/2026-10-30-eldritch-expeditions-design.md)
+covers storefront fidelity, rich 2D art, a 100-floor cave and a proposed
+20-chamber sky temple. Detailed party/departure, checkpoint, defeat, reward
+and support-role rules are labeled as proposals, not retrospective user approval.
+Independent builder and source/authority reviews are complete. No important
+ambiguities remain beyond owner approval of the proposed defaults. Relative
+links, whitespace and intended-file scope were checked; application tests were
+not rerun for this documentation-only change.
+
+Source main remains `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
+Task branch `docs/mmo-readiness-20261029` and its upstream were identical at
+`9e0c7db38fc3b91bb62caa42f6cc17669c70041b` before this handoff, clean,
+two commits ahead of main and zero behind. Fresh helper inspection/sync needed
+no repair. This session holds its own worktree lease through publication.
+Exact private paths/tokens remain in local coordination metadata.
+
+Intended files: this handoff, PROJECT_STATE.md, MMO_SKILL_READINESS.md and the
+new design under docs/superpowers/specs/. No runtime, dependency, database,
+installed-skill, service or production change is part of this design phase.
+The managed cloud environment was pending/offline when checked; connected
+source/staging tools were sufficient. Earlier CI/live checks are dated evidence,
+not tests or availability checks rerun during design.
+
+Publish the reviewed documentation through the connected GitHub app against
+the expected task head, verify the full remote SHA and exact file tree, and
+fast-forward the clean task checkout. Preserve the original development and
+local recovery branches; release only this session's lease. PR #9 remains draft.
+
+**Next action:** review the design's proposed mechanics with the owner.
+After explicit design approval, invoke Superpowers writing-plans to create
+the implementation plan. Do not ask the owner to choose 2D versus 3D again.
+
+## Earlier reference intake
+
 ## Latest reference intake — October 29, 2026, 21:57 EDT
 
 The owner has now supplied the "Adventures Become Real" storefront image.
 [MMO_SKILL_READINESS.md](MMO_SKILL_READINESS.md) records its material/layout
 language, the differences from historical reference images, and the selected
 Canvas 2D/game-UI/level-design/game-art skills. Proposed cave and sky-temple
-treatments are labeled as proposals. The game-graphics approach was asked as an
-optional preference; no renderer choice or design approval is assumed.
+treatments are labeled as proposals. The game-graphics approach was asked as an optional preference at that intake.
+The owner has since accepted illustrated 2D; detailed design approval is separate.
 
 Fresh GitHub evidence still places main at
 `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
@@ -29,8 +69,8 @@ GitHub app. Publish only this documentation branch with an expected-head check,
 fetch/fast-forward the clean task checkout, verify exact file contents and release
 only this session's lease. The original development/recovery checkout is preserved.
 
-Next action: confirm the game-graphics approach, then write a project-specific
-visual/gameplay design for review before implementation. The screenshot alone
+That intake's next step was to confirm the graphics approach. It is now accepted;
+review the full visual/gameplay design linked above before implementation. The screenshot alone
 does not specify party ownership, route voting, checkpoints or sky-temple scope.
 
 ## Earlier readiness handoff
@@ -156,6 +196,6 @@ checkpoints, encounters and persistence require project-specific work.
 
 Skills were searched/read, not installed. Prefer the Canvas 2D/game-UI and
 engine-agnostic level-design candidates first; Three.js/R3F/material skills are
-conditional on a separate renderer decision. The supplied image now defines the visual target; the game renderer choice
-remains open. Production rollout remains a separate operation governed by
+conditional on a separate renderer decision. The supplied image defines the visual target; the owner has since accepted
+the illustrated 2D renderer direction. Production rollout remains a separate operation governed by
 [the deployment/recovery procedure](../../DEPLOYMENT_RECOVERY.md).

@@ -1,5 +1,28 @@
 # Eldritch Fable project state
 
+## Illustrated expedition design — October 30, 2026
+
+The owner accepted the illustrated top-down 2D recommendation and supplied
+black/antique-gold candlelit aesthetic. The renderer direction is resolved.
+[The full expedition design](docs/superpowers/specs/2026-10-30-eldritch-expeditions-design.md) now specifies the storefront/visual
+pass, requested 100-floor cave, proposed 20-chamber sky temple, party choices,
+checkpoints, reconnect/reward semantics and acceptance criteria.
+
+Independent builder and source/authority reviews found no remaining must-fix
+issues; relative links/whitespace/scope checks passed. Only the visual approach
+is approved so far. The detailed gameplay defaults
+are proposals for the owner's review; product implementation and skill/dependency
+installation have not started. The next step after design approval is the
+Superpowers writing-plans workflow.
+
+Fresh source main remains `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
+Before this design handoff, the task branch matched upstream at
+`9e0c7db38fc3b91bb62caa42f6cc17669c70041b`, clean and two documentation
+commits ahead of main, zero behind. The cloud environment was pending/offline;
+the existing connected staging task checkout was sufficient for document work.
+Earlier application/production checks below remain dated; none were rerun
+for this documentation-only design phase.
+
 ## Reference intake — October 29, 2026, 21:57 EDT
 
 The owner supplied the new "Adventures Become Real" visual reference. The
@@ -11,8 +34,8 @@ archived "Greater Stories" references.
 Fresh main remains `4c54082e55279d1f0efa301a5fd40e198405b8d9`; PR #9 is
 open/draft and its task checkout matched upstream
 `be5fb14140596c90338059cf80db1f2f4e24fac7` before this documentation update.
-The optional illustrated-2D versus full-3D preference is still open; the
-recommendation is to build on the current renderer. This is reference/skill
+At that earlier intake the renderer preference was open; the owner has now
+accepted the illustrated 2D recommendation, as recorded above. This is reference/skill
 intake, not an approved implementation design. Application code, installations
 and production are unchanged; no fresh application tests or live checks were
 claimed for this follow-up.

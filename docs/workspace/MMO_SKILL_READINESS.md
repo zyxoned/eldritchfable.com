@@ -1,5 +1,21 @@
 # MMO expansion and visual skill readiness
 
+## Direction accepted — October 30, 2026
+
+The owner accepted illustrated top-down 2D with layered depth and the supplied
+black/antique-gold candlelit aesthetic. The earlier renderer question is resolved.
+
+[The full design](../superpowers/specs/2026-10-30-eldritch-expeditions-design.md)
+turns that direction into a concrete proposal for the 100-floor cave, a
+20-chamber sky temple, party route choice, checkpoints and graphics upgrade.
+The temple size and detailed gameplay policies remain proposed defaults for
+review. No skill has been installed and no product implementation has started.
+
+Use Game UI Frontend, Game Engine, Game Art, Level Design and Encounter Design
+as the selected guidance. Full 3D/R3F options below are historical alternatives,
+not work selected for this design. After the owner approves the written
+design, use Superpowers writing-plans before implementation.
+
 Initial readiness audit: October 29, 2026, about 17:20 EDT (America/New_York).
 Source baseline: `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
 This is a readiness audit and skill shortlist, not an approved feature design.
@@ -52,8 +68,8 @@ Retain illustrated top-down 2D, adding authored sprites/textures, cached scenery
 contact shadows, baked highlights and bounded light overlays. This preserves
 the current browser stack. Full 3D is an alternative requiring a substantial
 renderer/model/camera rebuild; the supplied storefront image does not by itself
-choose a game camera or renderer. The owner has been asked which approach to
-design around; no answer or design approval is inferred from the attachment.
+choose a game camera or renderer. At that intake the owner was asked which approach to design around. They have
+since accepted illustrated 2D; the attachment alone did not approve gameplay details.
 
 | Surface | Proposed treatment |
 | --- | --- |
@@ -162,8 +178,8 @@ Live database schema was not re-queried; the earlier schema-3 audit remains date
 
 ## Next executable action
 
-Use the supplied reference and resolve the open game-graphics approach through
-Superpowers brainstorming, then define the gameplay rules and written design. Resolve party route
+The illustrated 2D approach is now accepted. Review the full written design
+linked above; after approval, use Superpowers writing-plans. Resolve party route
 selection, cave checkpoint/progression/reward rules, sky-temple scope and
 persistent run ownership before writing implementation code. Select the smallest
 engine-compatible skill set. A first playable cave floor and sky-temple encounter

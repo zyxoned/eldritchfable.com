@@ -1,5 +1,30 @@
 # Eldritch Fable project state
 
+## Discovery-first ruined Mossvale — October 30, 2026
+
+The owner now requires a ruined-Mossvale free-roam start, optional hooks,
+directions shaped by in-world decisions and protection of first-time discovery.
+This supersedes the earlier upfront route ballot and automatic party transfer.
+The illustrated 2D art direction remains accepted.
+
+[The revised public design](docs/superpowers/specs/2026-10-30-eldritch-expeditions-design.md)
+defines independent physical travel, split parties/multiple occupied locations,
+per-hero knowledge and consequences, and recovery preserving durable progress.
+Concealed story canon is saved privately outside the checkout, indexed in local
+Git metadata; its identities and encounter details are deliberately absent from
+public source, fixtures, assets and PR text.
+
+The route-size, anchor/reward and recovery defaults remain proposals. The final
+narrative resolution is an author question still pending; this update does not
+claim full design approval, product implementation or a deployed feature.
+
+Fresh main remains `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
+The task branch was clean and matched upstream
+`8e967b2ac26f43f33c47947e8f57ec93c0be7832` before this update, three
+documentation commits ahead of main and zero behind. No application tests or
+production checks were rerun for this document revision. Earlier audit sections
+below are historical; their route-ballot proposals are superseded here.
+
 ## Illustrated expedition design — October 30, 2026
 
 The owner accepted the illustrated top-down 2D recommendation and supplied

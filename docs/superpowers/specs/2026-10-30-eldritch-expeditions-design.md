@@ -3,7 +3,7 @@
 Date: October 30, 2026 (America/New_York).
 Status: **Owner-confirmed direction; revised mechanics remain a proposal.**
 Application baseline: `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
-Documentation parent: `a863ebb7d729e0a281537f550f49ae39f5188053`.
+Documentation parent: `f4bc674400168c08a4028d2b7b0f18f9709192b1`.
 
 ## 1. Intent and decisions
 
@@ -52,9 +52,10 @@ offers affected heroes a return to ruined Mossvale and later journeys to earned,
 personally known anchors, plus safe in-place recovery when companions clear
 the encounter; it never automatically restarts an expedition.
 The owner has now specified the concealed continuation and ending in the private
-authoring record. One participant-eligibility policy remains an owner question.
-The new direction also requires real, durable class-specific equipment ownership;
-that expands the earlier catalog-only scope. Exact item balance remains proposed.
+authoring record, including its participant policy and persistent status-effect
+rules. These author decisions are resolved. Required infrastructure includes
+real class-specific equipment, durable effects and saved random outcomes;
+exact ordinary tuning and item balance remain proposed.
 
 ## 2. Existing foundations and boundaries
 
@@ -309,11 +310,14 @@ A defeated hero may choose to wake in ruined Mossvale. They are free to explore,
 pursue something else, leave or deliberately resume an expedition via an earned,
 personally known anchor. Never auto-queue them back into the same run. If companions
 clear the floor while that hero remains downed, offer safe in-place recovery too.
-These recovery choices restore 100 HP; credited XP is not removed.
+These recovery choices restore the hero's server-derived maximum HP, which is
+100 for an unmodified hero; credited XP is not removed.
 
-Within combat, HP=0 is downed. The new migration must widen the existing 1–100
-hero HP constraint to 0–100 while preserving rows/references, and permit zero
-only for expedition downed state. Keep Mossvale's existing immediate recovery.
+Within combat, HP=0 is downed. Replace the existing fixed 1–100 HP restriction
+with validated nonnegative integer health and a server-derived maximum, preserving
+rows/references. Zero is permitted only in the authored downed state. Unmodified
+heroes retain maximum HP 100; authored effects may change effective durability.
+Keep immediate Mossvale recovery, restoring the appropriate derived maximum.
 Downed heroes cannot move, activate objectives/exits or cast any combat/skill,
 including healing/buffs/wards. Ordinary heals exclude downed targets; there is
 no accidental mid-fight resurrection.
@@ -466,24 +470,68 @@ Use a durable authored-event state machine for admission, placement, encounter
 resolution, witnessed content, grant and recovery. Private content defines exact
 conditions and outcomes. Resolve competing event claims atomically, fix the
 participant roster at the appropriate boundary and persist it across retries/
-restarts. Social membership, global world flags and spectatorship alone cannot
-pull distant heroes or grant them rewards and knowledge. Do not consume special
-customer progression with the privileged avatar. A crash resumes durable pending
+restarts. Global world flags, invitation links and spectatorship cannot grant
+remote rewards or knowledge. Participant eligibility follows the private authoring
+contract, including any explicit party-wide exception to ordinary physical travel;
+do not replace it with an invented personal-completion requirement. Do not consume
+special customer progression with the privileged avatar. A crash resumes durable pending
 state rather than rerunning a grant or selecting a different claimant.
 
-The owner has specified the concealed narrative outcome. The exact cohort-
-eligibility rule remains pending and must be resolved before implementing its
-transition. Distinguish immutable route-completion history from resettable scene/
-cycle state; define the latter explicitly without clearing durable hero knowledge,
+The owner has specified the concealed narrative outcome and resolved its cohort
+eligibility. Consult the private authoring contract before implementing any
+transition; the public document deliberately omits its conditions. Distinguish
+immutable route-completion history from resettable scene/cycle state; define the latter explicitly without clearing durable hero knowledge,
 equipment, finances or another group's run. A completed scene may deliver only
 what that hero witnessed, with reconnect behavior that neither skips a pending
 stage nor repeats its side effects.
+
+### Durable status effects and random outcomes
+
+The private authoring contract also requires persistent combat status effects.
+Keep source acquisition, visible effect, player entitlement, witnessed narrative
+and ordinary progression as distinct records. Resolve effects on the server from
+stable base stats and owned equipment, with an explicit aggregation order.
+Re-equip, reconnect, recovery and class metadata changes must not compound an
+effect already applied. Honor author-specified account-wide grant/draw limits
+across heroes, devices, parties, content retries and process restarts.
+
+Use authoritative unbiased randomness for eligible acquisitions and save the
+decision atomically with its source event and entitlement. Retried requests return
+the saved result; they cannot draw again. Duplicate source acquisition, joining a
+party or replaying a scene does not manufacture another eligible event. The exact
+private probabilities, source names and beneficial/negative outcomes are not
+public fixtures or client configuration.
+
+Enumerate which combat capabilities each authored effect changes and test damage,
+healing/support, durability, skill/resource behavior and direction-sensitive
+values consistently. A cosmetic label or a damage-only implementation cannot
+stand in for a broader authored benefit. Preserve the existing lifetime-XP
+formula; no combat effect multiplies earned XP, money, exchange rates, store
+credit or financial records.
+
+Introduce a server-derived maximum/effective health contract and expose only the
+current authorized hero's required combat information. Persist one authoritative
+current health value, validate it against derived limits on every mutation, and
+update heal, downed/recovery, admission, migration and health-bar paths together.
+A fixed 100-HP clamp must not erase a legitimate authored durability effect.
+Existing unmodified heroes retain their current health/damage behavior.
+
+Private authoring defines any collective event-eligibility condition. Reevaluate
+it on the relevant acquisition and accepted membership changes, validate the
+party version and commit one roster/transition atomically. Do not require an
+unnecessary repeated encounter after a valid party forms. Eligible members need
+not individually own all of the source evidence when the author chose collective
+qualification. Distinguish eligibility from actual admission, presence and
+witnessing; offline membership cannot be simulated as live combat or automatically
+granted unseen story. Protect future scenes from unrelated players and deliver
+them only to actual authorized participants.
 
 ## 8. Server authority, knowledge and persistence
 
 Add social-party membership, invitations, runs, per-floor states/participants,
 per-hero location, discovered facts, choice history, safe anchors and completion
-records, equipment ownership/equipped slots and durable authored-event stages.
+records, equipment ownership/equipped slots, durable effects/acquisitions,
+player-wide draw/grant entitlements and authored-event stages.
 Runs retain route, seed, content/reward versions and frontier. Each floor
 retains encounter/objective/scene state and its own revision. Each hero has one
 authoritative current location/HP and active run assignment; do not create a
@@ -616,6 +664,10 @@ Acceptance must show:
 - Equipment grants/equips reject forged ownership, wrong classes and duplicate
   replayed claims; durable event stages survive concurrent admission and crashes
   without resetting unrelated state or publishing concealed content.
+- Eligible random decisions persist exactly once with their source event;
+  duplicate requests and repeated acquisitions cannot bypass player-wide limits.
+  Authored effects apply once and consistently across combat, healing, effective
+  health, recovery, reconnect and gear changes, preserving financial rules.
 - Existing account, Guardian, stash, search/catalog/bag and admin behavior survives.
 - Desktop/mobile reference review, real asset loading, controls, reduced motion
   and actual declared performance measurements pass.
@@ -628,8 +680,9 @@ There is no configured lint or standalone typecheck script.
 ## 11. Migration and operational boundary
 
 Source main requires schema 4. The forward migration adds expedition/discovery/
-choice state, equipment ownership and authored-event records, and carefully widens
-hero HP while preserving existing rows,
+choice state, equipment ownership, effects/acquisitions, player entitlements and
+authored-event records. Replace the fixed hero-HP ceiling with validated derived
+limits while preserving existing rows,
 references, account/session/mail state, Guardian progress, ledger and receipts.
 Rehearse upgrades from schema 4 and schema 3→4→new schema on private disposable
 copies. Do not populate story knowledge just from character level or an old
@@ -652,9 +705,9 @@ spoiler protection and concealed story canon. The approved art direction remains
 Temple length, safe-anchor spacing, ordinary recovery details and bounded XP
 rewards remain proposals. The owner has resolved the concealed narrative outcome
 in the private authoring record. Do not publish it or invent a permanent global
-ending. One participant-eligibility question remains with the owner. Resettable
-scene flags/checkpoint reuse and equipment availability/balance must be explicit
-in the private implementation design; durable hero records remain preserved by
+ending. Collective eligibility and persistent effect rules are now owner-specified
+in the private record. Resettable scene flags/checkpoint reuse and equipment
+availability/balance must be explicit in the private implementation design; durable hero records remain preserved by
 the proposed contract. Final story writing follows the owner.
 
 The builder may settle module/table/endpoint names, asset packing, typography

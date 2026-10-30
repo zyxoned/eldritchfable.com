@@ -1,6 +1,6 @@
 # Eldritch Fable shared workspace handoff
 
-Current task: private-authoring scope revision, October 30, 2026, 06:57 EDT
+Current task: persistent-effect design revision, October 30, 2026, 07:52 EDT
 (America/New_York).
 Executor: connected GitHub and SentinelX staging tools. This is a design handoff,
 not a claim of implemented or deployed expedition behavior.
@@ -20,7 +20,10 @@ Each hero has one authoritative active assignment and location. The owner has
 since resolved the concealed narrative continuation and ending. The private
 record is updated; its exact conditions, sequence and dialogue stay unpublished.
 The public design adds durable class-specific equipment and authored-event state.
-Earlier equipment-ownership exclusions are superseded.
+Earlier equipment-ownership exclusions are superseded. The owner has now also
+resolved the private participant policy and persistent-effect rules. The public
+design adds acquisition/effect records, player-wide entitlements, saved random
+outcomes and derived health; the exact source/conditions remain private.
 
 Concealed narrative canon is intentionally outside the public repository.
 Its authorized staging-host record is indexed by the per-worktree metadata path
@@ -34,11 +37,11 @@ fixtures, screenshots or PR descriptions. Exact private paths stay in metadata.
 Application main: `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
 Task branch: `docs/mmo-readiness-20261029`, upstream of the same name.
 Application/documentation commit before this update:
-`a863ebb7d729e0a281537f550f49ae39f5188053`.
+`f4bc674400168c08a4028d2b7b0f18f9709192b1`.
 
 Before editing/publication the isolated task worktree was clean, with no active
 Git operation, staged/unstaged/untracked changes or unpublished task work.
-Fresh helper inspection/sync found upstream 0/0 and main ahead/behind 4/0.
+Fresh helper inspection/sync found upstream 0/0 and main ahead/behind 5/0.
 Original development and recovery branches are preserved. This session acquired
 its own lease; release only the owning session's token after publication.
 
@@ -57,7 +60,7 @@ The private canon record/index is deliberately not a Git source change.
 No runtime, installed skill/dependency, service, database or production change is
 part of this revision.
 
-An independent narrative/persistence review checked this scope revision; earlier
+An independent party/status-mechanics review checked this scope revision; earlier
 agency/source/builder reviews remain dated evidence for the broader proposal.
 Verify relative links, whitespace, intended-file scope and exclusion of concealed
 canon before publication. Application tests were not rerun for
@@ -90,13 +93,12 @@ checkout is enrolled for automatic development repair.
 
 ## Next action and remaining decisions
 
-Resolve the one pending participant-eligibility question already presented to
-the owner; its exact wording and private context are in the authoring record.
-The narrative continuation/ending itself is now owner-specified. Preserve its
-privacy. Temple length, anchor spacing, ordinary rewards/recovery, precise scene
-reset flags and equipment balance/availability remain proposed or unspecified.
-Then present the revised design for approval; do not treat the story clarification
-alone as approval of every mechanical default.
+The participant policy and persistent-effect rules are resolved in the private
+authoring source; do not ask those questions again or publish their conditions.
+Present the revised design for approval, stating remaining proposed defaults.
+Temple length, anchor spacing, ordinary rewards/recovery, precise scene reset
+flags and equipment/effect balance remain proposed or delegated authoring work.
+Do not treat clarification of individual rules as approval of every default.
 
 After the revised written design is approved, invoke Superpowers writing-plans.
 Do not ask the owner to select 2D versus 3D or accept an upfront route menu again.

@@ -1,5 +1,26 @@
 # Eldritch Fable project state
 
+## Private authoring decisions resolved — October 30, 2026
+
+The owner has resolved the private participant policy and new persistent-effect
+rules. The private canon/index has been securely updated; exact sources,
+conditions, probabilities and revelations remain outside public source and PRs.
+Earlier participant-policy questions below are historical and resolved.
+
+[The design](docs/superpowers/specs/2026-10-30-eldritch-expeditions-design.md)
+now covers durable combat effects/acquisitions, account-wide grant/draw limits,
+saved random decisions and derived effective health alongside equipment and
+authored events. This supersedes the proposal to retain a fixed health ceiling
+for every modified hero; ordinary unmodified heroes keep their existing baseline.
+No player effect alters XP, wallet balances or the exchange rate.
+
+Observed October 30 at 07:52 EDT through connected staging/GitHub tools:
+main remains `4c54082e55279d1f0efa301a5fd40e198405b8d9`. The task worktree
+was clean at `f4bc674400168c08a4028d2b7b0f18f9709192b1`, matching upstream
+0/0 and five documentation commits ahead of main, zero behind. This revision
+updates four Markdown files and private authoring metadata. Documentation/content
+checks apply; application tests and production were not rerun or changed.
+
 ## Private authoring continuation — October 30, 2026
 
 The owner has resolved the concealed narrative continuation and ending. The

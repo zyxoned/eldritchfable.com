@@ -1,5 +1,17 @@
 # MMO expansion and visual skill readiness
 
+## Persistent-effect authoring decisions — October 30, 2026
+
+The owner resolved the private participant policy and persistent-effect rules.
+Earlier pending-participant notes below are historical. The private authoring
+record now controls those decisions without publishing its concealed conditions,
+source identities, probabilities or reveals.
+
+The current design adds authoritative status effects, acquisition records,
+player-wide entitlements, saved random outcomes and derived health. These need
+project-specific persistence/combat work alongside the selected skills. No new
+skill discovery, installation, product code or dependency change occurred.
+
 ## Private authoring scope update — October 30, 2026
 
 The owner supplied the concealed narrative continuation and ending; the private

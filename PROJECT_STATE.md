@@ -1,5 +1,22 @@
 # Eldritch Fable project state
 
+## Reference intake — October 29, 2026, 21:57 EDT
+
+The owner supplied the new "Adventures Become Real" visual reference. The
+[skill-readiness brief](docs/workspace/MMO_SKILL_READINESS.md) now records its
+black/antique-gold/candlelit material language, current-storefront reuse, selected
+skills and proposed cave/sky variations. The attachment differs from the older
+archived "Greater Stories" references.
+
+Fresh main remains `4c54082e55279d1f0efa301a5fd40e198405b8d9`; PR #9 is
+open/draft and its task checkout matched upstream
+`be5fb14140596c90338059cf80db1f2f4e24fac7` before this documentation update.
+The optional illustrated-2D versus full-3D preference is still open; the
+recommendation is to build on the current renderer. This is reference/skill
+intake, not an approved implementation design. Application code, installations
+and production are unchanged; no fresh application tests or live checks were
+claimed for this follow-up.
+
 ## Latest readiness observation — October 29, 2026, 17:20 EDT
 
 This observation supersedes the current-status and next-action claims in the
@@ -31,7 +48,7 @@ older release. The live schema and real inbox delivery were not retested.
 
 The game is custom Canvas 2D with one shared Mossvale map; formal parties,
 100-floor caves, destination selection and sky temples are new implementation
-work. The owner will provide the desired aesthetic next.
+work. The owner has since supplied the desired aesthetic; see the reference intake above.
 [The skill-readiness brief](docs/workspace/MMO_SKILL_READINESS.md) records verified
 omgskills candidates, renderer constraints and the next design questions. No
 skills were installed and no gameplay, deployment or live data changed.

@@ -1,19 +1,87 @@
 # MMO expansion and visual skill readiness
 
-Observed October 29, 2026, about 17:20 EDT (America/New_York).
+Initial readiness audit: October 29, 2026, about 17:20 EDT (America/New_York).
 Source baseline: `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
 This is a readiness audit and skill shortlist, not an approved feature design.
 
+## Reference received — October 29, 2026, 21:57 EDT
+
+The owner supplied a portrait-format Eldritch Fable storefront reference headed
+"Adventures Become Real." This supersedes the earlier note that the aesthetic
+reference was still forthcoming. This intake records the reference and selects
+skills; it is not an approved implementation design.
+
+### What the image establishes
+
+- Near-black surfaces with antique-gold outlines, ornate corner filigree and
+  cream Roman/serif display headings.
+- Candlelit amber artwork: a dragon miniature and dice on the hero table,
+  leather/metal objects, scrolls, books, painted miniatures and a violet cloak.
+- A compact dark navigation bar, large hero, castle-and-violet-gem divider,
+  six illustrated categories in a three-column grid, parchment search strip,
+  mountain/castle promise section and dark multi-column footer.
+- Violet is a restrained jewel/magic accent. Detailed illustration and
+  generous dark areas create contrast; decoration frames the content.
+
+The uploaded image is visually different from the two historical reference
+images in the recovery archive, which show a landscape "Greater Stories"
+composition. Those older files were viewed during this intake and must not
+silently replace the current attachment as the design target.
+
+### Fit to the current project
+
+The maintained storefront already contains the dragon hero, six categories,
+violet crest/orb and parchment search. Reuse its runtime artwork and working
+navigation, search, account and bag behavior; inspect the final CSS cascade
+before a fidelity pass. The current promise area uses a dragon-image crop,
+so the supplied distant landscape treatment is a specific difference to assess.
+
+For the game, the strongest matching skill set is:
+`game-ui-frontend` for themed DOM menus/HUD,
+`game-engine` for the existing Canvas 2D renderer,
+`level-design` for cave/temple spaces, and
+[`CongDon1207/AGENTS.md:.agent/skills/game-development/game-art`](https://github.com/CongDon1207/AGENTS.md/blob/9f1aa55395ca949e4484040899fe3333dd10fa6b/.agent/skills/game-development/game-art/SKILL.md)
+for a consistent fantasy sprite/tile/atlas pipeline. The art skill is pinned
+and its full content was hash-verified through omgskills. Encounter design remains
+useful for the 100 floors, with its Three.js examples adapted to current code.
+No skill was installed or invoked to implement product code.
+
+### Proposed translation, still open to feedback
+
+Retain illustrated top-down 2D, adding authored sprites/textures, cached scenery,
+contact shadows, baked highlights and bounded light overlays. This preserves
+the current browser stack. Full 3D is an alternative requiring a substantial
+renderer/model/camera rebuild; the supplied storefront image does not by itself
+choose a game camera or renderer. The owner has been asked which approach to
+design around; no answer or design approval is inferred from the attachment.
+
+| Surface | Proposed treatment |
+| --- | --- |
+| Route-choice screen | Equally prominent illustrated cave and sky-temple cards, aged-gold frames and cream titles |
+| Cave | Layered carved rock, readable floor, amber torch pools and occasional violet relics/crystals |
+| Sky temple | Pale weathered stone, gold inlay, twilight clouds, distant mountain silhouettes and amber braziers |
+| Combat HUD | Compact charcoal panels, quiet gold edges, clear health/abilities/objectives; restrained ornament |
+| Inventory and journal | Parchment surfaces with readable dark text inside the shared dark/gold shell |
+
+Keep readable small text, keyboard focus, touch targets, reduced motion,
+class/enemy silhouettes and attack telegraphs. Maintain distinct danger/ally/
+resource signals, including shapes or labels as well as color. Do not let
+foreground ornament or darkness hide walkable space and hazards.
+
+The requested 100 cave floors, party destination choice, dungeon runs and
+checkpoints remain new server-authoritative systems. This image establishes
+their visual direction, not their progression/party rules or completion.
+
 ## Requested next work
 
-The owner will supply the desired aesthetic in the next prompt. The requested
+The supplied reference above now establishes the aesthetic target. The requested
 expansion is a cave system with 100 dungeon floors, an alternative sky temple
 that the party can choose, and improved graphics. Treat 100 as dungeon depth,
 not as a confirmed character-level cap. The sky temple's size, route-selection
 rules and the meaning of "bump" are not yet specified.
 
-Do not select an art style before reading the forthcoming reference. If "bump"
-means bump/normal mapping, choose a rendering approach explicitly: the current
+Use the supplied image when selecting art treatments. If "bump" means
+bump/normal mapping, choose a rendering approach explicitly: the current
 Canvas 2D renderer has no native normal-map material system.
 
 ## Verified current implementation
@@ -50,9 +118,9 @@ was selected.
 | [`openai/plugins:game-ui-frontend`](https://github.com/openai/plugins/blob/0722921d5542fc593105c27bd52630babd8b8c2a/plugins/game-studio/skills/game-ui-frontend/SKILL.md) | Reference-led material language, palette, type, motion, CSS tokens, responsive HUD and menus | Explicit canvas-world/DOM-UI support; best initial aesthetic fit |
 | [`omer-metin/skills-for-antigravity:skills/level-design`](https://github.com/omer-metin/skills-for-antigravity/blob/e8dcf4e8737921a10088bd5c9eb65e81f74c051f/skills/level-design/SKILL.md) | Spatial flow, landmarks, gating, pacing and environmental storytelling | Engine-agnostic; does not provide a 100-floor generator |
 | [`MengTo/Skills:agent-skills/game-development/design-game-encounters`](https://github.com/MengTo/Skills/blob/a45892d2fdadab75b31fb16abecc02f101b31c43/agent-skills/game-development/design-game-encounters/SKILL.md) | Objectives, enemy roles, waves, bosses, rewards, exits and recovery | Three.js action-game examples need adaptation to current code; no party synchronization |
-| [`omer-metin/skills-for-antigravity:pixel-art-sprites`](https://github.com/omer-metin/skills-for-antigravity/blob/e8dcf4e8737921a10088bd5c9eb65e81f74c051f/skills/pixel-art-sprites/SKILL.md) | Sprite/tileset palettes, silhouettes, animation and sheet organization | Use only if the forthcoming reference chooses pixel art |
+| [`omer-metin/skills-for-antigravity:pixel-art-sprites`](https://github.com/omer-metin/skills-for-antigravity/blob/e8dcf4e8737921a10088bd5c9eb65e81f74c051f/skills/pixel-art-sprites/SKILL.md) | Sprite/tileset palettes, silhouettes, animation and sheet organization | Not selected for this cinematic reference; use only if the owner later requests pixel art |
 
-If the reference calls for 3D, separately evaluate these verified options:
+If the owner selects a 3D game world, separately evaluate these verified options:
 
 - [threejs-aaa-graphics-builder](https://github.com/majidmanzarpour/threejs-game-skills/blob/8286774b22a2566bf894dbc825825c16921866af/skills/threejs-aaa-graphics-builder/SKILL.md):
   art direction, shaders, lighting, skies, materials, props and rendering budgets.
@@ -67,7 +135,12 @@ These 3D skills require an explicit renderer decision and do not directly extend
 Canvas 2D. No dedicated cave/sky-temple generator or ready-made MMO party system
 was found in the targeted catalog searches.
 
-## Verification and remaining limits
+## Verification and remaining limits — earlier 17:20 EDT audit
+
+The following test, host and production observations belong to the earlier
+17:20 EDT readiness audit. The reference intake rechecked source/task-branch
+state and skill metadata; it did not rerun application tests or live checks.
+The managed environment was pending/offline at the later intake check.
 
 [Main CI 40954037828](https://github.com/zyxoned/eldritchfable.com/actions/runs/40954037828/job/123729348898)
 checked out the exact source baseline above and passed dependency installation,
@@ -89,8 +162,8 @@ Live database schema was not re-queried; the earlier schema-3 audit remains date
 
 ## Next executable action
 
-Read the user's forthcoming aesthetic reference, then use Superpowers
-brainstorming to define the visual target and gameplay rules. Resolve party route
+Use the supplied reference and resolve the open game-graphics approach through
+Superpowers brainstorming, then define the gameplay rules and written design. Resolve party route
 selection, cave checkpoint/progression/reward rules, sky-temple scope and
 persistent run ownership before writing implementation code. Select the smallest
 engine-compatible skill set. A first playable cave floor and sky-temple encounter

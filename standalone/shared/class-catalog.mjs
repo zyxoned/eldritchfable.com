@@ -134,18 +134,19 @@ export const CLASS_CATALOG = deepFreeze({
     ],
   },
   'death-knight': {
-    id: 'death-knight', name: 'Death Knight', color: '#b9a7ef', role: 'The veiled seventh',
-    description: 'Draconian sovereign · Level ???',
-    lore: 'Six heroes are remembered in the waking woods. A seventh walks between their verses: a Draconian death knight in armor older than the Hollow King’s crown. No chronicle records their beginning, and no blade can write their end.',
-    damage: 42, range: 4, armor: 0,
+    id: 'death-knight', name: 'Death Knight', color: '#b9a7ef', role: 'Veiled guardian',
+    description: 'Draconian visitor · Level ???',
+    lore: 'A Draconian guardian walks between the verses of the waking woods. Their ancient armor shelters a quiet oath: lend strength to a company without taking its story away.',
+    damage: 0, range: 2, armor: 0,
     equipment: [
-      { id: 'sss-grave-of-stars', name: 'Grave of Stars', slot: 'Weapon', rarity: 'SSS', description: 'Top-tier SSS runeblade. Soul Reap executes the nearest hostile creature in range in a single strike.' },
-      { id: 'sss-night-sovereign-plate', name: 'Night Sovereign Plate', slot: 'Armor', rarity: 'SSS', description: 'Top-tier SSS obsidian dragonscale plate. Its Undying Oath grants invulnerability while the authorized seventh character is present.' },
-      { id: 'sss-black-sun-signet', name: 'Black Sun Signet', slot: 'Relic', rarity: 'SSS', description: 'Top-tier SSS regalia bearing a nameless crest. A mark of the seventh’s station; it adds no further power.' },
+      { id: 'sss-grave-of-stars', name: 'Grave of Stars', slot: 'Weapon', rarity: 'SSS', description: 'An SSS runeblade tempered to the company it protects. Its strikes scale to the active adventurers in the party.' },
+      { id: 'sss-night-sovereign-plate', name: 'Night Sovereign Plate', slot: 'Armor', rarity: 'SSS', description: 'SSS obsidian dragonscale plate. Undying Oath grants its authorized visiting guardian invulnerability.' },
+      { id: 'sss-black-sun-signet', name: 'Black Sun Signet', slot: 'Relic', rarity: 'SSS', description: 'SSS regalia bearing a nameless crest. Its Guardian Boon restores nearby adventurers without changing their rewards.' },
     ],
     skills: [
-      { id: 'undying-oath', name: 'Undying Oath', type: 'passive', target: 'self', cooldownMs: 0, description: 'Invulnerability. The seventh character takes no incoming damage.' },
-      { id: 'soul-reap', name: 'Soul Reap', type: 'execute', target: 'enemy', range: 6, cooldownMs: 700, description: 'Instantly defeat the nearest hostile creature within 6 tiles. This power does not target other players.' },
+      { id: 'soul-reap', name: 'Veiled Strike', type: 'strike', target: 'enemy', damage: 0, range: 2, cooldownMs: 700, description: 'Strike the nearest hostile creature with power and reach scaled to the active party. This ability does not target players.' },
+      { id: 'guardian-boon', name: 'Guardian Boon', type: 'heal', target: 'party', heal: 15, radius: 4, cooldownMs: 6000, description: 'Restore 15 health to active adventurers in your party within 4 tiles. Recovers in 6 seconds.' },
+      { id: 'undying-oath', name: 'Undying Oath', type: 'passive', target: 'self', cooldownMs: 0, description: 'Invulnerability. A visiting guardian takes no incoming damage.' },
     ],
   },
 });

@@ -1,4 +1,4 @@
-/* Account-bound callings, starter equipment, and the Seventh connection. */
+/* Account-bound callings, starter equipment, and visiting guardian connections. */
 .ef-rpg .hero-portrait { image-rendering: auto; overflow: visible; filter: drop-shadow(0 3px 4px #0005); }
 .ef-rpg .story-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: -6px 0 23px; padding: 13px 16px; border: 1px solid #c79b5533; border-radius: 6px; background: linear-gradient(95deg,#2d2139aa,#17121b); }
 .ef-rpg .story-banner > span { display: inline-flex; align-items: center; gap: 9px; color: #c4b5ce; font-size: 11px; line-height: 1.6; }
@@ -50,12 +50,12 @@
 .ef-rpg .skill-button.cooling-down > small { color: #d5b47f; }
 .ef-rpg .skill-passive { border-color: #5d6384; background: #242238; }
 .ef-rpg .skill-passive .skill-symbol { color: #bfd9f4; }
-.ef-rpg .seventh-access { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 23px; border: 1px solid #a188c166; background: linear-gradient(120deg,#2a203a,#14141e); border-radius: 6px; margin: 0 0 22px; box-shadow: inset 0 0 35px #8272b511; }
-.ef-rpg .seventh-access > div { max-width: 700px; }
-.ef-rpg .seventh-access h2 { font: 400 23px/1.2 Georgia,serif; margin: 9px 0; color: #c7d6ef; }
-.ef-rpg .seventh-access p { color: #b8aaca; font-size: 11px; line-height: 1.8; margin: 0; }
-.ef-rpg .seventh-access > button { flex-shrink: 0; min-height: 44px; }
-.ef-rpg .seventh-status { display: flex; align-items: center; justify-content: center; gap: 8px; color: #bad8ef; font-size: 9px; letter-spacing: .14em; padding: 15px 0 5px; }
+.ef-rpg .visitor-access { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 23px; border: 1px solid #a188c166; background: linear-gradient(120deg,#2a203a,#14141e); border-radius: 6px; margin: 0 0 22px; box-shadow: inset 0 0 35px #8272b511; }
+.ef-rpg .visitor-access > div { max-width: 700px; }
+.ef-rpg .visitor-access h2 { font: 400 23px/1.2 Georgia,serif; margin: 9px 0; color: #c7d6ef; }
+.ef-rpg .visitor-access p { color: #b8aaca; font-size: 11px; line-height: 1.8; margin: 0; }
+.ef-rpg .visitor-access > button { flex-shrink: 0; min-height: 44px; }
+.ef-rpg .visitor-status { display: flex; align-items: center; justify-content: center; gap: 8px; color: #bad8ef; font-size: 9px; letter-spacing: .14em; padding: 15px 0 5px; }
 @media (min-width: 1550px) { .ef-rpg .calling-card { padding: 23px; } }
 @media (max-width: 760px) {
   .ef-rpg .story-banner { align-items: flex-start; flex-direction: column; gap: 6px; margin-top: -6px; padding: 12px 13px; }
@@ -82,7 +82,7 @@
   .ef-rpg .skill-button { padding: 11px 9px; gap: 3px 7px; }
   .ef-rpg .skill-button > strong { font-size: 10px; }
   .ef-rpg .skill-description { font-size: 9px; }
-  .ef-rpg .seventh-access { padding: 18px; align-items: stretch; flex-direction: column; gap: 16px; }
+  .ef-rpg .visitor-access { padding: 18px; align-items: stretch; flex-direction: column; gap: 16px; }
 }
 @media (max-width: 359px) {
   .ef-rpg .class-options { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -90,4 +90,42 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .ef-rpg .skill-button, .ef-rpg .story-banner button { transition: none; }
+}
+
+.ef-rpg .party-mode-options { border: 0; padding: 0; margin: 18px 0; display: grid; gap: 10px; }
+.ef-rpg .party-mode-options legend { margin-bottom: 12px; }
+.ef-rpg .party-mode-options label { display: flex; gap: 9px; align-items: center; color: #d3c8d2; font-size: 12px; }
+.ef-rpg .party-mode-options input { width: 16px; height: 16px; margin: 0; accent-color: #c7ad7b; }
+.ef-rpg .party-mode-options small { color: #a79ba7; font-size: 10px; line-height: 1.7; }
+.ef-rpg .visitor-roster { border-top: 1px solid #a188c133; margin-top: 14px; padding-top: 14px; }
+.ef-rpg .visitor-roster > div:first-child { display: flex; justify-content: space-between; gap: 8px; color: #c7b5de; font-size: 11px; margin-bottom: 10px; }
+.ef-rpg .visitor-roster > small { color: #9d91aa; font-size: 10px; }
+.ef-rpg .visitor-slot { margin-top: 8px; }
+
+/* Cosmetic choices keep class silhouettes and game statistics intact. */
+.ef-rpg .customize-button { width: 100%; margin-top: 12px; min-height: 42px; font-size: 11px; }
+.ef-rpg .appearance-modal { width: min(720px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; text-align: left; }
+.ef-rpg .appearance-modal > h2 { padding-right: 24px; }
+.ef-rpg .appearance-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin: 20px 0; }
+.ef-rpg .appearance-preview { min-width: 0; align-self: start; border: 1px solid #a88b4c55; background: #10191f; border-radius: 8px; overflow: hidden; }
+.ef-rpg .appearance-preview canvas { display: block; width: 100%; height: 270px; }
+.ef-rpg .appearance-turn, .ef-rpg .appearance-poses { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 8px; }
+.ef-rpg .appearance-turn > span { font-size: 11px; color: #bcafbf; }
+.ef-rpg .appearance-turn button, .ef-rpg .appearance-poses button { border: 1px solid #695774; background: #251d2d; color: #e1ceaa; min-width: 44px; min-height: 40px; border-radius: 4px; }
+.ef-rpg .appearance-poses { padding-top: 0; gap: 7px; }
+.ef-rpg .appearance-poses button { flex: 1; font-size: 11px; }
+.ef-rpg .appearance-poses button[aria-pressed="true"] { background: #54432c; border-color: #c6a575; }
+.ef-rpg .appearance-fields { display: grid; gap: 11px; }
+.ef-rpg .appearance-fields > div { display: grid; gap: 6px; }
+.ef-rpg .appearance-fields label { display: block; color: #cfbfd8; font-size: 11px; }
+.ef-rpg .appearance-fields select { color-scheme: dark; padding: 10px; min-height: 42px; width: 100%; border: 1px solid #64516f; border-radius: 4px; color: #e9dfce; background: #1c1722; font: inherit; }
+.ef-rpg .appearance-reset { color: #d9bd89; text-decoration: underline; border: 0; background: none; justify-self: start; min-height: 36px; font-size: 11px; }
+.ef-rpg .appearance-error { color: #f0b4a3; padding: 10px 0; font-size: 12px; }
+.ef-rpg canvas.hero-portrait { border-radius: 4px; image-rendering: auto; }
+@media (max-width: 560px) {
+  .ef-rpg .appearance-modal { padding: 23px 18px; }
+  .ef-rpg .appearance-layout { grid-template-columns: 1fr; gap: 18px; }
+  .ef-rpg .appearance-preview canvas { height: 230px; }
+  .ef-rpg .appearance-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ef-rpg .appearance-reset { grid-column: 1 / -1; }
 }

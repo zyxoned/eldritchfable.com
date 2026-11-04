@@ -47,7 +47,7 @@ export default function AdventureWelcome({ open, onDismiss, returnFocusRef, pend
     <p id="adventure-welcome-intro">Your site account also opens the door to a shared realm, right here on Eldritch Fable.</p>
     <ul className="adventure-welcome-features">
       <li><h3>A character to call your own</h3><p>Choose a calling and create a persistent character linked to your account, with class skills and starting equipment. Your character, progress, and private Secret Stash stay with you when you leave and return.</p></li>
-      <li><h3>Bring your friends</h3><p>Play together with up to six adventurers in the realm at a time. Be sure to invite your friends!</p></li>
+      <li><h3>Bring your friends</h3><p>Play with up to eight adventurers in your party, with two extra places for visiting guardians. You can also explore in your own solo party. Invite your friends when you want company!</p></li>
       <li><h3>Earn XP. Build your stash.</h3><p>Earn XP as you play, then trade it for gold, silver, or copper in your Secret Stash. Save your coins toward actual gear from the shop, or keep your XP for future abilities.</p>
         <p className="adventure-welcome-rate"><strong>1,250 XP = 1 gold = 100 silver = 1,000 copper.</strong><br />1 gold is worth 1 penny.</p>
         <p className="adventure-welcome-note">Class skills and XP exchange are open now. Buying shop gear with coins and additional XP ability unlocks are coming soon.</p>

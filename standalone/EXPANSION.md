@@ -1,5 +1,7 @@
 # The Hollow King expansion
 
+> Updated 2026-11-04 for eight-player parties, two support visitors and saved appearance. This is source behavior; production rollout remains separate.
+
 The existing same-origin game gains five callings: Bard, Cleric, Wizard,
 Sorcerer, and Monk. Ranger, Knight, and Mage remain available. Every calling has
 two included starter skills, three named pieces of equipped in-game gear, and
@@ -30,37 +32,59 @@ Completion is remembered in versioned browser storage for that account.
 Reduced-motion settings are respected and no sound autoplays.
 
 The game renderer adds detailed terrain, lighting, water, foliage, class-specific
-figures, spell effects, and the Draconian seventh character. Map coordinates,
+figures, spell effects, and the separate Draconian support visitors. Map coordinates,
 walkability, keyboard/touch controls, and account gates retain their existing
 meaning.
 
-## The seventh
+## Party visitors and appearance
 
-Verified, enabled site administrators get an account link to enter as the
-seventh. No customer-facing class selector includes Death Knight. Authorization
-comes from the current server-side account role, never a browser parameter.
+A party has eight ordinary seats and two independent administrator visitor slots.
+Open matchmaking creates another persistent party when needed; solo sessions
+are eligible for random support visits but cannot be joined through ordinary
+matching. Roster, enemies, chat and effects are isolated per party.
 
-The reserved avatar is **The Unnamed**, a **Draconian Death Knight**, with level
-**???** and three **SSS** pieces: **Grave of Stars**, **Night Sovereign Plate**,
-and **Black Sun Signet**. Its powers are **Undying Oath** (invulnerability) and
-**Soul Reap** (instant defeat of a nearby hostile creature). It does not attack
-other players or create shop XP through executions.
+Verified, enabled site administrators enter a uniformly selected eligible active
+party, including a solo or full party. Authorization comes from the current
+server role and authenticated account session. No customer-facing class selector
+includes Death Knight. The separate visitor is The Unnamed, a Draconian Death
+Knight with hidden level and its existing distinctive equipment. Its ordinary
+hero, appearance, objectives and wallet remain preserved; only one avatar from
+that account is active at a time.
 
-There can be six ordinary active characters and one reserved administrator
-avatar. The administrator's ordinary character is preserved separately; only
-one avatar from that account is active at a time. Administrator entry does not
-take a customer seat. Losing account access or administrator status removes
-privileged access.
+Undying Oath makes visitors invulnerable. Veiled Strike and basic attacks share
+the ordinary 700 ms attack budget; damage follows the lower median of active
+regular members' effective basic damage and uses that member's ordinary range.
+Guardian Boon restores 15 HP to nearby living regular party members within four
+tiles, with a six-second cooldown. Browser-supplied damage, healing and radius
+cannot change these values. Visitors do not count toward customer capacity,
+difficulty or wipes and cannot claim their own customer rewards. Normal eligible
+contributors retain rewards and progression even when a visitor lands the final
+hit. Idle members receive no kill rewards.
+
+Visitor control belongs to the authenticated administrator account. Another live
+session for that same account can control its active visitor; the recorded entry
+session must also remain valid. Explicit entry rebinds that lease to the current
+session. Expiry, logout/revocation, disabling or demotion removes privileged access.
+Confirmed receipts reauthorize the current account before returning only its
+current party projection, even after it has left or switched parties.
+
+Regular heroes can save skin tone, hair style/color, outfit palette, trim and
+build independently of their immutable class, combat stats, progress and wallet.
+The server validates a strict cosmetic catalog and persists changes with the
+same receipt and party safeguards. Class silhouettes, equipment and articulated
+walking/attack poses remain distinct; reduced-motion preferences limit decorative
+animation.
 
 ## Upgrade and recovery
 
-Schema 4 retains existing account, character, quest, XP, coin, and request data,
-and adds skill state, visual effects, and a separate administrator character.
+Schema 5 preserves existing account, character, quest, XP, coin and request data,
+and adds persistent party worlds, party bindings and cosmetic appearance. The
+legacy singleton world remains as a recovery record.
 Production deploys package the shared catalog with the API and built frontend.
 Before migration, the deploy helper makes a private SQLite backup and compares
 all original table columns after the upgrade.
 
-If activation fails after schema 4 commits, the prepared recovery release keeps
+If activation fails after the schema upgrade commits, the prepared recovery release keeps
 the accounts and storefront available and pauses adventure endpoints rather than
 serving unknown new classes to the older frontend. It retains the upgraded
 database and later customer writes; it never restores the stale pre-upgrade

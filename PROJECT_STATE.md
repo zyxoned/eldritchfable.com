@@ -1,5 +1,37 @@
 # Eldritch Fable project state
 
+## Eight-player parties and support visitors — November 4, 2026
+
+The current feature implements eight regular heroes plus two separate support
+visitors per persistent isolated party. Open matching, private solo contexts,
+random administrator visits, bounded healing and party-scaled offense preserve
+normal eligible customer rewards and progression. Saved cosmetics and articulated
+class rigs give each of the eight ordinary classes its own appearance and motion.
+[The feature contract](standalone/EXPANSION.md) and
+[implementation record](docs/superpowers/plans/2026-11-04-party-visitors-appearance.md)
+describe the implemented boundary; the broader expedition campaign remains future work.
+
+Fresh accepted main before publication is
+`f50f072e6dd91f94a69882f8cad23b5dec5358d0`, tree
+`854c720c8d455b3f95cbd777cda4e8ced83f9785`.
+The resumed worktree preserves its original `f198ca51729b4131cfde37dce709830df91f81b5`
+baseline and WIP. The reviewed feature will be published independently from fresh
+main, without prototype files/history or the demo-only plan. Root documentation
+starts from actual current-main contents, preserving its governance record.
+
+Fresh verification: locked npm installation, six changed server/shared module
+syntax checks and **86 backend tests passed**, zero failures/skips. This includes
+schema-3/4-to-5 preservation, compatible fallback, isolation, replay, capacity,
+admin revocation, rewards and cosmetic forgery checks. The final production build and all **38 desktop/mobile browser tests passed**,
+including delayed-reply, cross-tab actor and cosmetic-dialog regressions.
+
+The isolated [playable demo](https://eldritch-fable-mossvale-demo-yizzwe.v2.appdeploy.ai/)
+is separate, source `d79d4c07739e190edac449fa939b32925f6a3508` in
+[PR #10](https://github.com/zyxoned/eldritchfable.com/pull/10), ready snapshot
+`1793807926358`. It remains frontend-only and cannot affect accounts or the live
+game. The owner subsequently authorized merging and deploying this feature on November 4.
+Production rehearsal and the release handoff are now in progress; publication alone is not deployment.
+
 ## Private authoring decisions resolved — October 30, 2026
 
 The owner has resolved the private participant policy and new persistent-effect

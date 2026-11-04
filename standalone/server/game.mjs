@@ -3,8 +3,9 @@ import { digest, transaction } from './database.mjs';
 import { sessionUser } from './auth.mjs';
 import { reply, readJson, sameOriginJson } from './request-security.mjs';
 import { PLAYER_CLASS_IDS } from '../shared/class-catalog.mjs';
+import { APPEARANCE_OPTIONS, sanitizeAppearance } from '../shared/appearance-catalog.mjs';
 import {
-  CLASSES, CRYSTALS, LEASE_MS, SHRINE, SPAWN, distance, walkable,
+  CLASSES, CRYSTALS, ENEMIES, LEASE_MS, MAX_PLAYERS, MAX_VISITORS, SHRINE, SPAWN, distance, walkable,
 } from './game-rules.mjs';
 
 class GameError extends Error {
@@ -20,6 +21,7 @@ function publicCharacter(row) {
   const definition = CLASSES[row.hero_class];
   return {
     id: row.id, name: row.name, heroClass: row.hero_class,
+    appearance: sanitizeAppearance(row.appearance_json ? JSON.parse(row.appearance_json) : undefined),
     race: privileged ? 'Draconian' : 'Wayfarer',
     levelLabel: privileged ? '???' : String(1 + Math.floor((row.lifetime_xp || 0) / 100)),
     hidden: privileged,
@@ -48,11 +50,12 @@ export function createGameService(db, options = {}) {
     return user;
   }
 
-  function loadWorld() {
-    const row = db.prepare('SELECT * FROM game_world WHERE id=1').get();
-    if (!row) throw new GameError('The realm needs a database migration before it can open.', 503, 'REALM_UNAVAILABLE');
+  function loadWorld(partyId) {
+    if (!partyId) return null;
+    const row = db.prepare('SELECT * FROM game_parties WHERE id=?').get(partyId);
+    if (!row) throw new GameError('That party is no longer available.', 409, 'PARTY_CHANGED');
     return {
-      revision: row.revision,
+      id: row.id, mode: row.mode, revision: row.revision,
       enemies: JSON.parse(row.enemies_json),
       messages: JSON.parse(row.messages_json),
       effects: JSON.parse(row.effects_json),
@@ -60,8 +63,17 @@ export function createGameService(db, options = {}) {
   }
 
   function saveWorld(world) {
-    db.prepare('UPDATE game_world SET revision=?,enemies_json=?,messages_json=?,effects_json=? WHERE id=1')
-      .run(world.revision, JSON.stringify(world.enemies), JSON.stringify(world.messages.slice(-30)), JSON.stringify(world.effects.slice(-24)));
+    if (!world) return;
+    db.prepare('UPDATE game_parties SET revision=?,enemies_json=?,messages_json=?,effects_json=? WHERE id=?')
+      .run(world.revision, JSON.stringify(world.enemies), JSON.stringify(world.messages.slice(-30)), JSON.stringify(world.effects.slice(-24)), world.id);
+  }
+
+  function createWorld(mode, userId, time) {
+    const id = randomUUID();
+    const enemies = ENEMIES.map(enemy => ({ ...enemy, hp: 42, respawnAt: 0, spawnId: randomUUID() }));
+    db.prepare('INSERT INTO game_parties(id,mode,owner_user_id,enemies_json,created_at) VALUES(?,?,?,?,?)')
+      .run(id, mode, userId, JSON.stringify(enemies), time);
+    return loadWorld(id);
   }
 
   function systemMessage(world, text, time) {
@@ -77,20 +89,22 @@ export function createGameService(db, options = {}) {
 
   function expireAndRespawn(world, time) {
     let changed = false;
-    const expiredCondition = 'active_until>0 AND (active_until<=? OR user_id IN '
+    const expiredCondition = 'party_id=? AND active_until>0 AND (active_until<=? OR user_id IN '
       + '(SELECT id FROM account_users WHERE disabled_at IS NOT NULL OR email_verified_at IS NULL))';
-    const expired = db.prepare('SELECT name FROM game_characters WHERE ' + expiredCondition).all(time);
+    const expired = db.prepare('SELECT name FROM game_characters WHERE ' + expiredCondition).all(world.id, time);
     if (expired.length) {
-      db.prepare('UPDATE game_characters SET active_until=0 WHERE ' + expiredCondition).run(time);
+      db.prepare('UPDATE game_characters SET active_until=0 WHERE ' + expiredCondition).run(world.id, time);
       for (const row of expired) systemMessage(world, row.name + ' returned to the everyday.', time);
       changed = true;
     }
     const removedAdmins = db.prepare(
-      'UPDATE game_admin_characters SET active_until=0 WHERE active_until>0 AND (active_until<=? OR user_id IN '
+      'UPDATE game_admin_characters SET active_until=0 WHERE party_id=? AND active_until>0 AND (active_until<=? OR user_id IN '
       + "(SELECT id FROM account_users WHERE disabled_at IS NOT NULL OR email_verified_at IS NULL OR role!='admin') "
       + 'OR NOT EXISTS(SELECT 1 FROM account_sessions s WHERE s.token_hash=game_admin_characters.session_hash '
-      + 'AND s.user_id=game_admin_characters.user_id AND s.revoked_at IS NULL AND s.expires_at>?))',
-    ).run(time, new Date(time).toISOString());
+      + 'AND s.user_id=game_admin_characters.user_id AND s.revoked_at IS NULL AND s.expires_at>?) '
+      + 'OR NOT EXISTS(SELECT 1 FROM game_characters c JOIN account_users u ON u.id=c.user_id '
+      + 'WHERE c.party_id=? AND c.active_until>? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL))',
+    ).run(world.id, time, new Date(time).toISOString(), world.id, time);
     if (removedAdmins.changes) changed = true;
     world.effects = world.effects.filter(effect => effect.at + 1600 > time);
     for (const enemy of world.enemies) {
@@ -98,7 +112,22 @@ export function createGameService(db, options = {}) {
         enemy.hp = 42;
         enemy.respawnAt = 0;
         enemy.spawnId = randomUUID();
-        db.prepare('DELETE FROM game_damage WHERE enemy_id=?').run(enemy.id);
+        db.prepare('DELETE FROM game_damage WHERE party_id=? AND enemy_id=?').run(world.id, enemy.id);
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  function expireWorlds(time) {
+    let changed = false;
+    const parties = db.prepare('SELECT id FROM game_parties p WHERE EXISTS(SELECT 1 FROM game_characters c WHERE c.party_id=p.id AND c.active_until>0) '
+      + 'OR EXISTS(SELECT 1 FROM game_admin_characters c WHERE c.party_id=p.id AND c.active_until>0)').all();
+    for (const party of parties) {
+      const world = loadWorld(party.id);
+      if (expireAndRespawn(world, time)) {
+        world.revision += 1;
+        saveWorld(world);
         changed = true;
       }
     }
@@ -132,27 +161,34 @@ export function createGameService(db, options = {}) {
       .run(...values, row.user_id);
   }
 
-  function realm(world, time) {
-    const rows = db.prepare(
+  function regularMembers(partyId, time) {
+    if (!partyId) return [];
+    return db.prepare(
       'SELECT c.*,COALESCE(w.lifetime_xp,0) AS lifetime_xp '
       + 'FROM game_characters c JOIN account_users u ON u.id=c.user_id '
       + 'LEFT JOIN game_wallets w ON w.user_id=c.user_id '
-      + 'WHERE c.active_until>? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL '
-      + 'ORDER BY c.created_at,c.id LIMIT 6',
-    ).all(time);
-    const seventh = db.prepare(
+      + 'WHERE c.party_id=? AND c.active_until>? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL '
+      + 'ORDER BY c.created_at,c.id',
+    ).all(partyId, time);
+  }
+
+  function realm(world, time) {
+    const rows = regularMembers(world?.id, time);
+    const visitors = world ? db.prepare(
       "SELECT c.* FROM game_admin_characters c JOIN account_users u ON u.id=c.user_id "
       + 'JOIN account_sessions s ON s.token_hash=c.session_hash AND s.user_id=c.user_id '
-      + "WHERE c.active_until>? AND u.role='admin' AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL "
-      + 'AND s.revoked_at IS NULL AND s.expires_at>? ORDER BY c.created_at,c.id LIMIT 1',
-    ).get(time, new Date(time).toISOString());
+      + "WHERE c.party_id=? AND c.active_until>? AND u.role='admin' AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL "
+      + 'AND s.revoked_at IS NULL AND s.expires_at>? ORDER BY c.created_at,c.id',
+    ).all(world.id, time, new Date(time).toISOString()) : [];
     return {
-      revision: world.revision,
+      partyId: world?.id || null, partyMode: world?.mode || null,
+      maxPlayers: MAX_PLAYERS, maxVisitors: MAX_VISITORS,
+      revision: world?.revision || 0,
       players: rows.map(row => publicCharacter({ ...row, is_admin: false })),
-      seventh: seventh ? publicCharacter({ ...seventh, is_admin: true }) : null,
-      enemies: world.enemies.map(({ id, x, y, hp, respawnAt }) => ({ id, x, y, hp, respawnAt })),
-      effects: world.effects.filter(effect => effect.at + 1600 > time).slice(-24),
-      messages: world.messages, serverTime: time,
+      visitors: visitors.map(row => publicCharacter({ ...row, is_admin: true })),
+      enemies: world?.enemies.map(({ id, x, y, hp, respawnAt }) => ({ id, x, y, hp, respawnAt })) || [],
+      effects: world?.effects.filter(effect => effect.at + 1600 > time).slice(-24) || [],
+      messages: world?.messages || [], serverTime: time,
     };
   }
 
@@ -164,6 +200,7 @@ export function createGameService(db, options = {}) {
     const wallet = db.prepare('SELECT * FROM game_wallets WHERE user_id=?').get(userId);
     const role = db.prepare('SELECT role FROM account_users WHERE id=?').get(userId)?.role;
     return {
+      partyId: row && row.active_until > time ? row.party_id : null,
       playerId: row?.id || null,
       character: row ? publicCharacter(row) : null,
       regularCharacter: regular ? publicCharacter(regular) : null,
@@ -187,17 +224,17 @@ export function createGameService(db, options = {}) {
     };
   }
 
+  function worldFor(userId, time) {
+    const own = profile(userId, time);
+    return loadWorld(own.partyId);
+  }
+
   function snapshot(req) {
     return transaction(db, () => {
       const time = now();
       const user = requireUser(req, time);
-      const world = loadWorld();
-      const changed = expireAndRespawn(world, time);
-      if (changed) {
-        world.revision += 1;
-        saveWorld(world);
-      }
-      return { result: currentResult(world, user.id, time), changed };
+      const changed = expireWorlds(time);
+      return { result: currentResult(worldFor(user.id, time), user.id, time), changed };
     });
   }
 
@@ -238,63 +275,99 @@ export function createGameService(db, options = {}) {
     }
   }
 
-  function joinAdmin(userId, req, world, time) {
+  function joinAdmin(userId, req, time) {
     requireAdmin(userId);
-    const occupied = db.prepare(
-      'SELECT COUNT(*) AS n FROM game_admin_characters WHERE active_until>? AND user_id<>?',
-    ).get(time, userId).n;
-    if (occupied) throw new GameError('The seventh presence is already in the realm.', 409, 'SEVENTH_OCCUPIED');
+    const current = adminCharacter(userId);
+    let world;
+    if (current?.active_until > time) {
+      world = loadWorld(current.party_id);
+    } else {
+      const occupied = db.prepare('SELECT p.id FROM game_parties p WHERE EXISTS('
+        + 'SELECT 1 FROM game_characters c JOIN account_users u ON u.id=c.user_id '
+        + 'WHERE c.party_id=p.id AND c.active_until>? AND c.user_id<>? '
+        + 'AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL) ORDER BY p.created_at,p.rowid').all(time, userId);
+      const eligible = occupied.filter(party => db.prepare('SELECT COUNT(*) AS n FROM game_admin_characters WHERE party_id=? AND active_until>? AND user_id<>?')
+        .get(party.id, time, userId).n < MAX_VISITORS);
+      if (!eligible.length) throw new GameError(occupied.length ? 'All active parties already have two visitors.' : 'No adventurers are exploring right now.', 409, occupied.length ? 'VISITORS_FULL' : 'NO_ACTIVE_PARTY');
+      const sample = (options.random || Math.random)();
+      const index = Math.min(eligible.length - 1, Math.max(0, Math.floor((Number.isFinite(sample) ? sample : 0) * eligible.length)));
+      world = loadWorld(eligible[index].id);
+    }
     const token = (req.headers.cookie || '').match(/(?:^|;\s*)ef_session=([a-f0-9]{64})(?:;|$)/)?.[1];
-    // requireUser has already authenticated this cookie. Store only its digest.
     if (!token) throw new GameError('Sign in again before crossing the veil.', 401, 'SIGN_IN_REQUIRED');
     const sessionHash = digest(token);
     const row = db.prepare('SELECT * FROM game_admin_characters WHERE user_id=?').get(userId);
     if (!row) {
-      db.prepare('INSERT INTO game_admin_characters(user_id,id,session_hash,active_until) VALUES(?,?,?,?)')
-        .run(userId, randomUUID(), sessionHash, time + LEASE_MS);
+      db.prepare('INSERT INTO game_admin_characters(user_id,id,session_hash,active_until,party_id) VALUES(?,?,?,?,?)')
+        .run(userId, randomUUID(), sessionHash, time + LEASE_MS, world.id);
     } else {
-      updateCharacter({ ...row, is_admin: true }, 'session_hash=?,active_until=?', sessionHash, time + LEASE_MS);
+      updateCharacter({ ...row, is_admin: true }, 'session_hash=?,active_until=?,party_id=?', sessionHash, time + LEASE_MS, world.id);
     }
-    // Entering the secret avatar never overwrites the account's normal hero or wallet.
-    db.prepare('UPDATE game_characters SET active_until=0 WHERE user_id=?').run(userId);
-    return 'The seventh shadow has crossed the veil.';
+    // The visitor avatar has separate transient state; normal progress and wallets remain intact.
+    const regular = character(userId);
+    if (regular?.active_until > time) {
+      const previous = loadWorld(regular.party_id);
+      updateCharacter(regular, 'active_until=0');
+      systemMessage(previous, regular.name + ' left the glade.', time);
+      previous.revision += 1;
+      saveWorld(previous);
+      if (previous.id === world.id) world = previous;
+    }
+    return { world, notice: 'You joined a random party as a support visitor.' };
   }
 
   function leaveAdmin(userId) {
     requireAdmin(userId);
     db.prepare('UPDATE game_admin_characters SET active_until=0 WHERE user_id=?').run(userId);
-    return 'Your secret presence has withdrawn. Your regular character is safe.';
+    return 'Your support visit ended. Your regular character is safe.';
   }
 
-  function join(userId, input, world, time) {
+  function join(userId, input, time) {
     const name = typeof input.name === 'string' ? input.name.trim() : '';
-    if (!/^[a-zA-Z0-9 _-]{2,16}$/.test(name)) {
-      throw new GameError('Use 2–16 letters, numbers, spaces, dashes or underscores for your name.');
-    }
+    if (!/^[a-zA-Z0-9 _-]{2,16}$/.test(name)) throw new GameError('Use 2–16 letters, numbers, spaces, dashes or underscores for your name.');
     if (!PLAYER_CLASS_IDS.includes(input.heroClass)) throw new GameError('Choose a regular character class.');
+    const mode = input.mode === undefined ? 'open' : input.mode;
+    if (!['open', 'solo'].includes(mode)) throw new GameError('Choose an open party or a solo adventure.');
     let row = character(userId);
+    let world;
+    if (input.partyId !== undefined) {
+      if (typeof input.partyId !== 'string') throw new GameError('That party is unavailable.', 409, 'PARTY_CHANGED');
+      world = loadWorld(input.partyId);
+      if (world.mode === 'solo' && !(row?.active_until > time && row.party_id === world.id)) throw new GameError('Solo adventures are private to their regular hero.', 409, 'PARTY_PRIVATE');
+    }
     if (row?.active_until > time) {
+      if (world && world.id !== row.party_id) throw new GameError('Leave your current party before joining another.', 409, 'PARTY_CHANGED');
+      world = loadWorld(row.party_id);
       db.prepare('UPDATE game_admin_characters SET active_until=0 WHERE user_id=?').run(userId);
       updateCharacter(row, 'active_until=?', time + LEASE_MS);
-      return 'Welcome back. Your seat and secret stash are safe.';
+      return { world, notice: 'Welcome back. Your party and secret stash are safe.' };
     }
-    const occupied = db.prepare('SELECT COUNT(*) AS n FROM game_characters WHERE active_until>?').get(time).n;
-    if (occupied >= 6) throw new GameError('The realm is full (6/6). Wait for an adventurer to leave.', 409, 'REALM_FULL');
+    if (world && regularMembers(world.id, time).length >= MAX_PLAYERS) throw new GameError('That party is full (8/8).', 409, 'PARTY_FULL');
+    if (!world && mode === 'open') {
+      const candidates = db.prepare("SELECT p.id FROM game_parties p WHERE p.mode='open' ORDER BY p.created_at,p.rowid").all();
+      const candidate = candidates.find(party => regularMembers(party.id, time).length < MAX_PLAYERS);
+      if (candidate) world = loadWorld(candidate.id);
+    }
+    if (!world) world = createWorld(mode, userId, time);
     if (!row) {
-      if (db.prepare('SELECT id FROM game_characters WHERE name=? COLLATE NOCASE').get(name)) {
-        throw new GameError('That adventurer name is already in use. Choose another.');
-      }
-      db.prepare(
-        'INSERT INTO game_characters(user_id,id,name,hero_class,x,y,active_until) VALUES(?,?,?,?,?,?,?)',
-      ).run(userId, randomUUID(), name, input.heroClass, SPAWN.x, SPAWN.y, time + LEASE_MS);
+      if (db.prepare('SELECT id FROM game_characters WHERE name=? COLLATE NOCASE').get(name)) throw new GameError('That adventurer name is already in use. Choose another.');
+      db.prepare('INSERT INTO game_characters(user_id,id,name,hero_class,x,y,active_until,party_id) VALUES(?,?,?,?,?,?,?,?)')
+        .run(userId, randomUUID(), name, input.heroClass, SPAWN.x, SPAWN.y, time + LEASE_MS, world.id);
       db.prepare('INSERT OR IGNORE INTO game_wallets(user_id) VALUES(?)').run(userId);
       row = character(userId);
-    } else {
-      updateCharacter(row, 'active_until=?', time + LEASE_MS);
-    }
+    } else updateCharacter(row, 'active_until=?,party_id=?', time + LEASE_MS, world.id);
     db.prepare('UPDATE game_admin_characters SET active_until=0 WHERE user_id=?').run(userId);
     systemMessage(world, row.name + ' arrived in the glade.', time);
-    return 'Welcome, ' + row.name + '. Your adventure is saved to your account.';
+    return { world, notice: 'Welcome, ' + row.name + '. Your adventure is saved to your account.' };
+  }
+
+  function supportStats(p, time) {
+    const members = regularMembers(p.party_id, time).map(row => ({
+      damage: CLASSES[row.hero_class].damage + Math.floor(row.lifetime_xp / 100) * 2,
+      range: CLASSES[row.hero_class].range, id: row.id,
+    })).sort((a, b) => a.damage - b.damage || a.id.localeCompare(b.id));
+    if (!members.length) throw new GameError('This visit ended because the party left.', 409, 'SEAT_EXPIRED');
+    return members[Math.floor((members.length - 1) / 2)];
   }
 
   function effect(world, p, type, target, time, radius = 0) {
@@ -325,18 +398,18 @@ export function createGameService(db, options = {}) {
   function damageEnemy(p, enemy, damage, world, time) {
     enemy.hp = Math.max(0, enemy.hp - damage);
     if (!p.is_admin) db.prepare(
-      'INSERT INTO game_damage(enemy_id,spawn_id,user_id,damage,damaged_at) VALUES(?,?,?,?,?) '
+      'INSERT INTO game_damage(enemy_id,spawn_id,user_id,damage,damaged_at,party_id) VALUES(?,?,?,?,?,?) '
       + 'ON CONFLICT(enemy_id,spawn_id,user_id) DO UPDATE SET damage=damage+excluded.damage,damaged_at=excluded.damaged_at',
-    ).run(enemy.id, enemy.spawnId, p.user_id, damage, time);
+    ).run(enemy.id, enemy.spawnId, p.user_id, damage, time, world.id);
     if (enemy.hp > 0) return false;
     enemy.respawnAt = time + 20000;
-    if (!p.is_admin) {
+    {
       const contributors = db.prepare(
         'SELECT d.user_id FROM game_damage d JOIN game_characters c ON c.user_id=d.user_id '
         + 'JOIN account_users u ON u.id=d.user_id '
-        + 'WHERE d.enemy_id=? AND d.spawn_id=? AND d.damage>0 AND d.damaged_at>=? '
+        + 'WHERE d.party_id=? AND c.party_id=? AND d.enemy_id=? AND d.spawn_id=? AND d.damage>0 AND d.damaged_at>=? '
         + 'AND c.active_until>? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL',
-      ).all(enemy.id, enemy.spawnId, time - 30000, time);
+      ).all(world.id, world.id, enemy.id, enemy.spawnId, time - 30000, time);
       for (const contributor of contributors) {
         if (credit(contributor.user_id, 15, 'kill:' + enemy.spawnId, 'Thornling defeated', time)) {
           db.prepare('UPDATE game_characters SET kills=kills+1 WHERE user_id=?').run(contributor.user_id);
@@ -344,8 +417,8 @@ export function createGameService(db, options = {}) {
       }
       systemMessage(world, p.name + ' defeated a thornling. Its fellow guardians earned 15 XP.', time);
     }
-    // Administrative executions never mint redeemable XP, including for assistants.
-    db.prepare('DELETE FROM game_damage WHERE enemy_id=? AND spawn_id=?').run(enemy.id, enemy.spawnId);
+    // Visitors do not contribute or receive rewards; genuine customer contributions still count.
+    db.prepare('DELETE FROM game_damage WHERE party_id=? AND enemy_id=? AND spawn_id=?').run(world.id, enemy.id, enemy.spawnId);
     return true;
   }
 
@@ -355,18 +428,9 @@ export function createGameService(db, options = {}) {
     if (!skill || skill.type === 'passive') throw new GameError('Choose one of your active class skills.', 400, 'SKILL_UNAVAILABLE');
     const cooldowns = JSON.parse(p.skill_cooldowns_json);
     if ((cooldowns[skill.id] || 0) > time) throw new GameError('That skill is still recovering.', 429, 'SKILL_COOLDOWN');
-    if (skill.type === 'execute') {
-      if (!p.is_admin) throw new GameError('This power is unavailable.', 403, 'ADMIN_REQUIRED');
-      requireAdmin(p.user_id);
-      const target = world.enemies.filter(enemy => enemy.hp > 0 && distance(p, enemy) <= skill.range)
-        .sort((a, b) => distance(p, a) - distance(p, b))[0];
-      if (!target) throw new GameError('Move closer to a thornling to use Soul Reap.');
-      damageEnemy(p, target, target.hp, world, time);
-      effect(world, p, 'execute', target, time, 1.5);
-    } else if (skill.type === 'heal') {
+    if (skill.type === 'heal') {
       const targets = skill.target === 'party'
-        ? db.prepare('SELECT c.* FROM game_characters c JOIN account_users u ON u.id=c.user_id WHERE c.active_until>? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL').all(time)
-          .filter(row => distance(p, row) <= (skill.radius || 0))
+        ? regularMembers(p.party_id, time).filter(row => row.hp > 0 && distance(p, row) <= (skill.radius || 0))
         : [p];
       if (!targets.some(row => row.hp < 100)) throw new GameError('Your healing circle is already at full health.', 409, 'HEALTH_FULL');
       for (const row of targets) {
@@ -377,7 +441,9 @@ export function createGameService(db, options = {}) {
       updateCharacter(p, 'ward_until=?,ward_amount=?', time + skill.durationMs, skill.ward);
       effect(world, p, 'ward', p, time, 1);
     } else if (skill.type === 'strike' || skill.type === 'area') {
-      const primary = world.enemies.filter(enemy => enemy.hp > 0 && distance(p, enemy) <= skill.range)
+      // Both visitor attack presentations share one ordinary attack budget.
+      if (p.is_admin && time - p.last_attack_at < 700) throw new GameError('Your weapon is recharging.', 429, 'ATTACK_COOLDOWN');
+      const primary = world.enemies.filter(enemy => enemy.hp > 0 && distance(p, enemy) <= (p.is_admin ? supportStats(p, time).range : skill.range))
         .sort((a, b) => distance(p, a) - distance(p, b))[0];
       if (!primary) throw new GameError('Move closer to a thornling to use ' + skill.name + '.');
       const targets = skill.type === 'area'
@@ -385,9 +451,10 @@ export function createGameService(db, options = {}) {
         : [primary];
       let retaliates = false;
       for (const enemy of targets) {
-        if (!damageEnemy(p, enemy, skill.damage + Math.floor(p.lifetime_xp / 100) * 2, world, time)) retaliates = true;
+        if (!damageEnemy(p, enemy, p.is_admin ? supportStats(p, time).damage : skill.damage + Math.floor(p.lifetime_xp / 100) * 2, world, time)) retaliates = true;
       }
       if (retaliates) hurt(p, 9, time);
+      if (p.is_admin) updateCharacter(p, 'last_attack_at=?', time);
       effect(world, p, skill.type, primary, time, skill.radius || 0);
     } else {
       throw new GameError('That class skill is unavailable.', 400, 'SKILL_UNAVAILABLE');
@@ -411,17 +478,17 @@ export function createGameService(db, options = {}) {
     if (input.kind === 'skill') return useSkill(p, input, world, time);
     if (input.kind === 'attack') {
       if (time - p.last_attack_at < 700) throw new GameError('Your weapon is recharging.', 429, 'ATTACK_COOLDOWN');
-      const stats = CLASSES[p.hero_class];
+      const stats = p.is_admin ? supportStats(p, time) : CLASSES[p.hero_class];
       const targets = world.enemies
-        .filter(e => e.hp > 0 && distance(p, e) <= (p.is_admin ? 6 : stats.range))
+        .filter(e => e.hp > 0 && distance(p, e) <= stats.range)
         .sort((a, b) => distance(p, a) - distance(p, b));
       const enemy = targets[0];
       if (!enemy) throw new GameError('Move closer to a thornling to attack.');
-      const damage = p.is_admin ? enemy.hp : stats.damage + Math.floor(p.lifetime_xp / 100) * 2;
+      const damage = p.is_admin ? stats.damage : stats.damage + Math.floor(p.lifetime_xp / 100) * 2;
       const killed = damageEnemy(p, enemy, damage, world, time);
       updateCharacter(p, 'last_attack_at=?', time);
-      effect(world, p, p.is_admin ? 'execute' : 'strike', enemy, time);
-      if (killed) return p.is_admin ? 'The thornling vanished. No reward was created.' : 'Thornling cleared! Contributors earned 15 XP for their secret stash.';
+      effect(world, p, 'strike', enemy, time);
+      if (killed) return 'Thornling cleared! Active customer contributors earned 15 XP for their secret stash.';
       if (hurt(p, 9, time)) return 'The campfire restored you. Your XP and stash are safe.';
       return 'Hit! Thornling has ' + enemy.hp + ' health.';
     }
@@ -446,7 +513,7 @@ export function createGameService(db, options = {}) {
       throw new GameError('Stand beside a new crystal, the shrine, or the campfire.');
     }
     if (input.kind === 'claim') {
-      if (p.is_admin) throw new GameError('The seventh presence cannot claim customer rewards.', 403, 'ADMIN_REWARD_DISABLED');
+      if (p.is_admin) throw new GameError('Support visitors cannot claim customer rewards.', 403, 'ADMIN_REWARD_DISABLED');
       if (p.claimed) throw new GameError('You already claimed this adventure reward.');
       if (p.kills < 3 || JSON.parse(p.gathered_json).length < 2 || !p.shrine) {
         throw new GameError('Complete all three adventure objectives first.');
@@ -472,57 +539,67 @@ export function createGameService(db, options = {}) {
 
   function mutate(req, path, input) {
     const requestId = input.requestId;
-    if (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) {
-      throw new GameError('Invalid request ID. Please try again.');
-    }
+    if (typeof requestId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) throw new GameError('Invalid request ID. Please try again.');
     const payloadHash = digest(JSON.stringify({ path, input }));
     return transaction(db, () => {
       const time = now();
       const user = requireUser(req, time);
-      const world = loadWorld();
-      const changed = expireAndRespawn(world, time);
+      expireWorlds(time);
       if (path.startsWith('/api/game/admin/')) requireAdmin(user.id);
-      const receipt = db.prepare(
-        'SELECT payload_hash,notice,actor_scope FROM game_requests WHERE user_id=? AND request_id=?',
-      ).get(user.id, requestId);
+      const receipt = db.prepare('SELECT payload_hash,notice,actor_scope,party_id FROM game_requests WHERE user_id=? AND request_id=?').get(user.id, requestId);
+      // Check privileged replay authority before disclosing context or replay information.
+      if (receipt?.actor_scope === 'admin') requireAdmin(user.id);
+      // A confirmed request is immutable across later joins/leaves. Reauthorize
+      // first, then replay its notice with the caller's current authorized world.
       if (receipt) {
-        if (receipt.actor_scope === 'admin') requireAdmin(user.id);
-        if (receipt.payload_hash !== payloadHash) {
-          throw new GameError('This request ID was used for a different action.', 409, 'REQUEST_CONFLICT');
-        }
-        if (changed) { world.revision += 1; saveWorld(world); }
-        return currentResult(world, user.id, time, receipt.notice);
+        if (receipt.payload_hash !== payloadHash) throw new GameError('This request ID was used for a different action.', 409, 'REQUEST_CONFLICT');
+        return currentResult(worldFor(user.id, time), user.id, time, receipt.notice);
       }
-      const adminBefore = adminCharacter(user.id);
-      const privileged = path.startsWith('/api/game/admin/') || (path !== '/api/game/join' && adminBefore?.active_until > time);
+      const before = profile(user.id, time);
+      const joining = ['/api/game/join', '/api/game/admin/join'].includes(path);
+      if (!joining && (typeof input.partyId !== 'string' || input.partyId !== before.partyId)) {
+        if (!before.active && input.partyId === character(user.id)?.party_id) activeCharacter(user.id, time);
+        throw new GameError('Your party changed. Refresh before continuing.', 409, 'PARTY_CHANGED');
+      }
+      const privileged = path.startsWith('/api/game/admin/') || (path !== '/api/game/join' && before.adminActive);
+      let world = worldFor(user.id, time);
       let notice;
       if (path === '/api/game/admin/join') {
-        notice = joinAdmin(user.id, req, world, time);
+        if (input.partyId !== undefined) throw new GameError('Support visitors join a random active party.');
+        ({ world, notice } = joinAdmin(user.id, req, time));
       } else if (path === '/api/game/admin/leave') {
         notice = leaveAdmin(user.id);
       } else if (path === '/api/game/join') {
-        notice = join(user.id, input, world, time);
+        ({ world, notice } = join(user.id, input, time));
       } else if (path === '/api/game/leave') {
-        const admin = adminCharacter(user.id);
-        const p = admin?.active_until > time ? admin : character(user.id);
-        if (p?.active_until > time) {
-          updateCharacter(p, 'active_until=0');
-          if (!p.is_admin) systemMessage(world, p.name + ' left the glade.', time);
-        }
+        const p = activeCharacter(user.id, time);
+        updateCharacter(p, 'active_until=0');
+        if (!p.is_admin) systemMessage(world, p.name + ' left the glade.', time);
         notice = 'Your seat is free. Your character and secret stash remain saved.';
+      } else if (path === '/api/game/appearance') {
+        const p = activeCharacter(user.id, time);
+        if (p.is_admin) throw new GameError('End your support visit before changing your ordinary hero.', 403, 'ADMIN_APPEARANCE_DISABLED');
+        const appearance = input.appearance;
+        const keys = Object.keys(APPEARANCE_OPTIONS);
+        if (!appearance || Array.isArray(appearance) || typeof appearance !== 'object'
+          || Object.keys(appearance).length !== keys.length
+          || Object.keys(appearance).some(key => !keys.includes(key))
+          || keys.some(key => !APPEARANCE_OPTIONS[key].some(option => option.id === appearance[key]))) {
+          throw new GameError('Choose a valid value for every appearance option.', 400, 'INVALID_APPEARANCE');
+        }
+        updateCharacter(p, 'appearance_json=?', JSON.stringify(sanitizeAppearance(appearance)));
+        notice = 'Your appearance was saved.';
       } else if (path === '/api/game/heartbeat') {
         activeCharacter(user.id, time);
         notice = '';
-      } else {
-        notice = doAction(user.id, input, world, time);
-      }
+      } else notice = doAction(user.id, input, world, time);
       if (!['/api/game/leave', '/api/game/admin/leave'].includes(path)) renew(user.id, time);
       world.revision += 1;
       saveWorld(world);
-      db.prepare(
-        'INSERT INTO game_requests(user_id,request_id,payload_hash,notice,created_at,actor_scope) VALUES(?,?,?,?,?,?)',
-      ).run(user.id, requestId, payloadHash, notice, time, privileged ? 'admin' : 'regular');
-      return currentResult(world, user.id, time, notice);
+      db.prepare('INSERT INTO game_requests(user_id,request_id,payload_hash,notice,created_at,actor_scope,party_id) VALUES(?,?,?,?,?,?,?)')
+        .run(user.id, requestId, payloadHash, notice, time, privileged ? 'admin' : 'regular', world.id);
+      expireWorlds(time);
+      return currentResult(worldFor(user.id, time), user.id, time, notice);
     });
   }
 
@@ -627,9 +704,10 @@ export function createGameService(db, options = {}) {
     } catch { /* A disconnected response needs no further work. */ }
   }
 
-  function sendRealm(stream, current) {
+  function sendRealm(stream) {
     try {
-      requireUser(stream.req, now());
+      const user = requireUser(stream.req, now());
+      const current = realm(worldFor(user.id, now()), now());
       if (stream.res.destroyed || stream.res.writableEnded) return closeStream(stream);
       stream.res.write('event: realm\ndata: ' + JSON.stringify(current) + '\n\n');
     } catch (error) {
@@ -640,8 +718,7 @@ export function createGameService(db, options = {}) {
   function publish() {
     if (!streams.size || closed) return;
     try {
-      const current = realm(loadWorld(), now());
-      for (const stream of streams) sendRealm(stream, current);
+      for (const stream of streams) sendRealm(stream);
     } catch {
       for (const stream of streams) closeStream(stream, 'REALM_UNAVAILABLE');
     }
@@ -653,9 +730,7 @@ export function createGameService(db, options = {}) {
       const time = now();
       let changed = false;
       transaction(db, () => {
-        const world = loadWorld();
-        changed = expireAndRespawn(world, time);
-        if (changed) { world.revision += 1; saveWorld(world); }
+        changed = expireWorlds(time);
       });
       if (changed) publish();
       for (const stream of streams) {
@@ -693,7 +768,7 @@ export function createGameService(db, options = {}) {
         const stream = { req, res, userId: user.id };
         streams.add(stream);
         res.on?.('close', () => streams.delete(stream));
-        sendRealm(stream, current.result.realm);
+        sendRealm(stream);
         return true;
       }
       if (req.method === 'GET' && path === '/api/game/world') {
@@ -706,7 +781,7 @@ export function createGameService(db, options = {}) {
         reply(res, 200, { stash: stash(user.id) });
         return true;
       }
-      const posts = ['/api/game/join', '/api/game/action', '/api/game/heartbeat', '/api/game/leave', '/api/game/exchange', '/api/game/admin/join', '/api/game/admin/leave'];
+      const posts = ['/api/game/join', '/api/game/action', '/api/game/heartbeat', '/api/game/leave', '/api/game/exchange', '/api/game/admin/join', '/api/game/admin/leave', '/api/game/appearance'];
       if (!posts.includes(path)) throw new GameError('Not found', 404, 'NOT_FOUND');
       if (req.method !== 'POST') throw new GameError('Method not allowed', 405, 'METHOD_NOT_ALLOWED');
       if (!sameOriginJson(req, options.origin)) throw new GameError('Forbidden', 403, 'ORIGIN_REJECTED');

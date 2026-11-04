@@ -4,7 +4,7 @@ export type HeroClass = 'ranger' | 'knight' | 'mage' | 'bard' | 'cleric' | 'wiza
 export type Equipment = { id: string; name: string; slot: string; rarity: string; description: string };
 export type Skill = {
   id: string; name: string; description: string; cooldownMs: number;
-  type: 'strike' | 'area' | 'heal' | 'ward' | 'passive' | 'execute';
+  type: 'strike' | 'area' | 'heal' | 'ward' | 'passive';
   target: 'enemy' | 'self' | 'party';
   damage?: number; heal?: number; range?: number; radius?: number; ward?: number; durationMs?: number;
 };
@@ -16,7 +16,10 @@ export const PLAYER_CLASS_IDS = PLAYABLE_IDS as readonly Exclude<HeroClass, 'dea
 export const ADMIN_CLASS_ID: HeroClass = ADMIN_ID;
 export const CLASSES = CLASS_CATALOG as Record<HeroClass, ClassDefinition>;
 
+export type Appearance = { skinTone: string; hairColor: string; hairStyle: string; outfit: string; accent: string; build: string };
+
 export type Player = {
+  appearance?: Appearance;
   id: string;
   name: string;
   heroClass: HeroClass;
@@ -59,12 +62,16 @@ export type RealmEffect = {
 };
 
 export type Realm = {
+  partyId: string | null;
+  partyMode: 'open' | 'solo' | null;
+  maxPlayers: number;
+  maxVisitors: number;
   revision: number;
   players: Player[];
   enemies: Enemy[];
   messages: ChatMessage[];
   serverTime: number;
-  seventh?: Player | null;
+  visitors: Player[];
   effects?: RealmEffect[];
 };
 

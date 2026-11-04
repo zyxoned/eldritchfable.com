@@ -64,11 +64,12 @@ renderer, Node >=24, SQLite and authenticated server-sent events (SSE).
 Keep this architecture. No Three.js/R3F, replacement framework, new database,
 external auth provider or paid asset service is required.
 
-Today there is one 30×22 Mossvale map and a singleton saved world. Six ordinary
-accounts may be present globally; the separate administrator avatar is not a
-seventh customer slot. Keep that global capacity while allowing separate parties
-and expedition instances within it. This design does not promise larger-scale
-MMO infrastructure or multiple authoritative server workers.
+The original foundation had one 30×22 Mossvale map and a singleton saved world.
+The owner now requires eight ordinary heroes per party plus two separate support
+visitors. The party-visitor feature introduces persistent isolated party worlds,
+open matching and private solo contexts; it does not impose a global eight-seat
+limit or promise multiple authoritative workers. Expedition content below remains
+a separate implementation scope.
 
 Preserve:
 
@@ -182,8 +183,8 @@ remembered choices and knowledge are not erased by a loss.
 
 ### Parties and physical entry
 
-A social party has one to six ordinary heroes, subject to the existing global
-six-seat limit. Heroes roam independently. Members may stay in Mossvale, follow
+A social party has one to eight ordinary heroes and up to two separate support
+visitors. Capacity applies per party, with independent party worlds. Heroes roam independently. Members may stay in Mossvale, follow
 different approaches, leave a group or choose separate expeditions. A social
 party may therefore have multiple expedition runs. One hero has at most one
 active run assignment/location at a time; both routes' earned progress remains.
@@ -288,9 +289,9 @@ accessible cleared spaces; no teleport into a remote unseen encounter or
 retroactive reward is granted. A hero physically joining an ongoing encounter
 uses its existing difficulty snapshot and earns only currently eligible rewards.
 
-Only player-occupied/active floor instances need live processing. With six live
-regular seats, at most six occupied expedition floors need live simulation;
-persist inactive floors. Each floor has its own revision, entities, effects and
+Only player-occupied/active floor instances need live processing. A party can
+occupy at most eight distinct regular-player locations; persist inactive floors
+and enforce bounded processing across all active parties. Each floor has its own revision, entities, effects and
 combat membership. Party social membership is not combat range or floor presence.
 
 When a floor clears, commit eligible XP, choice/objective results and progression
@@ -343,8 +344,9 @@ state. Retrying the same failed encounter cannot pay its rewards again.
 Keep the 75-second presence lease and 20-second heartbeat. Losing SSE alone does
 not mean death, abandonment, discovery, a new heal or voluntary departure.
 After lease expiry, the hero is absent from targeting but retains run history.
-Re-admission rechecks all six regular seats; if full, wait/return the existing
-full-realm state without deleting progress or making a seventh seat.
+Re-admission to a specified party rechecks its eight regular seats; if full,
+return a party-full state without deleting progress. Open matchmaking can offer
+a different party; it must not silently move an existing expedition assignment.
 
 When no one is present on a floor, pause/save it rather than treating absence
 as defeat. Reconnect restores the hero's authoritative location and health,
@@ -422,14 +424,15 @@ Completion XP requires presence plus a qualifying combat/support contribution or
 a required objective interaction within the preceding 30 seconds. Departure
 confirmation, standing nearby and being in the party are not contributions.
 
-Privileged executions never generate redeemable XP, including for ordinary
-contributors. For this scope, the seventh avatar cannot enter expedition combat
-or perform expedition mutations at all. Reject privileged damage, execution,
-healing, movement/teleport, objective, completion and checkpoint commands there;
-this prevents an administrator clearing encounters on behalf of reward-eligible
-customers. It cannot collect customer rewards or occupy a regular seat.
-Any future spectator access is read-only and must retain instance isolation.
-Current privileged Mossvale behavior remains separate.
+The owner now permits two support visitors during ordinary progression. Visitors
+are invulnerable, use party-scaled ordinary offense and a bounded nearby healing
+boon, and never execute enemies or earn their own customer rewards. Eligible
+ordinary contributors retain normal XP, rewards and story progression during
+visits, including visitor finishing hits. Visitors do not occupy regular seats,
+count toward difficulty/wipes or satisfy customer-only authored progression
+conditions. Expedition support must retain location/instance isolation and the
+same server authority; implementing Mossvale support does not itself implement
+expedition travel or progression.
 
 Preserve permanent character levels and their existing damage bonus. Floor
 difficulty is content depth, not a new character level. Use authored depth
@@ -648,7 +651,7 @@ Acceptance must show:
 - Meaningful authored choices change access, clues, relationships or local outcomes;
   alternatives avoid a single compulsory NPC/quest path.
 - Solo, group, split-party/different-run and different-floor occupancy work within
-  six global live seats. No leader or timer moves a non-consenting hero;
+  eight regular seats per party plus two support visitors. No leader or timer moves a non-consenting hero;
   narrow privately authored transitions affect only their eligible participants.
 - All authored route ordinals have connected entry/objective/exit paths, reproducible
   content and reachable finales; unknown maps/encounters are not sent upfront.
@@ -656,7 +659,7 @@ Acceptance must show:
   journal access, hidden achievements, asset preloads, UI/ARIA and receipt replays
   do not reveal future identities.
 - Current-location attacks/heals/effects stay isolated; downed skills/healing,
-  privileged expedition mutations and remote travel attempts are rejected.
+  unauthorized visitor mutations and remote travel attempts are rejected.
 - Defeat, retries, reconnect, restart, abandoned transport and stale pre-rewind
   responses preserve receipts/credits/discoveries and cannot duplicate rewards.
 - Checkpoint/completion recipients are distinct from witnesses; offline or elsewhere
@@ -679,12 +682,12 @@ There is no configured lint or standalone typecheck script.
 
 ## 11. Migration and operational boundary
 
-Source main requires schema 4. The forward migration adds expedition/discovery/
+The party-visitor feature requires schema 5. A later forward migration adds expedition/discovery/
 choice state, equipment ownership, effects/acquisitions, player entitlements and
 authored-event records. Replace the fixed hero-HP ceiling with validated derived
 limits while preserving existing rows,
 references, account/session/mail state, Guardian progress, ledger and receipts.
-Rehearse upgrades from schema 4 and schema 3→4→new schema on private disposable
+Rehearse upgrades from schema 5 and older-schema upgrade paths on private disposable
 copies. Do not populate story knowledge just from character level or an old
 browser intro preference.
 

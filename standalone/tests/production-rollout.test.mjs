@@ -250,9 +250,18 @@ function rollbackFixture(t) {
   let module = readFileSync(modulePath, 'utf8').replace(
     'export const SCHEMA_VERSION = ' + SCHEMA_VERSION + ';', 'export const SCHEMA_VERSION = 3;',
   );
-  const latestMigration = /  if \(current < 4\) transaction\(db, \(\) => \{\n[\s\S]*?\n  \}\);\n/;
-  assert.match(module, latestMigration);
-  writeFileSync(modulePath, module.replace(latestMigration, ''));
+  // Freeze the simulated old release at schema 3, excluding every later
+  // migration rather than accidentally running a newly added migration alone.
+  const migrationBlock = /  if \(current < (\d+)\) transaction\(db, \(\) => \{\n[\s\S]*?\n  \}\);\n/g;
+  const excludedVersions = [];
+  module = module.replace(migrationBlock, (block, version) => {
+    if (Number(version) <= 3) return block;
+    excludedVersions.push(Number(version));
+    return '';
+  });
+  assert.deepEqual(excludedVersions, Array.from({ length: SCHEMA_VERSION - 3 }, (_, index) => index + 4));
+  assert.doesNotMatch(module, /new URL\('\.\/migrations\/00[45]-/);
+  writeFileSync(modulePath, module);
   const app = join(folder, 'app'), previous = join(folder, 'previous-app');
   symlinkSync(old, app);
   const fallback = prepareRollbackApp(app, next, join(folder, 'rollback-app'));
@@ -261,7 +270,9 @@ function rollbackFixture(t) {
   assert.equal(readFileSync(join(fallback, 'version'), 'utf8'), 'old');
   assert.equal(readFileSync(join(fallback, 'server/auth.mjs'), 'utf8'), readFileSync(join(old, 'server/auth.mjs'), 'utf8'));
   assert.ok(existsSync(join(fallback, 'server/migrations/004-class-chronicle.sql')));
+  assert.ok(existsSync(join(fallback, 'server/migrations/005-party-visitors.sql')));
   assert.ok(existsSync(join(fallback, 'shared/class-catalog.mjs')));
+  assert.ok(existsSync(join(fallback, 'shared/appearance-catalog.mjs')));
   assert.equal(readFileSync(join(fallback, 'server/rollback-legacy-game.mjs'), 'utf8'), readFileSync(join(old, 'server/game.mjs'), 'utf8'));
   assert.match(readFileSync(join(fallback, 'server/game.mjs'), 'utf8'), /REALM_MAINTENANCE/);
 
@@ -367,6 +378,10 @@ test('schema 3 rehearsal and migration preserve populated characters, wallets, r
     const added = live.prepare("SELECT skill_cooldowns_json,ward_until,ward_amount FROM game_characters WHERE user_id='existing'").get();
     assert.deepEqual({...added}, {skill_cooldowns_json:'{}',ward_until:0,ward_amount:0});
     assert.equal(live.prepare('SELECT effects_json FROM game_world').get().effects_json, '[]');
+    const partyHero = live.prepare("SELECT party_id,appearance_json FROM game_characters WHERE user_id='existing'").get();
+    assert.equal(partyHero.party_id, 'legacy-mossvale');
+    assert.deepEqual(JSON.parse(partyHero.appearance_json), { skinTone:'warm',hairColor:'chestnut',hairStyle:'cropped',outfit:'class',accent:'gold',build:'balanced' });
+    assert.equal(live.prepare('SELECT revision FROM game_parties WHERE id=?').get(partyHero.party_id).revision, 7);
     assert.equal(live.prepare('PRAGMA foreign_key_check').all().length, 0);
   } finally { live.close(); snapshot.close(); }
 });

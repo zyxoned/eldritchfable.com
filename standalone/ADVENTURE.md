@@ -1,6 +1,6 @@
 # Account RPG and Secret Stash
 
-> Verified 2026-10-29: main requires schema **4**; production remains schema **3**, frontend `2011d095` and backend `f05b81a0`. Historical deployment sections below are dated evidence. Use [PROJECT_STATE](../PROJECT_STATE.md) and [DEPLOYMENT_RECOVERY](../DEPLOYMENT_RECOVERY.md) for current identities and recovery instructions. Repository publication does not deploy production.
+> Feature source observed 2026-11-04 requires schema **5**. The production schema/release observations dated 2026-10-29 below are historical evidence; this feature has not deployed or re-verified production. Use [PROJECT_STATE](../PROJECT_STATE.md) and [DEPLOYMENT_RECOVERY](../DEPLOYMENT_RECOVERY.md) for current identities and recovery instructions. Repository publication does not deploy production.
 
 This change adds same-origin `/play` and `/stash` routes to the standalone
 Eldritch Fable storefront. It builds on the account and email work in PR #1;
@@ -12,7 +12,7 @@ the standalone AppDeploy prototype is not the production integration.
   realm, its live event stream, and every stash operation.
 - One character and private stash belong to each account. Refreshing,
   leaving, or a seat expiring does not erase saved progress.
-- The realm admits at most six active accounts atomically. Sessions expire
+- Each isolated party admits at most eight regular heroes atomically, with two additional support visitor slots. Open matchmaking fills an available party or creates another; solo adventures stay private from ordinary matching. Sessions expire
   after 75 seconds without a heartbeat; clients renew every 20 seconds.
 - Account cookies remain HttpOnly. The client does not supply an account ID,
   wallet balance, reward amount, or guest credential.
@@ -27,7 +27,7 @@ the standalone AppDeploy prototype is not the production integration.
 
 Registration offers an optional adventure preview and automatically opens the
 welcome popup after a successful registration request. It explains email
-verification, persistent characters and progress, the six-player realm, inviting
+verification, persistent characters and progress, eight-player parties, inviting
 friends, private XP and the approved exchange, and the planned gear/ability uses.
 The account page can reopen the same introduction. The invite button copies the
 public `/play` link; it does not send messages or expose account details.
@@ -66,7 +66,7 @@ Eight player callings now include two free starter skills each; see [EXPANSION.m
 ## Validation and rollout
 
 The existing standalone CI runs `npm run build`, `npm test`, and Playwright.
-New coverage includes account gates, six-seat allocation, persistent rewards,
+Coverage includes account gates, eight-seat party allocation and isolation, support visits, persistent appearance and rewards,
 cross-account isolation, live-stream authorization, exchange replay protection,
 and the browser earn/exchange/persist workflow on desktop and mobile.
 
@@ -76,7 +76,7 @@ keyboard focus, account replay, invitation copy/fallback, and small-screen
 scrolling, alongside the existing adventure and exchange workflow.
 
 Use the existing `standalone/DEPLOYMENT.md` process and production layout.
-Back up the current database before explicitly migrating to schema version 4 (including migrations 003 and 004),
+Back up the current database before explicitly migrating to schema version 5 (including migrations 003–005),
 then deploy the server and built frontend together. Preserve the existing
 customer DB, Caddy and Cloudflare Tunnel setup, ports, and systemd units.
 This source branch does not change DNS or replace the storefront apex domain.

@@ -12,6 +12,7 @@ import { fixture, verifiedAccount, loginCookie } from './helpers.mjs';
 function harness(t, { sseIntervalMs = 15000 } = {}) {
   const f = fixture(t);
   let clock = Date.now();
+  const parties = new Map();
   let service = createGameService(f.db, { origin: f.origin, now: () => clock, sseIntervalMs });
   t.after(() => service.close());
 
@@ -32,6 +33,11 @@ function harness(t, { sseIntervalMs = 15000 } = {}) {
   }
 
   async function game(path, data, options = {}) {
+    if (data && typeof data === 'object' && !Array.isArray(data)
+      && ['/api/game/action', '/api/game/heartbeat', '/api/game/leave', '/api/game/admin/leave'].includes(path)
+      && !Object.hasOwn(data, 'partyId')) {
+      data = { ...data, partyId: parties.get(options.cookie) };
+    }
     const req = requestParts(path, data, options);
     const result = {};
     const res = new EventEmitter();
@@ -45,6 +51,9 @@ function harness(t, { sseIntervalMs = 15000 } = {}) {
     };
     const handled = await service.route(req, res, path.split('?')[0]);
     assert.equal(handled, true, 'Game service must handle ' + path);
+    if (result.status === 200 && result.body?.profile?.partyId) {
+      parties.set(options.cookie, result.body.profile.partyId);
+    }
     return result;
   }
 
@@ -189,7 +198,7 @@ function expectRejected(result, statuses = [400, 401, 403, 409, 429]) {
   assert.equal(typeof result.body.error, 'string');
 }
 
-test('schema four preserves version-three characters, accounts, wallets, ledgers and receipts', t => {
+test('current schema preserves version-three characters, accounts, wallets, ledgers and receipts', t => {
   const db = openDatabase(':memory:');
   t.after(() => db.close());
   db.exec('CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY)');
@@ -211,14 +220,14 @@ test('schema four preserves version-three characters, accounts, wallets, ledgers
     .run('old-account', 'old-request', 'old-hash', 'Old receipt', 123);
   const tables = ['account_users','account_sessions','game_characters','game_wallets','game_ledger','game_requests'];
   const before = Object.fromEntries(tables.map(table => [table, db.prepare('SELECT * FROM ' + table).all()]));
-  assert.equal(migrateDatabase(db), 4);
+  assert.equal(migrateDatabase(db), 5);
   for (const table of tables) {
     const columns = Object.keys(before[table][0]);
     assert.deepEqual(db.prepare('SELECT ' + columns.join(',') + ' FROM ' + table).all(), before[table], table + ' changed in migration');
   }
   assert.deepEqual(db.prepare('SELECT * FROM game_admin_characters').all(), []);
   assert.equal(db.prepare('SELECT skill_cooldowns_json FROM game_characters').get().skill_cooldowns_json, '{}');
-  assert.equal(migrateDatabase(db), 4, 'Migration is idempotent');
+  assert.equal(migrateDatabase(db), 5, 'Migration is idempotent');
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
 
@@ -301,43 +310,50 @@ test('class attacks and wards use server stats and bounded transient effects', a
   assert.deepEqual((await h.world(knight)).body.realm.effects, []);
 });
 
-test('a verified administrator has exactly one separate seventh slot, hidden level and SSS gear', async t => {
+test('verified administrators use two separate support slots with hidden level and their own gear', async t => {
   const h = harness(t);
-  const customers = [];
-  for (let i = 0; i < 6; i++) customers.push(await h.account('SixSeat' + i));
+  for (let i = 0; i < 8; i++) await h.account('EightSeat' + i);
   const outsider = await h.account('NoAdmin', 'ranger', { join: false });
   const owner = await h.account('OwnerKnight', 'knight', { join: false });
   const secondAdmin = await h.account('OtherAdmin', 'ranger', { join: false });
-  h.db.prepare("UPDATE account_users SET role='admin' WHERE email IN (?,?)").run(owner.details.email, secondAdmin.details.email);
+  const thirdAdmin = await h.account('ThirdAdmin', 'ranger', { join: false });
+  h.db.prepare("UPDATE account_users SET role='admin' WHERE email IN (?,?,?)").run(owner.details.email, secondAdmin.details.email, thirdAdmin.details.email);
   const denied = await h.game('/api/game/admin/join', { requestId: randomUUID(), role: 'admin', userId: 'forged' }, { cookie: outsider.cookie });
   assert.equal(denied.status, 403);
   assert.equal(denied.body.code, 'ADMIN_REQUIRED');
   const joined = await h.game('/api/game/admin/join', { requestId: randomUUID(), name: 'Forged', heroClass: 'mage', level: 999, hp: 9999 }, { cookie: owner.cookie });
   assert.equal(joined.status, 200, JSON.stringify(joined.body));
-  assert.equal(joined.body.realm.players.length, 6);
+  assert.equal(joined.body.realm.players.length, 8);
   assert.equal(joined.body.profile.adminAccess, true);
   assert.equal(joined.body.profile.adminActive, true);
-  assert.equal(joined.body.realm.seventh.name, 'The Unnamed');
-  assert.equal(joined.body.realm.seventh.heroClass, 'death-knight');
-  assert.equal(joined.body.realm.seventh.race, 'Draconian');
-  assert.equal(joined.body.realm.seventh.levelLabel, '???');
-  assert.equal(joined.body.realm.seventh.equipment.length, 3);
-  assert.ok(joined.body.realm.seventh.equipment.every(item => item.rarity === 'SSS'));
-  const occupied = await h.game('/api/game/admin/join', { requestId: randomUUID() }, { cookie: secondAdmin.cookie });
+  const visitor = joined.body.realm.visitors[0];
+  assert.equal(visitor.name, 'The Unnamed');
+  assert.equal(visitor.heroClass, 'death-knight');
+  assert.equal(visitor.race, 'Draconian');
+  assert.equal(visitor.levelLabel, '???');
+  assert.equal(visitor.equipment.length, 3);
+  assert.ok(visitor.equipment.every(item => item.rarity === 'SSS'));
+  const second = await h.game('/api/game/admin/join', { requestId: randomUUID() }, { cookie: secondAdmin.cookie });
+  assert.equal(second.status, 200);
+  assert.equal(second.body.realm.visitors.length, 2);
+  const occupied = await h.game('/api/game/admin/join', { requestId: randomUUID() }, { cookie: thirdAdmin.cookie });
   assert.equal(occupied.status, 409);
-  assert.equal(occupied.body.code, 'SEVENTH_OCCUPIED');
-  assert.equal((await h.enter(outsider)).status, 409, 'Regular customers still cannot become the seventh');
+  assert.equal(occupied.body.code, 'VISITORS_FULL');
+  const overflow = await h.enter(outsider);
+  assert.equal(overflow.status, 200, 'Ordinary overflow forms another party');
+  assert.notEqual(overflow.body.realm.partyId, joined.body.realm.partyId);
   h.db.prepare("UPDATE account_users SET role='customer' WHERE email=?").run(owner.details.email);
   const revoked = await h.world(owner);
-  assert.equal(revoked.body.realm.seventh, null);
+  assert.equal(revoked.body.realm.visitors.length, 0);
   assert.equal(revoked.body.profile.adminAccess, false);
   assert.equal(revoked.body.profile.adminActive, false);
-  assert.equal((await h.action(owner, 'attack')).body.code, 'SEAT_EXPIRED');
+  assert.ok(['SEAT_EXPIRED', 'PARTY_CHANGED'].includes((await h.action(owner, 'attack')).body.code));
   assert.equal((await h.game('/api/game/admin/join', { requestId: randomUUID() }, { cookie: owner.cookie })).status, 403);
-  assert.equal((await h.game('/api/game/admin/join', { requestId: randomUUID() }, { cookie: secondAdmin.cookie })).status, 200);
+  assert.equal((await h.world(secondAdmin)).body.realm.visitors.length, 1);
+  assert.equal((await h.game('/api/game/admin/join', { requestId: randomUUID() }, { cookie: thirdAdmin.cookie })).status, 200);
 });
 
-test('admin avatar preserves the regular hero, is invulnerable, and executions mint no redeemable XP', async t => {
+test('admin support preserves the regular hero and remains invulnerable while normal contributors earn XP', async t => {
   const h = harness(t);
   const owner = await h.account('RegularOwner', 'wizard');
   const fighter = await h.account('AssistantKnight', 'knight');
@@ -355,25 +371,25 @@ test('admin avatar preserves the regular hero, is invulnerable, and executions m
   assert.equal(joined.body.profile.regularCharacter.hp, 51);
   const adminId = joined.body.profile.playerId;
   h.db.prepare('UPDATE game_admin_characters SET x=17,y=8 WHERE user_id=?').run(ownerId);
-  const executed = await h.action(owner, 'skill', { skillId: 'soul-reap', damage: 1 });
-  assert.equal(executed.status, 200);
-  assert.equal(executed.body.realm.enemies.find(enemy => enemy.id === 'bramble').hp, 0);
-  assert.equal(executed.body.realm.seventh.hp, 100);
-  assert.equal(executed.body.profile.balanceXp, 500);
-  assert.equal((await h.stash(fighter)).body.stash.balanceXp, 0, 'An administrative execution cannot reward assistants');
+  const supportStrike = await h.action(owner, 'skill', { skillId: 'soul-reap', damage: 1 });
+  assert.equal(supportStrike.status, 200);
+  assert.equal(supportStrike.body.realm.enemies.find(enemy => enemy.id === 'bramble').hp, 0);
+  assert.equal(supportStrike.body.realm.visitors[0].hp, 100);
+  assert.equal(supportStrike.body.profile.balanceXp, 500);
+  assert.equal((await h.stash(fighter)).body.stash.balanceXp, 15, 'Normal contributors retain rewards when a support visitor finishes');
   assert.equal((await h.action(owner, 'claim')).body.code, 'ADMIN_REWARD_DISABLED');
   assert.equal((await h.action(owner, 'interact')).body.profile.balanceXp, 500);
   assert.equal(h.db.prepare('SELECT COUNT(*) AS n FROM game_damage WHERE enemy_id=?').get('bramble').n, 0);
   h.advance(21000);
   const attack = await h.action(owner, 'attack', {}, randomUUID(), 800);
   assert.equal(attack.status, 200);
-  assert.equal(attack.body.realm.enemies.find(enemy => enemy.id === 'bramble').hp, 0);
+  assert.equal(attack.body.realm.enemies.find(enemy => enemy.id === 'bramble').hp, 42 - CLASS_CATALOG.knight.damage);
   assert.equal(attack.body.profile.character.hp, 100);
   h.restart();
   assert.equal((await h.world(owner)).body.profile.playerId, adminId);
   const left = await h.game('/api/game/admin/leave', { requestId: randomUUID() }, { cookie: owner.cookie });
   assert.equal(left.status, 200);
-  assert.equal(left.body.realm.seventh, null);
+  assert.deepEqual(left.body.realm.visitors, []);
   assert.equal(left.body.profile.character.id, normalId);
   assert.equal(left.body.profile.character.hp, 51);
   assert.equal(left.body.profile.balanceXp, 500);
@@ -383,6 +399,7 @@ test('admin avatar preserves the regular hero, is invulnerable, and executions m
 
 test('disabled admins and cross-origin requests cannot use the secret passage or its powers', async t => {
   const h = harness(t);
+  await h.account('DisabledObserver');
   const owner = await h.account('DisabledOwner', 'monk', { join: false });
   h.db.prepare("UPDATE account_users SET role='admin' WHERE email=?").run(owner.details.email);
   const body = { requestId: randomUUID() };
@@ -397,6 +414,7 @@ test('disabled admins and cross-origin requests cannot use the secret passage or
 
 test('privileged generic action receipts re-check role after demotion', async t => {
   const h = harness(t);
+  await h.account('ReceiptObserver');
   const owner = await h.account('ReceiptOwner', 'ranger', { join: false });
   h.db.prepare("UPDATE account_users SET role='admin' WHERE email=?").run(owner.details.email);
   const entryId = randomUUID();
@@ -413,10 +431,10 @@ test('privileged generic action receipts re-check role after demotion', async t 
   assert.equal(replay.body.code, 'ADMIN_REQUIRED');
   const replayEntry = await h.game('/api/game/admin/join', { requestId: entryId }, { cookie: owner.cookie });
   assert.equal(replayEntry.status, 403);
-  assert.equal((await h.world(owner)).body.realm.seventh, null);
+  assert.deepEqual((await h.world(owner)).body.realm.visitors, []);
 });
 
-test('revoking or logging out the entry session releases the seventh slot and another session can rebind', async t => {
+test('revoking or logging out the entry session releases the support slot and another session can rebind', async t => {
   const h = harness(t, { sseIntervalMs: 20 });
   const owner = await h.account('SessionOwner', 'ranger', { join: false });
   const observer = await h.account('WatchingBard', 'bard');
@@ -434,7 +452,7 @@ test('revoking or logging out the entry session releases the seventh slot and an
   h.db.prepare('UPDATE account_sessions SET revoked_at=CURRENT_TIMESTAMP WHERE token_hash=?').run(saved);
   await new Promise(resolve => setTimeout(resolve, 80));
   const live = events.chunks.join('');
-  assert.match(live, /"seventh":null/, 'The live stream removes the revoked presence');
+  assert.match(live, /"visitors":\[\]/, 'The live stream removes the revoked presence');
   assert.equal(h.db.prepare('SELECT active_until FROM game_admin_characters').get().active_until, 0);
   assert.equal((await h.world(owner)).status, 401);
   owner.cookie = secondCookie;
@@ -443,12 +461,12 @@ test('revoking or logging out the entry session releases the seventh slot and an
   assert.equal(rebound.body.profile.playerId, id, 'Rebinding preserves the privileged character');
   assert.equal(h.db.prepare('SELECT session_hash FROM game_admin_characters').get().session_hash, digest(secondCookie.slice('ef_session='.length)));
   assert.equal((await h.request('logout', {}, { cookie: secondCookie })).status, 200);
-  assert.equal((await h.world(observer)).body.realm.seventh, null);
+  assert.deepEqual((await h.world(observer)).body.realm.visitors, []);
   events.close();
   owner.cookie = await loginCookie(h, owner.details);
   assert.equal((await h.game('/api/game/admin/join', { requestId: randomUUID() }, { cookie: owner.cookie })).status, 200);
   const changed = await h.request('change-password', { currentPassword: owner.details.password, password: 'a-new-safe-admin-passphrase-456' }, { cookie: owner.cookie });
   assert.equal(changed.status, 200);
-  assert.equal((await h.world(observer)).body.realm.seventh, null, 'Password changes release the privileged slot');
+  assert.deepEqual((await h.world(observer)).body.realm.visitors, [], 'Password changes release the privileged slot');
   assert.equal((await h.action(owner, 'attack')).status, 401);
 });

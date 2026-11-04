@@ -8,9 +8,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { api } from './transport';
 import {
   CLASSES, PLAYER_CLASS_IDS, CRYSTALS, ENEMIES, SHRINE, WIDTH, HEIGHT, level, questReady, walkable,
-  type HeroClass, type Realm,
+  type HeroClass, type Realm, type Appearance,
 } from './shared/game';
 import GameCanvas from './GameCanvas';
+import AppearanceEditor from './AppearanceEditor';
+import { renderCharacterPreview } from '../../shared/hero-renderer.mjs';
 import IntroCutscene from './IntroCutscene';
 import { CallingPreview, CharacterCalling, SkillBar } from './ClassDetails';
 import { useDialogFocus } from './useDialogFocus';
@@ -21,10 +23,12 @@ type Identity = {
   name: string;
   heroClass: HeroClass;
   joined: boolean;
+  partyMode?: 'open' | 'solo';
 };
 type Profile = {
   playerId: string | null;
   active: boolean;
+  partyId: string | null;
   balanceXp: number;
   balanceCopper?: number;
   lifetimeXp: number;
@@ -75,9 +79,19 @@ function nextStep(start: { x: number; y: number }, target: { x: number; y: numbe
   return null;
 }
 
-function PixelHero({ heroClass = 'ranger', empty = false, large = false }: {
-  heroClass?: HeroClass; empty?: boolean; large?: boolean;
+function CharacterPortrait({ heroClass, appearance, large }: { heroClass: HeroClass; appearance?: Appearance; large: boolean }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (ref.current) renderCharacterPreview(ref.current, { classId: heroClass, appearance }, { facing: Math.PI / 2, reducedMotion: true, classColor: CLASSES[heroClass].color });
+  }, [heroClass, appearance]);
+  return <canvas ref={ref} className={'pixel-hero hero-portrait' + (large ? ' large' : '')} width={64} height={76} aria-hidden="true" />;
+}
+
+function PixelHero({ heroClass = 'ranger', appearance, empty = false, large = false }: {
+  heroClass?: HeroClass; appearance?: Appearance; empty?: boolean; large?: boolean;
 }) {
+  if (!empty && heroClass !== 'death-knight') return <CharacterPortrait heroClass={heroClass} appearance={appearance} large={large} />;
+
   const color = empty ? '#8e8798' : CLASSES[heroClass].color;
   const draconian = !empty && heroClass === 'death-knight';
   const caster = ['mage', 'wizard', 'sorcerer'].includes(heroClass);
@@ -117,10 +131,11 @@ export default function Mossvale({ user, onSessionExpired }: {
     catch { return true; }
   });
   const [actionPending, setActionPending] = useState(false);
-  const [seventhBusy, setSeventhBusy] = useState(false);
+  const [visitorBusy, setVisitorBusy] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState(identity.name);
   const [heroClass, setHeroClass] = useState<HeroClass>(identity.heroClass);
+  const [partyMode, setPartyMode] = useState<'open' | 'solo'>(identity.partyMode || 'open');
   const [realm, setRealm] = useState<Realm | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -130,23 +145,37 @@ export default function Mossvale({ user, onSessionExpired }: {
   const [notice, setNotice] = useState('');
   const [chat, setChat] = useState('');
   const [guide, setGuide] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [socketEpoch, setSocketEpoch] = useState(0);
   const realmRef = useRef<Realm | null>(null);
   const profileRevision = useRef(-1);
+  const profileParty = useRef<string | null | undefined>(undefined);
+  const transitionEpoch = useRef(0);
   const dialogRef = useDialogFocus(guide || leaving, () => { setGuide(false); setLeaving(false); });
   const playerRef = useRef<string | null>(null);
   const destination = useRef<{ x: number; y: number } | null>(null);
   const busy = useRef(false);
   const resumed = useRef(false);
-  const seventhAttempted = useRef(false);
+  const visitorAttempted = useRef(false);
   const messages = useRef<HTMLDivElement>(null);
   const actRef = useRef<(kind: string, extra?: Record<string, unknown>) => Promise<boolean>>(async () => false);
   playerRef.current = playerId;
-  const me = realm?.seventh?.id === playerId ? realm.seventh : realm?.players.find(p => p.id === playerId);
+  const me = [...(realm?.players || []), ...(realm?.visitors || [])].find(p => p.id === playerId);
   const count = realm?.players.length || 0;
   const adminActive = !!profile?.adminActive;
-  const wantsSeventh = new URLSearchParams(location.search).get('seventh') === '1';
+  const query = new URLSearchParams(location.search);
+  const wantsVisitor = query.get('visitor') === '1' || query.get('seventh') === '1';
+  const invitedParty = query.get('party');
+  const partyFeatures = !!realm && Array.isArray(realm.visitors) && realm.maxPlayers === 8 && realm.maxVisitors === 2 && 'partyId' in realm;
+  const visitorCount = realm?.visitors?.length || 0;
+
+  useEffect(() => {
+    // A draft belongs to one active ordinary hero. A cross-tab party or mode
+    // transition discards it and releases the movement/action modal guard.
+    setAppearanceOpen(false);
+    setLeaving(false);
+  }, [realm?.partyId, playerId, me?.id, adminActive]);
 
   function completeIntro() {
     try { localStorage.setItem('eldritch-intro-v1:' + user.id, 'seen'); }
@@ -160,14 +189,24 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   function applyRealm(next: Realm) {
-    if (!realmRef.current || next.revision >= realmRef.current.revision) {
-      realmRef.current = next;
-      setRealm(next);
+    const current = realmRef.current;
+    const switched = !!current && next.partyId !== current.partyId;
+    if (!switched && current && next.revision < current.revision) return false;
+    if (switched) {
+      destination.current = null;
     }
+    realmRef.current = next;
+    setRealm(next);
+    return true;
   }
 
-  function applyReply(data: Reply) {
-    applyRealm(data.realm);
+  function applyReply(data: Reply, explicitSwitch = false) {
+    if (!explicitSwitch && realmRef.current && data.realm.partyId !== realmRef.current.partyId) return;
+    if (!applyRealm(data.realm)) return;
+    if (profileParty.current !== data.realm.partyId) {
+      profileParty.current = data.realm.partyId;
+      profileRevision.current = -1;
+    }
     if (data.realm.revision < profileRevision.current) return;
     profileRevision.current = data.realm.revision;
     setProfile(data.profile);
@@ -175,7 +214,41 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   function envelope(extra: Record<string, unknown> = {}) {
-    return { requestId: crypto.randomUUID(), ...extra };
+    return { requestId: crypto.randomUUID(), partyId: realmRef.current?.partyId || null, ...extra };
+  }
+
+  async function acceptTransitionReply(data: Reply, epoch: number) {
+    if (epoch === transitionEpoch.current) {
+      applyReply(data, true);
+      return true;
+    }
+    // The SSE channel may have observed another tab changing this account's
+    // actor, including a visitor switch within the same party. Re-read current
+    // authorization instead of restoring an earlier HTTP projection.
+    const currentEpoch = transitionEpoch.current;
+    const current = (await api.get('/api/game/world')).data as Reply;
+    if (currentEpoch !== transitionEpoch.current) return false;
+    applyReply(current, true);
+    return current.realm.partyId === data.realm.partyId
+      && current.profile.playerId === data.profile.playerId
+      && !!current.profile.adminActive === !!data.profile.adminActive
+      && current.profile.active === data.profile.active;
+  }
+
+  async function refreshChangedParty(err: unknown) {
+    if ((err as { code?: string }).code !== 'PARTY_CHANGED') return false;
+    destination.current = null;
+    const epoch = ++transitionEpoch.current;
+    try {
+      const result = await api.get('/api/game/world');
+      if (epoch !== transitionEpoch.current) return true;
+      applyReply(result.data, true);
+      setNotice('Your party changed in another tab. The current party is now shown.');
+    } catch (failure) {
+      if ((failure as { status?: number }).status === 401) { endSession(); onSessionExpired(); }
+      setError(errorMessage(failure));
+    }
+    return true;
   }
 
   useEffect(() => {
@@ -183,7 +256,23 @@ export default function Mossvale({ user, onSessionExpired }: {
     const events = new EventSource('/api/game/events', { withCredentials: true });
     events.addEventListener('realm', event => {
       if (!active) return;
-      try { applyRealm(JSON.parse((event as MessageEvent).data)); }
+      try {
+        const next = JSON.parse((event as MessageEvent).data);
+        const previous = realmRef.current;
+        const changed = !!previous && next.partyId !== previous.partyId;
+        const actorId = playerRef.current;
+        const actorChanged = !!actorId
+          && [...(previous?.players || []), ...(previous?.visitors || [])].some(actor => actor.id === actorId)
+          && ![...(next.players || []), ...(next.visitors || [])].some(actor => actor.id === actorId);
+        // Serialized viewer-scoped events may also replace this account's actor
+        // inside one party. Hydrate its authorized profile before enabling input.
+        if (applyRealm(next) && (changed || actorChanged)) {
+          const epoch = ++transitionEpoch.current;
+          void api.get('/api/game/world').then(result => {
+            if (active && epoch === transitionEpoch.current) applyReply(result.data, true);
+          }).catch(err => { if (active && epoch === transitionEpoch.current) setError(errorMessage(err)); });
+        }
+      }
       catch { setError('The realm update was interrupted. Please reconnect.'); }
     });
     events.addEventListener('session', event => {
@@ -198,10 +287,14 @@ export default function Mossvale({ user, onSessionExpired }: {
       } catch { setError('The live session was interrupted. Please reconnect.'); }
     });
     events.onopen = async () => {
+      const epoch = transitionEpoch.current;
       try {
         const result = await api.get('/api/game/world');
         if (!active) return;
-        applyReply(result.data);
+        if (epoch !== transitionEpoch.current) {
+          setConnected(true); setLoading(false); return;
+        }
+        applyReply(result.data, true);
         const saved = result.data.profile?.regularCharacter || (!result.data.profile?.adminActive ? result.data.profile?.character : null);
         if (saved) {
           setName(saved.name);
@@ -244,7 +337,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   }, [realm?.messages.length]);
 
   async function joinRealm(resume = false) {
-    if (joining || introOpen) return;
+    if (joining || introOpen || !partyFeatures) return;
     const chosenName = resume ? identity.name : name.trim();
     const chosenClass = resume ? identity.heroClass : heroClass;
     if (!/^[a-zA-Z0-9 _-]{2,16}$/.test(chosenName)) {
@@ -253,10 +346,14 @@ export default function Mossvale({ user, onSessionExpired }: {
     }
     setJoining(true);
     setError('');
+    destination.current = null;
+    const epoch = ++transitionEpoch.current;
     try {
-      const result = await api.post('/api/game/join', envelope({ name: chosenName, heroClass: chosenClass }));
+      const mode = resume ? identity.partyMode || 'open' : partyMode;
+      const result = await api.post('/api/game/join', envelope({ name: chosenName, heroClass: chosenClass, mode, partyId: mode === 'open' ? invitedParty || undefined : undefined }));
+      if (!await acceptTransitionReply(result.data, epoch)) return;
       const data = result.data as Reply;
-      applyReply(data);
+      identity.partyMode = data.realm.partyMode || mode;
       identity.name = chosenName;
       identity.heroClass = chosenClass;
       identity.joined = true;
@@ -270,42 +367,44 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   useEffect(() => {
-    if (connected && !introOpen && !wantsSeventh && !profile?.adminActive && identity.joined && !resumed.current) {
+    if (partyFeatures && connected && !introOpen && !wantsVisitor && !profile?.adminActive && identity.joined && !resumed.current) {
       resumed.current = true;
       void joinRealm(true);
     }
-  }, [connected, introOpen, wantsSeventh, profile?.adminActive]);
+  }, [connected, introOpen, wantsVisitor, profile?.adminActive, partyFeatures]);
 
-  async function enterSeventh() {
-    if (seventhBusy || introOpen || !profile?.adminAccess) return;
-    setSeventhBusy(true); setError(''); destination.current = null;
+  async function enterVisitor() {
+    if (visitorBusy || introOpen || !profile?.adminAccess || !partyFeatures) return;
+    setVisitorBusy(true); setError(''); destination.current = null;
+    const epoch = ++transitionEpoch.current;
     try {
-      const result = await api.post('/api/game/admin/join', envelope());
-      applyReply(result.data);
-      setNotice(result.data.notice || 'The Seventh has entered the glade.');
-    } catch (err) { setError(errorMessage(err)); }
-    finally { setSeventhBusy(false); }
+      const result = await api.post('/api/game/admin/join', { requestId: crypto.randomUUID() });
+      if (!await acceptTransitionReply(result.data, epoch)) return;
+      setNotice(result.data.notice || 'You are visiting a random party.');
+    } catch (err) { if (!await refreshChangedParty(err)) setError(errorMessage(err)); }
+    finally { setVisitorBusy(false); }
   }
 
-  async function leaveSeventh() {
-    if (seventhBusy) return;
-    setSeventhBusy(true); setError(''); destination.current = null;
+  async function leaveVisitor() {
+    if (visitorBusy) return;
+    setVisitorBusy(true); setError(''); destination.current = null;
+    const epoch = ++transitionEpoch.current;
     try {
       const result = await api.post('/api/game/admin/leave', envelope());
-      applyReply(result.data);
+      if (!await acceptTransitionReply(result.data, epoch)) return;
       setNotice(result.data.notice || 'Your Death Knight waits beyond the veil.');
       identity.joined = false;
       saveIdentity(identity, user.id);
-    } catch (err) { setError(errorMessage(err)); }
-    finally { setSeventhBusy(false); }
+    } catch (err) { if (!await refreshChangedParty(err)) setError(errorMessage(err)); }
+    finally { setVisitorBusy(false); }
   }
 
   useEffect(() => {
-    if (!connected || introOpen || !profile || !wantsSeventh || seventhAttempted.current) return;
-    seventhAttempted.current = true;
-    if (profile.adminAccess && !profile.adminActive) void enterSeventh();
-    else if (!profile.adminAccess) setError('The Seventh is available only to site administrators.');
-  }, [connected, introOpen, wantsSeventh, profile?.adminAccess]);
+    if (!partyFeatures || !connected || introOpen || !profile || !wantsVisitor || visitorAttempted.current) return;
+    visitorAttempted.current = true;
+    if (profile.adminAccess && !profile.adminActive) void enterVisitor();
+    else if (!profile.adminAccess) setError('Visiting guardian mode is available only to site administrators.');
+  }, [connected, introOpen, wantsVisitor, profile?.adminAccess, partyFeatures]);
 
   function endSession() {
     setPlayerId(null);
@@ -316,12 +415,14 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   useEffect(() => {
-    if (!playerId || !connected) return;
+    if (!playerId || !connected || !partyFeatures) return;
     const timer = window.setInterval(async () => {
       try {
+        const partyId = realmRef.current?.partyId;
         const result = await api.post('/api/game/heartbeat', envelope());
-        applyReply(result.data);
+        if (partyId === realmRef.current?.partyId) applyReply(result.data);
       } catch (err) {
+        if (await refreshChangedParty(err)) return;
         const status = (err as { response?: { status?: number } }).response?.status;
         if (status === 401) { endSession(); onSessionExpired(); }
         else if ((err as { code?: string }).code === 'SEAT_EXPIRED') endSession();
@@ -329,20 +430,23 @@ export default function Mossvale({ user, onSessionExpired }: {
       }
     }, 20000);
     return () => window.clearInterval(timer);
-  }, [playerId, connected]);
+  }, [playerId, connected, partyFeatures]);
 
   async function act(kind: string, extra: Record<string, unknown> = {}) {
-    if (!playerRef.current || !connected || busy.current || introOpen || guide || leaving) return false;
+    if (!partyFeatures || !playerRef.current || !connected || busy.current || introOpen || guide || leaving || appearanceOpen) return false;
     busy.current = true;
     setActionPending(true);
     if (kind !== 'move') destination.current = null;
+    const epoch = transitionEpoch.current;
     try {
       const result = await api.post('/api/game/action', envelope({ kind, ...extra }));
+      if (epoch !== transitionEpoch.current) return false;
       applyReply(result.data);
       if (result.data.notice) setNotice(result.data.notice);
       setError('');
       return true;
     } catch (err) {
+      if (await refreshChangedParty(err)) return false;
       // A delayed response can put the next step inside the server cooldown.
       // Keep the route so the movement timer retries instead of stopping early.
       if (kind === 'move' && (err as { code?: string }).code === 'MOVE_COOLDOWN') return false;
@@ -365,7 +469,7 @@ export default function Mossvale({ user, onSessionExpired }: {
     const timer = window.setInterval(() => {
       const target = destination.current;
       const currentRealm = realmRef.current;
-      const p = currentRealm?.seventh?.id === playerRef.current ? currentRealm.seventh : currentRealm?.players.find(v => v.id === playerRef.current);
+      const p = [...(currentRealm?.players || []), ...(currentRealm?.visitors || [])].find(v => v.id === playerRef.current);
       if (!target || !p || busy.current) return;
       const step = nextStep(p, target);
       if (!step) { destination.current = null; return; }
@@ -375,7 +479,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   }, []);
 
   function go(x: number, y: number) {
-    if (introOpen || guide || leaving) return;
+    if (introOpen || guide || leaving || appearanceOpen) return;
     if (!me) { setNotice('Choose a name and enter the glade to start exploring.'); return; }
     if (!connected) { setError('Reconnect to move through the glade.'); return; }
     if (!walkable(x, y)) { setNotice('Use the wooden bridge to cross the brook.'); return; }
@@ -383,9 +487,9 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   function move(dx: number, dy: number) {
-    if (introOpen || guide || leaving) return;
+    if (introOpen || guide || leaving || appearanceOpen) return;
     const currentRealm = realmRef.current;
-    const p = currentRealm?.seventh?.id === playerRef.current ? currentRealm.seventh : currentRealm?.players.find(v => v.id === playerRef.current);
+    const p = [...(currentRealm?.players || []), ...(currentRealm?.visitors || [])].find(v => v.id === playerRef.current);
     if (p) {
       destination.current = null;
       if (walkable(p.x + dx, p.y + dy)) void actRef.current('move', { x: p.x + dx, y: p.y + dy });
@@ -395,7 +499,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      if (!(target instanceof HTMLElement) || target.closest('input, textarea, select, [contenteditable]') || guide || leaving || introOpen || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (!(target instanceof HTMLElement) || target.closest('input, textarea, select, [contenteditable]') || guide || leaving || appearanceOpen || introOpen || event.altKey || event.ctrlKey || event.metaKey) return;
       const directions: Record<string, [number, number]> = {
         ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1],
         ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0],
@@ -416,19 +520,41 @@ export default function Mossvale({ user, onSessionExpired }: {
     };
     window.addEventListener('keydown', keydown);
     return () => window.removeEventListener('keydown', keydown);
-  }, [guide, leaving, introOpen, me?.heroClass]);
+  }, [guide, leaving, appearanceOpen, introOpen, me?.heroClass]);
 
   async function leaveRealm() {
+    destination.current = null;
+    const epoch = ++transitionEpoch.current;
     try {
       const result = await api.post('/api/game/leave', envelope());
-      applyReply(result.data);
+      if (!await acceptTransitionReply(result.data, epoch)) return;
       endSession();
       setLeaving(false);
       setNotice('See you by the campfire. Your seat is now free.');
-    } catch (err) { setError(errorMessage(err)); }
+    } catch (err) { if (!await refreshChangedParty(err)) setError(errorMessage(err)); }
   }
 
-  const canAct = !!me && connected && !introOpen && !guide && !leaving && !actionPending;
+  function customize() {
+    if (!me || adminActive || introOpen || guide || leaving || actionPending) return;
+    destination.current = null;
+    setAppearanceOpen(true);
+  }
+
+  async function saveAppearance(appearance: Appearance) {
+    const epoch = transitionEpoch.current;
+    try {
+      const result = await api.post('/api/game/appearance', envelope({ appearance }));
+      if (epoch !== transitionEpoch.current) throw new Error('Your party changed. Reopen your character to save this look.');
+      applyReply(result.data);
+      setNotice(result.data.notice || 'Your new look is saved.');
+      setAppearanceOpen(false);
+    } catch (err) {
+      if (await refreshChangedParty(err)) setAppearanceOpen(false);
+      throw new Error(errorMessage(err));
+    }
+  }
+
+  const canAct = partyFeatures && !!me && connected && !introOpen && !guide && !leaving && !appearanceOpen && !actionPending;
   const questDone = me ? questReady(me) : false;
   const trackEnemy = () => {
     const enemy = realm?.enemies.find(e => e.hp > 0) || ENEMIES[0];
@@ -458,20 +584,22 @@ export default function Mossvale({ user, onSessionExpired }: {
       <main>
         <section className="intro">
           <div>
-            <div className="eyebrow"><span /> ELDRITCH FABLE · SIX-PLAYER ADVENTURE</div>
+            <div className="eyebrow"><span /> ELDRITCH FABLE · {partyFeatures ? 'EIGHT-PLAYER ADVENTURE' : 'PARTY ADVENTURE'}</div>
             <h1>Enter the fable. <em>Bring back a legend.</em></h1>
-            <p>Eight callings. Six adventurers. One shared realm. Earn XP and build your private Secret Stash.</p>
+            <p>{partyFeatures ? 'Eight callings. Up to eight adventurers in your party, with room for two visiting guardians. Earn XP and build your private Secret Stash.' : 'Your account. Your continuing adventure. Connecting to the party realm.'}</p>
           </div>
           <div className="chapter"><span>CHAPTER 01</span><strong>The waking woods</strong><small>Your account. Your continuing story.</small></div>
         </section>
 
         <div className="story-banner"><span><Sparkles size={14} /> The Hollow King is waking. A new company must answer.</span><button type="button" onClick={replayIntro}><BookOpen size={14} /> Watch the prologue</button></div>
 
-        {profile?.adminAccess && <section className="seventh-access" aria-label="The Seventh connection">
-          <div><span className="section-kicker">BEYOND THE SIX · ADMINISTRATOR</span><h2>The Seventh</h2><p>A separate Draconian Death Knight. Level ???. SSS equipment, invulnerability, and an instant-kill strike. Your regular character stays saved.</p></div>
-          {adminActive ? <button type="button" className="secondary-button" disabled={seventhBusy || introOpen} onClick={() => void leaveSeventh()}>{seventhBusy ? 'Returning beyond the veil…' : 'Leave as the Seventh'}</button>
-            : <button type="button" className="primary-button" disabled={!connected || seventhBusy || introOpen} onClick={() => void enterSeventh()}>{seventhBusy ? 'Crossing the veil…' : 'Enter as the Seventh'}</button>}
+        {profile?.adminAccess && <section className="visitor-access" aria-label="Visiting guardian connection">
+          <div><span className="section-kicker">SUPPORT A COMPANY · ADMINISTRATOR</span><h2>Visit a random party</h2><p>A separate Draconian guardian with level ???, ceremonial equipment and invulnerability. Your strikes match the party and Guardian Boon heals nearby adventurers. Players keep their normal rewards. Your regular character stays saved.</p></div>
+          {adminActive ? <button type="button" className="secondary-button" disabled={visitorBusy || introOpen} onClick={() => void leaveVisitor()}>{visitorBusy ? 'Returning beyond the veil…' : 'Leave visiting guardian mode'}</button>
+            : <button type="button" className="primary-button" disabled={!partyFeatures || !connected || visitorBusy || introOpen} onClick={() => void enterVisitor()}>{visitorBusy ? 'Crossing the veil…' : 'Visit a random party'}</button>}
         </section>}
+
+        {connected && realm && !partyFeatures && <div className="error-banner" role="status">This realm server does not support party adventures yet. Reconnect after the game update.</div>}
 
         {error && <div className="error-banner" role="alert">
           <span>{error}</span>
@@ -485,7 +613,7 @@ export default function Mossvale({ user, onSessionExpired }: {
               <div className="section-kicker">YOUR ADVENTURER <span>01</span></div>
               {me ? <>
                 <div className="active-hero">
-                  <div className="portrait"><PixelHero heroClass={me.heroClass} large /><span className="portrait-spark">✧</span></div>
+                  <div className="portrait"><PixelHero heroClass={me.heroClass} appearance={me.appearance} large /><span className="portrait-spark">✧</span></div>
                   <h2>{me.name}</h2>
                   <p>Level {me.levelLabel || level(me.xp)} · {me.race === 'Draconian' ? 'Draconian ' : ''}{CLASSES[me.heroClass].name}</p>
                 </div>
@@ -493,9 +621,10 @@ export default function Mossvale({ user, onSessionExpired }: {
                 <div className="progress health"><span style={{ width: me.hp + '%' }} /></div>
                 {!adminActive && <><div className="stat-label"><span>Next level</span><strong>{me.xp % 100} / 100 XP</strong></div>
                 <div className="progress xp"><span style={{ width: me.xp % 100 + '%' }} /></div></>}
-                {adminActive && <div className="seventh-status"><Shield size={13} /> UNDYING · SSS</div>}
+                {adminActive && <div className="visitor-status"><Shield size={13} /> UNDYING · SSS</div>}
                 <Link to="/stash" className="gold-line"><Gem size={14} /> {profile?.balanceXp || 0}<span>Secret Stash · XP</span><ArrowUpRight size={12} /></Link>
-                <button className="leave-button" onClick={() => adminActive ? void leaveSeventh() : setLeaving(true)}><LogOut size={13} /> {adminActive ? 'Return beyond the veil' : 'Leave realm'}</button>
+                {!adminActive && <button type="button" className="customize-button secondary-button" disabled={!canAct} onClick={customize}>Customize character</button>}
+                <button className="leave-button" onClick={() => adminActive ? void leaveVisitor() : setLeaving(true)}><LogOut size={13} /> {adminActive ? 'Return beyond the veil' : 'Leave realm'}</button>
               </> : <>
                 <div className="welcome-hero"><div className="portrait"><PixelHero heroClass={heroClass} large /><span className="portrait-spark">✧</span></div><h2>Your story starts here.</h2><p>Make yourself a little legend.</p></div>
                 <form onSubmit={event => { event.preventDefault(); void joinRealm(); }} noValidate>
@@ -508,8 +637,14 @@ export default function Mossvale({ user, onSessionExpired }: {
                     </button>)}
                   </div>
                   <CallingPreview heroClass={heroClass} />
-                  <button className="primary-button enter-button" type="submit" disabled={!connected || joining || introOpen}>
-                    {joining ? 'Entering the glade…' : loading ? 'Connecting…' : count >= 6 ? 'Realm full · Try again' : 'Enter the glade'} <ArrowUpRight size={17} />
+                  <fieldset className="party-mode-options" disabled={!partyFeatures || joining}>
+                    <legend className="field-label">Choose your company</legend>
+                    <label><input type="radio" name="party-mode" value="open" checked={partyMode === 'open'} onChange={() => setPartyMode('open')} /> Open party</label>
+                    <label><input type="radio" name="party-mode" value="solo" checked={partyMode === 'solo'} onChange={() => setPartyMode('solo')} /> Solo adventure</label>
+                    <small>{partyMode === 'solo' ? 'Explore on your own. Visiting guardians may lend a hand.' : invitedParty ? 'Join the party from your invitation if a seat is available.' : 'Meet a company of up to eight adventurers. Full parties open a new glade.'}</small>
+                  </fieldset>
+                  <button className="primary-button enter-button" type="submit" disabled={!partyFeatures || !connected || joining || introOpen}>
+                    {joining ? 'Entering the glade…' : loading ? 'Connecting…' : 'Enter the glade'} <ArrowUpRight size={17} />
                   </button>
                   <div className="join-note"><Shield size={11} /> Account linked. Character and XP saved.</div>
                 </form>
@@ -520,15 +655,15 @@ export default function Mossvale({ user, onSessionExpired }: {
 
             <section className="card quest-card">
               <div className="section-kicker"><span className="kicker-with-icon"><Compass size={14} /> YOUR FIRST ADVENTURE</span></div>
-              <h2>Guardian of the Glade</h2>
-              <p>The woods could use a helping hand.</p>
+              <h2>{adminActive ? 'Lend a helping hand' : 'Guardian of the Glade'}</h2>
+              <p>{adminActive ? 'Players lead their story and earn their own progress. Your visit awards no personal XP or currency.' : 'The woods could use a helping hand.'}</p>
               <div className="quest-list">
                 <button onClick={trackEnemy}><span className={'quest-icon ' + ((me?.kills || 0) >= 3 ? 'complete' : '')}>{(me?.kills || 0) >= 3 ? <Check size={15} /> : <Sword size={15} />}</span><span>Clear thornlings<small>Shared with your party</small></span><b>{Math.min(me?.kills || 0, 3)}/3</b><ChevronRight size={12} /></button>
                 <button onClick={trackCrystal}><span className={'quest-icon ' + ((me?.gathered.length || 0) >= 2 ? 'complete' : '')}>{(me?.gathered.length || 0) >= 2 ? <Check size={15} /> : <Gem size={15} />}</span><span>Gather moon crystals<small>Find the blue glow</small></span><b>{Math.min(me?.gathered.length || 0, 2)}/2</b><ChevronRight size={12} /></button>
                 <button onClick={() => go(SHRINE.x, SHRINE.y)}><span className={'quest-icon ' + (me?.shrine ? 'complete' : '')}>{me?.shrine ? <Check size={15} /> : <Sparkles size={15} />}</span><span>Visit the old shrine<small>A little magic awaits</small></span><b>{me?.shrine ? '1' : '0'}/1</b><ChevronRight size={12} /></button>
               </div>
               <div className="reward"><span>✧</span><span>100 XP <i>→</i> Secret Stash</span><small>QUEST REWARD</small></div>
-              {me && <button className="claim-button" disabled={!questDone || me.claimed} onClick={() => void act('claim')}>{me.claimed ? 'Adventure complete ✓' : questDone ? 'Claim your reward' : 'Complete the three objectives'}</button>}
+              {me && !adminActive && <button className="claim-button" disabled={!questDone || me.claimed} onClick={() => void act('claim')}>{me.claimed ? 'Adventure complete ✓' : questDone ? 'Claim your reward' : 'Complete the three objectives'}</button>}
               <p className="tracking-hint">Tap an objective to walk there.</p>
             </section>
           </aside>
@@ -536,8 +671,8 @@ export default function Mossvale({ user, onSessionExpired }: {
           <section className="world-column" aria-label="Game world">
             <div className="world-card">
               <div className="world-heading">
-                <div><div className="section-kicker">ELDRITCH FABLE · REALM 01</div><h2>Whispering Glade</h2></div>
-                <div className={'live-pill ' + (connected ? '' : 'offline')}><span /> {connected ? 'LIVE' : loading ? 'CONNECTING' : 'OFFLINE'}<i />{count}/6 <Users size={13} /></div>
+                <div><div className="section-kicker">ELDRITCH FABLE · {realm?.partyMode === 'solo' ? 'SOLO ADVENTURE' : 'PARTY REALM'}</div><h2>Whispering Glade</h2></div>
+                <div className={'live-pill ' + (connected ? '' : 'offline')}><span /> {connected ? 'LIVE' : loading ? 'CONNECTING' : 'OFFLINE'}<i />{count}/{partyFeatures ? realm.maxPlayers : '—'} <Users size={13} /></div>
               </div>
               <div className="canvas-container">
                 <GameCanvas realm={realm} playerId={playerId} onTile={go} />
@@ -551,7 +686,7 @@ export default function Mossvale({ user, onSessionExpired }: {
               <div className="keyboard-hint"><span className="key-group"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></span><span>Wander<small>or click the ground</small></span></div>
               <div className="action-buttons">
                 <button aria-label="Attack" className="attack-button" disabled={!canAct} onClick={() => void act('attack')}><Sword size={17} /><span>Attack</span><kbd>SPACE</kbd></button>
-                <button aria-label="Interact" className="interact-button" disabled={!canAct} onClick={() => void act('interact')}><Sparkles size={17} /><span>Interact</span><kbd>E</kbd></button>
+                <button aria-label="Interact" className="interact-button" disabled={!canAct || adminActive} onClick={() => void act('interact')}><Sparkles size={17} /><span>Interact</span><kbd>E</kbd></button>
               </div>
               <button className="help-button" onClick={() => setGuide(true)} aria-label="Open field guide"><BookOpen size={18} /></button>
             </div>
@@ -569,25 +704,33 @@ export default function Mossvale({ user, onSessionExpired }: {
           <aside className="social-column">
             <section className="card party-card">
               <div className="section-kicker"><span className="kicker-with-icon"><Users size={14} /> THE COMPANY YOU KEEP</span></div>
-              <div className="party-title"><h2>Your party</h2><span>{count}<i>/6</i></span></div>
-              <p>A shared world is a better world.</p>
+              <div className="party-title"><h2>Your party</h2><span>{count}<i>/{partyFeatures ? realm.maxPlayers : '—'}</i></span></div>
+              <p>{realm?.partyMode === 'solo' ? 'Your own glade, with room for visiting help.' : 'Your company shares this glade.'}</p>
               <div className="party-slots">
-                {Array.from({ length: 6 }, (_, i) => {
+                {Array.from({ length: partyFeatures ? realm.maxPlayers : 0 }, (_, i) => {
                   const player = realm?.players[i];
                   return <div key={player?.id || i} className={'party-slot ' + (player ? 'occupied' : '')}>
-                    <div className="slot-avatar"><PixelHero heroClass={player?.heroClass} empty={!player} /></div>
+                    <div className="slot-avatar"><PixelHero heroClass={player?.heroClass} appearance={player?.appearance} empty={!player} /></div>
                     <div>{player ? <><strong>{player.name}</strong><small>{player.id === playerId ? 'You · ' : ''}Lv. {player.levelLabel || level(player.xp)} {CLASSES[player.heroClass].name}</small></> : <><strong>Open seat</strong><small>A friend belongs here</small></>}</div>
                     {player ? <span className="online-dot" /> : <span className="seat-number">0{i + 1}</span>}
                   </div>;
                 })}
               </div>
-              <button className="invite-button" onClick={async () => {
+              <section className="visitor-roster" aria-label="Visiting administrators">
+                <div><strong>Visiting guardians</strong><span>{visitorCount} / {partyFeatures ? realm.maxVisitors : '—'}</span></div>
+                {(realm?.visitors || []).map(visitor => <div className="party-slot occupied visitor-slot" key={visitor.id}>
+                  <div className="slot-avatar"><PixelHero heroClass={visitor.heroClass} /></div>
+                  <div><strong>{visitor.name}</strong><small>{visitor.id === playerId ? 'You · ' : ''}Draconian guardian · Invulnerable</small></div><span className="online-dot" />
+                </div>)}
+                {!visitorCount && <small>Two extra places for visiting help.</small>}
+              </section>
+              <button className="invite-button" disabled={!realm?.partyId || realm.partyMode !== 'open'} onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(window.location.origin + '/play');
+                  await navigator.clipboard.writeText(window.location.origin + '/play?party=' + encodeURIComponent(realm?.partyId || ''));
                   setNotice('Invite link copied. Send it to your party!');
                 } catch { setNotice('Invite friends by sharing this page’s URL.'); }
               }}><span>Invite a friend</span><ArrowUpRight size={15} /></button>
-              <small className="party-footnote">One world. Up to six real players.</small>
+              <small className="party-footnote">{partyFeatures ? 'Up to eight adventurers + two visiting guardians.' : 'Party information unavailable.'}</small>
             </section>
 
             <section className="card chat-card">
@@ -616,6 +759,8 @@ export default function Mossvale({ user, onSessionExpired }: {
 
       <IntroCutscene open={introOpen} onComplete={completeIntro} />
 
+      {appearanceOpen && me && !adminActive && <AppearanceEditor player={me} onSave={saveAppearance} onClose={() => setAppearanceOpen(false)} />}
+
       {(guide || leaving) && <div className="modal-backdrop" onClick={() => { setGuide(false); setLeaving(false); }}>
         <section ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={event => event.stopPropagation()}>
           <button className="modal-close icon-button" aria-label="Close dialog" onClick={() => { setGuide(false); setLeaving(false); }} autoFocus><X size={20} /></button>
@@ -625,10 +770,10 @@ export default function Mossvale({ user, onSessionExpired }: {
             <div className="modal-actions"><button className="secondary-button" onClick={() => setLeaving(false)}>Keep exploring</button><button className="primary-button" onClick={() => void leaveRealm()}>Leave adventure</button></div>
           </> : <>
             <div className="eyebrow">A WAYFARER’S FIELD GUIDE</div><h2 id="modal-title">A little help for the road.</h2>
-            <p>Mossvale is Eldritch Fable’s live realm for six signed-in adventurers. Share the page link and meet your party by the campfire.</p>
+            <p>Each Mossvale party has room for eight signed-in adventurers and two visiting guardians. Choose an open party or a solo adventure. An open-party invitation leads to the same glade when a seat is available.</p>
             <div className="guide-steps">
               <div><Compass /><span><strong>Take the scenic route</strong><p>Click or tap the ground to walk. Use WASD, arrow keys, or the touch buttons. The wooden bridge crosses the brook.</p></span></div>
-              <div><Sword /><span><strong>Be a guardian, together</strong><p>Walk near a thornling and press Attack or Space. Your calling determines weapon reach and starter skills. Use the skill cards or keys 1 and 2; their cooldowns keep combat paced. Healing and wards help your company survive. Active contributors earn XP for their private Secret Stash.</p></span></div>
+              <div><Sword /><span><strong>Be a guardian, together</strong><p>Walk near a thornling and press Attack or Space. Your calling determines weapon reach and starter skills. Use the skill cards or keys 1 and 2; their cooldowns keep combat paced. Visiting guardians have matching combat power and a healing boon, while normal positive contributors keep earning XP. Healing and wards help your company survive. Active contributors earn XP for their private Secret Stash.</p></span></div>
               <div><Gem /><span><strong>Follow the blue glow</strong><p>Stand beside two different moon crystals and press Interact or E. Then visit the shrine in the northeast and interact with it.</p></span></div>
               <div><Flame /><span><strong>There is always a way home</strong><p>Interact at camp to restore health. Complete all three objectives to claim 100 XP for your Secret Stash. Thornlings return after 20 seconds.</p></span></div>
             </div>

@@ -20,8 +20,10 @@ test('customer can register, verify, sign in, change and reset password, and sig
   const welcome = page.getByRole('dialog', { name: 'Your adventure keeps going.' });
   await expect(welcome).toBeVisible();
   await expect(welcome).toContainText('persistent character linked to your account');
-  await expect(welcome).toContainText('up to six adventurers');
-  await expect(welcome).toContainText('Be sure to invite your friends!');
+  await expect(welcome).toContainText('up to eight adventurers in your party');
+  await expect(welcome).toContainText('two extra places for visiting guardians');
+  await expect(welcome).toContainText('explore in your own solo party');
+  await expect(welcome).toContainText('Invite your friends when you want company!');
   await expect(welcome).toContainText('1,250 XP = 1 gold = 100 silver = 1,000 copper.');
   await expect(welcome).toContainText('1 gold is worth 1 penny.');
   await expect(welcome).toContainText('Buying shop gear with coins and additional XP ability unlocks are coming soon.');

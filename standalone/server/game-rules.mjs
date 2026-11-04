@@ -2,6 +2,8 @@ export const WIDTH = 30;
 export const HEIGHT = 22;
 export const SPAWN = { x: 10, y: 13 };
 export const SHRINE = { x: 24, y: 5 };
+export const MAX_PLAYERS = 8;
+export const MAX_VISITORS = 2;
 export const LEASE_MS = 75000;
 export { CLASS_CATALOG as CLASSES } from '../shared/class-catalog.mjs';
 export const CRYSTALS = Object.freeze([

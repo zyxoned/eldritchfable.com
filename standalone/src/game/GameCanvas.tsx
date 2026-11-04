@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { drawHero } from '../../shared/hero-renderer.mjs';
 import {
   WIDTH, HEIGHT, SPAWN, SHRINE, CRYSTALS, CLASSES, tile, type Realm, type Player,
 } from './shared/game';
@@ -7,8 +8,9 @@ const S = 32;
 const W = WIDTH * S;
 const H = HEIGHT * S;
 const TAU = Math.PI * 2;
-type Effect = { id: string; type: string; x: number; y: number; color?: string; at: number; radius?: number };
-type RenderRealm = Realm & { seventh?: Player | null; effects?: Effect[] };
+type Effect = { id: string; type: string; x: number; y: number; color?: string; at: number; radius?: number; actorId?: string };
+type RenderRealm = Realm & { effects?: Effect[] };
+type Pose = { x: number; y: number; heading: number; phase: number; speed: number; leanX: number; leanY: number };
 
 function random(x: number, y: number, salt = 0) {
   const v = Math.sin(x * 127.1 + y * 311.7 + salt * 74.7) * 43758.5453;
@@ -139,78 +141,25 @@ function forest() {
   }
   return layer;
 }
-function hero(c: CanvasRenderingContext2D, p: Player, x: number, y: number, time: number, walking: boolean) {
-  const id=p.heroClass; const color=CLASSES[id]?.color||'#bd9bd9';const dark=id==='death-knight';
-  const bob=Math.sin(time/(walking?90:650)+x)* (walking?1.7:.55);
-  c.save();c.translate(x,y+bob);c.lineCap='round';c.lineJoin='round';
-  ellipse(c,2,12,15,5,'#010a1490');
-  if(dark) {
-    glow(c,0,-8,47,'#9f9aff38');
-    c.fillStyle='#293044';c.strokeStyle='#8b83c380';c.lineWidth=1;
-    for(const side of [-1,1]) {
-      c.beginPath();c.moveTo(side*8,-16);c.bezierCurveTo(side*20,-36,side*31,-40,side*38,-34);
-      c.lineTo(side*31,-7);c.lineTo(side*21,-16);c.lineTo(side*20,0);c.lineTo(side*10,-4);c.closePath();c.fill();c.stroke();
-      stroke(c,'#b2a9dd70',.8,[[side*9,-16],[side*28,-29],[side*31,-7]]);
+function hero(c: CanvasRenderingContext2D, p: Player, x: number, y: number, time: number, walking: boolean, pose: Pose, reducedMotion: boolean, attackFx: number, abilityFx: number) {
+  c.save(); c.translate(x, y + 10); c.scale(S, S);
+  if (p.heroClass === 'death-knight') {
+    // The visiting guardian keeps its Draconian outline around the shared rig.
+    const trail = reducedMotion ? 0 : Math.sin(pose.phase - .7) * Math.min(1, pose.speed / 3.8) * .035;
+    for (const side of [-1, 1]) {
+      c.fillStyle = '#293044'; c.strokeStyle = '#8b83c3aa'; c.lineWidth = .025;
+      c.beginPath(); c.moveTo(side * .2, -.63);
+      c.bezierCurveTo(side * .48, -1.05 + trail, side * .82, -1.17 + trail, side * .98, -.99 + trail);
+      c.lineTo(side * .82, -.28); c.lineTo(side * .56, -.52);
+      c.lineTo(side * .48, -.1); c.lineTo(side * .2, -.25);
+      c.closePath(); c.fill(); c.stroke();
+      c.beginPath(); c.moveTo(side * .22, -.6); c.lineTo(side * .75, -.93 + trail); c.lineTo(side * .82, -.28);
+      c.strokeStyle = '#b2a9dd80'; c.lineWidth = .02; c.stroke();
     }
   }
-  // Silhouettes are class-specific equipment, not interchangeable colored squares.
-  const cloak=c.createLinearGradient(-9,-20,12,15);cloak.addColorStop(0,color);cloak.addColorStop(1,dark?'#121727':'#243640');
-  c.fillStyle=cloak;c.beginPath();c.moveTo(-8,-18);c.quadraticCurveTo(-14,-2,-13,12);c.quadraticCurveTo(0,19,13,12);c.quadraticCurveTo(10,-5,8,-18);c.closePath();c.fill();
-  stroke(c,'#081a26',4,[[-4,5],[-5,13]]);stroke(c,'#081a26',4,[[5,5],[7,13]]);
-  if(id==='monk') {
-    c.fillStyle='#d2b68c';c.beginPath();c.ellipse(0,-20,6,7,0,0,TAU);c.fill();
-    stroke(c,'#143d40',4,[[-8,-10],[6,3]]);stroke(c,'#dfc7a2',3,[[-8,-9],[-13,-2]]);stroke(c,'#dfc7a2',3,[[8,-9],[13,-2]]);
-    stroke(c,'#90d2bb',1,[[12,-4],[15,-3],[14,0]]);ellipse(c,-4,-21,1,1,'#3d4c49');ellipse(c,3,-21,1,1,'#3d4c49');
-  } else {
-    const face=dark?'#708b93':'#d8bf9a';
-    ellipse(c,0,-20,6.3,7,face);
-    if(id==='ranger'||id==='mage'||id==='sorcerer') {
-      c.fillStyle=color;c.beginPath();c.moveTo(-9,-18);c.quadraticCurveTo(-9,-33,0,-31);c.quadraticCurveTo(10,-31,9,-18);c.lineTo(5,-22);c.quadraticCurveTo(0,-28,-5,-22);c.closePath();c.fill();
-      if(id==='ranger') {stroke(c,'#d6d3a2',1,[[-4,-30],[-9,-39],[-6,-35]]);}
-    }
-    if(id==='wizard') {
-      c.fillStyle=color;c.beginPath();c.moveTo(-13,-25);c.lineTo(10,-25);c.lineTo(4,-48);c.lineTo(-5,-32);c.closePath();c.fill();
-      stroke(c,'#c1d7df',1,[[2,-40],[-1,-30],[8,-28]]);ellipse(c,1,-31,1.5,1.5,'#eadbb4');
-    }
-    if(id==='knight'||id==='death-knight'||id==='cleric') {
-      const metal=dark?'#6a7390':id==='cleric'?'#d5c7a4':'#b9bdba';
-      c.fillStyle=metal;c.beginPath();c.moveTo(-8,-20);c.quadraticCurveTo(-8,-31,0,-31);c.quadraticCurveTo(8,-31,8,-20);c.lineTo(4,-14);c.lineTo(0,-18);c.lineTo(-5,-14);c.closePath();c.fill();
-      stroke(c,'#21303d',2,[[-5,-22],[5,-22]]);
-      if(dark) {
-        stroke(c,'#d0c7ff',1.5,[[-4,-22],[-1,-22]]);stroke(c,'#d0c7ff',1.5,[[2,-22],[5,-22]]);
-        for(const side of [-1,1]) stroke(c,'#a7b1c1',3,[[side*5,-28],[side*11,-36],[side*9,-41]]);
-        c.fillStyle='#424e69';c.beginPath();c.moveTo(-9,-15);c.lineTo(-14,-20);c.lineTo(-17,-7);c.lineTo(-7,-6);c.lineTo(0,0);c.lineTo(7,-6);c.lineTo(17,-7);c.lineTo(14,-20);c.lineTo(8,-15);c.closePath();c.fill();
-        stroke(c,'#a9a5d8',1,[[-12,-14],[-6,-9],[0,-5],[7,-9],[13,-14]]);
-      } else {stroke(c,'#e5deba',2,[[-10,-9],[-5,-12],[5,-12],[11,-9]]);}
-    }
-    if(id==='bard') {
-      c.fillStyle='#663c65';c.beginPath();c.moveTo(-10,-25);c.quadraticCurveTo(-5,-38,6,-29);c.lineTo(12,-24);c.closePath();c.fill();
-      stroke(c,'#eccf98',1.4,[[4,-30],[12,-39],[10,-32]]);
-    }
-    if(!dark) {ellipse(c,-3,-21,.8,1,'#25333a');ellipse(c,3,-21,.8,1,'#25333a');}
-  }
-  stroke(c,dark?'#9f9fd0':'#d6c498',2.2,[[-8,1],[7,1]]);
-  if(id==='ranger') {
-    c.strokeStyle='#caab78';c.lineWidth=2;c.beginPath();c.arc(12,-9,13,-Math.PI/2,Math.PI/2);c.stroke();stroke(c,'#e0d5ae',.8,[[12,-22],[12,4]]);
-    stroke(c,'#8c6a4e',3,[[-9,-13],[-15,-29]]);stroke(c,'#d9d1aa',1,[[-15,-30],[-18,-26]]);
-  } else if(id==='knight'||dark) {
-    stroke(c,dark?'#c7d5ed':'#dfe2d4',dark?3:2.5,[[14,7],[16,-21]]);
-    stroke(c,'#cab07b',2,[[10,-5],[20,-4]]);
-    if(dark) {glow(c,16,-11,19,'#b3b0ff45');stroke(c,'#f2edff',1,[[16,-21],[15,-6]]);}
-    else {c.fillStyle='#775b57';c.beginPath();c.moveTo(-17,-14);c.lineTo(-8,-12);c.lineTo(-8,-1);c.lineTo(-12,5);c.lineTo(-18,-1);c.closePath();c.fill();stroke(c,'#dbc79b',1,[[-17,-13],[-9,-12],[-9,-2],[-12,3],[-17,-2],[-17,-13]]);}
-  } else if(id==='bard') {
-    ellipse(c,10,-1,7,9,'#cb9f68');ellipse(c,10,-2,3,4,'#493744');stroke(c,'#dfbc85',3,[[9,-7],[12,-24]]);stroke(c,'#f0d7a3',.6,[[8,5],[13,-23]]);
-  } else if(id==='monk') {
-    stroke(c,'#b3ac83',2,[[-15,8],[17,-24]]);stroke(c,'#e1d3a4',1,[[13,-20],[17,-24]]);
-  } else {
-    stroke(c,id==='cleric'?'#d9c495':'#8b7565',2.4,[[14,12],[15,-29]]);
-    if(id==='cleric') {
-      stroke(c,'#f6e1a1',3,[[10,-27],[20,-27]]);stroke(c,'#f6e1a1',3,[[15,-33],[15,-21]]);glow(c,15,-27,13,'#f9dc8845');
-    } else {
-      const orb=id==='sorcerer'?'#f6af78':id==='wizard'?'#9edcfa':'#d5b6f1';glow(c,15,-31,13,orb+'50');ellipse(c,15,-31,3.5,4.5,orb);
-      if(id==='sorcerer') {glow(c,-12,-4,10,'#ff986e60');ellipse(c,-12,-4,3,3,'#ffe2b0');}
-    }
-  }
+  drawHero(c, { x: 0, y: 0, classId: p.heroClass, appearance: p.appearance, motion: pose }, {
+    time: time / 1000, moving: walking, reducedMotion, attackFx, abilityFx, classColor: CLASSES[p.heroClass]?.color,
+  });
   c.restore();
 }
 function thornling(c: CanvasRenderingContext2D, x: number, y: number, time: number, hp: number) {
@@ -257,13 +206,13 @@ export default function GameCanvas({ realm, playerId, onTile }: {
     const canvas=ref.current; if(!canvas) return;const c=canvas.getContext('2d');if(!c)return;
     const pixelRatio=Math.min(window.innerWidth<760?1.25:2,window.devicePixelRatio||1);
     canvas.width=W*pixelRatio;canvas.height=H*pixelRatio;c.setTransform(pixelRatio,0,0,pixelRatio,0,0);
-    const ground=terrain(),canopy=forest();const poses=new Map<string,{x:number;y:number}>();
+    const ground=terrain(),canopy=forest();const poses=new Map<string,Pose>();
     const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
     let animation=0,lastFrame=0;let visible=document.visibilityState!=='hidden';
     const visibility=()=>{visible=document.visibilityState!=='hidden';};document.addEventListener('visibilitychange',visibility);
     const draw=(stamp:number)=>{
       animation=requestAnimationFrame(draw);
-      if(!visible||stamp-lastFrame<32)return;lastFrame=stamp;
+      if(!visible||stamp-lastFrame<32)return;const delta=Math.min(.08,Math.max(.008,(stamp-lastFrame)/1000));lastFrame=stamp;
       const reduced=motion.matches;const time=reduced?0:stamp;
       const state=latest.current;const world=state.realm as RenderRealm|null;
       const now=(world?.serverTime||Date.now())+(Date.now()-state.receivedAt);
@@ -293,21 +242,39 @@ export default function GameCanvas({ realm, playerId, onTile }: {
       }
       const actors:Array<{y:number;draw:()=>void}>=[];
       for(const enemy of world?.enemies||[])if(enemy.hp>0)actors.push({y:enemy.y,draw:()=>thornling(c,enemy.x*S+16,enemy.y*S+16,time,enemy.hp)});
-      const players=[...(world?.players||[]),...(world?.seventh?[world.seventh]:[])];
+      const players=[...(world?.players||[]),...(world?.visitors||[])];
       for(const p of players){
         const targetX=p.x*S+16,targetY=p.y*S+16;let pos=poses.get(p.id);
-        if(!pos||Math.hypot(pos.x-targetX,pos.y-targetY)>S*4){pos={x:targetX,y:targetY};poses.set(p.id,pos);}
-        const walking=Math.abs(pos.x-targetX)+Math.abs(pos.y-targetY)>1;
-        pos.x+=(targetX-pos.x)*(reduced?1:.35);pos.y+=(targetY-pos.y)*(reduced?1:.35);
+        if(!pos||Math.hypot(pos.x-targetX,pos.y-targetY)>S*4){pos={x:targetX,y:targetY,heading:Math.PI/2,phase:0,speed:0,leanX:0,leanY:0};poses.set(p.id,pos);}
+        const dx=targetX-pos.x,dy=targetY-pos.y;
+        const walking=Math.hypot(dx,dy)>1;
+        const follow=1-Math.exp(-delta*13);
+        const moveX=dx*follow,moveY=dy*follow;
+        pos.x+=moveX;pos.y+=moveY;
+        pos.speed=walking?Math.min(3.8,Math.hypot(moveX,moveY)/S/delta):0;
+        if(walking){
+          const desired=Math.atan2(dy,dx);
+          const turn=Math.atan2(Math.sin(desired-pos.heading),Math.cos(desired-pos.heading));
+          pos.heading+=turn*Math.min(1,delta*18);
+          pos.phase+=Math.hypot(moveX,moveY)/S*8.5;
+        }
+        pos.leanX+=(Math.max(-.06,Math.min(.06,dx/S*.05))-pos.leanX)*follow;
+        pos.leanY+=(Math.max(-.06,Math.min(.06,dy/S*.05))-pos.leanY)*follow;
         const x=pos.x,y=pos.y;
+        const actorEffects=(world?.effects||[]).filter(effect=>effect.actorId===p.id);
+        const hit=actorEffects.find(effect=>['strike','area'].includes(effect.type)&&now-effect.at>=0&&now-effect.at<240);
+        const cast=actorEffects.find(effect=>['heal','ward'].includes(effect.type)&&now-effect.at>=0&&now-effect.at<600);
+        const attackFx=hit?.at ? .24-(now-hit.at)/1000 : 0;
+        const abilityFx=cast?.at ? .6-(now-cast.at)/1000 : 0;
         actors.push({y:p.y,draw:()=>{
           if(p.id===state.playerId){glow(c,x,y+8,31,'#e1c98c18');c.strokeStyle='#e6d09c';c.lineWidth=1.2;c.beginPath();c.ellipse(x,y+12,19,7,0,0,TAU);c.stroke();}
-          hero(c,p,x,y,time,walking);
+          hero(c,p,x,y,time,walking,pos!,reduced,attackFx,abilityFx);
           c.font='600 11px system-ui, sans-serif';c.textAlign='center';const label=p.name+(p.heroClass==='death-knight'?' · ???':p.id===state.playerId?' · you':'');
           const width=c.measureText(label).width;c.fillStyle='#0a1320db';c.fillRect(x-width/2-7,y-(p.heroClass==='wizard'?64:55),width+14,17);
           c.fillStyle=p.heroClass==='death-knight'?'#d0c5f1':'#ede5d0';c.fillText(label,x,y-(p.heroClass==='wizard'?52:43));
         }});
       }
+      for(const id of poses.keys())if(!players.some(player=>player.id===id))poses.delete(id);
       actors.sort((a,b)=>a.y-b.y).forEach(actor=>actor.draw());c.drawImage(canopy,0,0);
       for(const effect of world?.effects||[])paintEffect(c,effect,now-effect.at);
       // Slow fireflies and a soft vignette, never flashes.

@@ -129,10 +129,10 @@ export function AccountHome({ admin = false }) {
       <button ref={welcomeTrigger} type="button" className="auth-secondary" onClick={() => setWelcomeOpen(true)}>About your adventure</button>
       <AdventureWelcome open={welcomeOpen} onDismiss={() => setWelcomeOpen(false)} returnFocusRef={welcomeTrigger} />
     </section>
-    {state.user.role === 'admin' && <section className="auth-resend" aria-label="The Seventh connection">
-      <h2>The Seventh connection</h2>
-      <p>Step into the realm as your separate Draconian Death Knight: level ???, SSS equipment, invulnerability, and an instant-kill strike. Your regular character remains saved, and all six player seats stay available.</p>
-      <p><Link to="/play?seventh=1">Enter as the Seventh</Link></p>
+    {state.user.role === 'admin' && <section className="auth-resend" aria-label="Visiting guardian connection">
+      <h2>Visiting guardian connection</h2>
+      <p>Visit a random party or solo adventurer as a separate Draconian guardian. You are invulnerable, your strikes scale to the party, and Guardian Boon heals nearby adventurers. Eight regular player seats and two extra visitor slots keep ordinary rewards and progression moving. Your regular character remains saved.</p>
+      <p><Link to="/play?visitor=1">Visit a random party</Link></p>
     </section>}
     {admin && <p>Store administration features will be added separately.</p>}
     <section className="auth-resend"><h2>Change your password</h2><p>Changing your password signs out all your devices.</p><form onSubmit={changePassword}>

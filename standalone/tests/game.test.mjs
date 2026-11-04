@@ -10,6 +10,7 @@ import { fixture, verifiedAccount, loginCookie } from './helpers.mjs';
 function harness(t, { sseIntervalMs = 15000 } = {}) {
   const f = fixture(t);
   let clock = Date.now();
+  const parties = new Map();
   let service = createGameService(f.db, { origin: f.origin, now: () => clock, sseIntervalMs });
   t.after(() => service.close());
 
@@ -30,6 +31,11 @@ function harness(t, { sseIntervalMs = 15000 } = {}) {
   }
 
   async function game(path, data, options = {}) {
+    if (data && typeof data === 'object' && !Array.isArray(data)
+      && ['/api/game/action', '/api/game/heartbeat', '/api/game/leave', '/api/game/admin/leave'].includes(path)
+      && !Object.hasOwn(data, 'partyId')) {
+      data = { ...data, partyId: parties.get(options.cookie) };
+    }
     const req = requestParts(path, data, options);
     const result = {};
     const res = new EventEmitter();
@@ -43,6 +49,9 @@ function harness(t, { sseIntervalMs = 15000 } = {}) {
     };
     const handled = await service.route(req, res, path.split('?')[0]);
     assert.equal(handled, true, 'Game service must handle ' + path);
+    if (result.status === 200 && result.body?.profile?.partyId) {
+      parties.set(options.cookie, result.body.profile.partyId);
+    }
     return result;
   }
 
@@ -249,44 +258,43 @@ test('same-origin, JSON shape, names and action envelopes are enforced', async t
   assert.equal((await h.world(actor)).body.realm.players.length, 0);
 });
 
-test('one account has one persistent character and admission never exceeds six', async t => {
+test('one account has one persistent character and each party admits eight regular heroes', async t => {
   const h = harness(t);
   const actors = [];
-  for (let i = 0; i < 7; i++) {
-    actors.push(await h.account('Capacity' + i, 'knight', { join: false }));
-  }
-  const admitted = await Promise.all(actors.slice(0, 6).map(actor => h.enter(actor)));
+  for (let i = 0; i < 9; i++) actors.push(await h.account('Capacity' + i, 'knight', { join: false }));
+  const admitted = await Promise.all(actors.slice(0, 8).map(actor => h.enter(actor)));
   assert.ok(admitted.every(result => result.status === 200));
-  assert.equal((await h.world(actors[0])).body.realm.players.length, 6);
-  expectRejected(await h.enter(actors[6]), [409]);
-  assert.equal((await h.world(actors[6])).body.realm.players.length, 6);
-
+  const partyId = admitted[0].body.realm.partyId;
+  assert.equal((await h.world(actors[0])).body.realm.players.length, 8);
+  const overflow = await h.enter(actors[8]);
+  assert.equal(overflow.status, 200);
+  assert.notEqual(overflow.body.realm.partyId, partyId);
+  assert.equal(overflow.body.realm.players.length, 1);
   const originalId = actors[0].playerId;
   assert.equal((await h.enter(actors[0])).status, 200);
   assert.equal(actors[0].playerId, originalId);
-  assert.equal(actors[0].last.body.realm.players.length, 6);
+  assert.equal(actors[0].last.body.realm.players.length, 8);
 
-  const left = await h.game('/api/game/leave', { requestId: randomUUID() }, {
-    cookie: actors[0].cookie,
-  });
+  const left = await h.game('/api/game/leave', { requestId: randomUUID() }, { cookie: actors[0].cookie });
   assert.equal(left.status, 200);
-  assert.equal(left.body.realm.players.length, 5);
-  assert.equal((await h.enter(actors[6])).status, 200);
-  assert.equal(actors[6].last.body.realm.players.length, 6);
-
-  h.advance(60000);
-  const heartbeat = await h.game('/api/game/heartbeat', { requestId: randomUUID() }, {
-    cookie: actors[6].cookie,
-  });
-  assert.equal(heartbeat.status, 200);
-  h.advance(15001);
-  const expired = await h.world(actors[0]);
-  assert.equal(expired.body.realm.players.length, 1);
-  assert.equal(expired.body.realm.players[0].id, actors[6].playerId);
-  expectRejected(await h.action(actors[1], 'move', { x: 11, y: 13 }), [409, 401]);
+  assert.equal(left.body.profile.active, false);
+  assert.equal(left.body.realm.players.length, 0, 'Inactive viewers receive no party projection');
+  assert.equal((await h.world(actors[1])).body.realm.players.length, 7);
   assert.equal((await h.enter(actors[0])).status, 200);
   assert.equal(actors[0].playerId, originalId);
-  assert.equal(actors[0].last.body.realm.players.length, 2);
+  assert.equal(actors[0].last.body.realm.partyId, partyId);
+  h.advance(60000);
+  const heartbeat = await h.game('/api/game/heartbeat', { requestId: randomUUID() }, { cookie: actors[0].cookie });
+  assert.equal(heartbeat.status, 200);
+  h.advance(15001);
+  const expired = await h.world(actors[1]);
+  assert.equal(expired.body.realm.players.length, 0, 'Expired viewers receive no other party state');
+  const active = await h.world(actors[0]);
+  assert.equal(active.body.realm.players.length, 1);
+  assert.equal(active.body.realm.players[0].id, originalId);
+  expectRejected(await h.action(actors[1], 'move', { x: 11, y: 13 }), [409, 401]);
+  assert.equal((await h.enter(actors[1])).status, 200);
+  assert.equal(actors[1].last.body.realm.players.length, 2);
 });
 
 test('movement, attack ranges, cooldowns and interaction distances are authoritative', async t => {

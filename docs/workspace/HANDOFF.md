@@ -1,5 +1,67 @@
 # Eldritch Fable shared workspace handoff
 
+## Current feature continuation — November 4, 2026
+
+This section supersedes historical task/next-action notes below. The owner
+authorized implementation of eight regular seats and two additional administrator
+visitors per party, explicitly retaining normal rewards and story progression
+during visits. Cosmetic customization and more substantial class motion are part
+of the same feature. Full campaign content is not claimed implemented.
+
+**Source:** accepted main `f50f072e6dd91f94a69882f8cad23b5dec5358d0`, tree
+`854c720c8d455b3f95cbd777cda4e8ced83f9785`. The original resumed worktree remains
+on `feature/eight-party-visitors-20261030` at
+`f198ca51729b4131cfde37dce709830df91f81b5`, with reviewed WIP preserved.
+Publication target is an independent `feature/eight-party-visitors-20261104`
+tree parented from fresh main, retaining `docs/PROJECT_OS.md` and excluding
+`demos/**` and the demo-only plan. The new commit is identified by Git history
+and its remote ref rather than a self-reference here.
+
+**Implemented:** schema-5 persistent party worlds and bindings; eight regular and
+two visitor seats per party; open overflow and private solo sessions; uniform
+random eligible admin visits; viewer-scoped SSE; role/session reauthorization;
+party-bound actions/heartbeats and global immutable receipts. Support visitors
+are invulnerable, have lower-median party-scaled basic offense sharing a 700 ms
+strike budget, and heal nearby regular members 15 HP within four tiles every six
+seconds. Positive ordinary contributors keep rewards on visitor finishing hits.
+Visitors receive no customer XP, currency or progression and preserve their own
+normal hero and wallet.
+
+Normal appearance uses a strict six-field cosmetic catalog, receipt-backed save
+API and preview/save/cancel editor. Class stays immutable. A pure shared renderer
+draws class equipment/silhouettes, planted gait, turns, breathing and attack
+recovery with reduced-motion support. Party controls and account/welcome copy
+describe the new capacity and visitor role.
+
+**Verification:** fresh locked dependency install, syntax checks and **86/86
+backend tests** passed. Migration tests preserve existing account/session/mail,
+hero, wallet/ledger, receipt and world columns; compatible fallback exercises
+retain later writes. Independent backend review found replay-order and shared
+attack-budget bugs; both are fixed with regression checks. The final production build and all **38 desktop/mobile browser tests passed**
+after fixes for delayed HTTP responses, cross-tab actor changes and modal cleanup.
+The final tested source is byte-identical to the independent review checkout.
+
+**Next executable action:** publish the reviewed 28-file independent feature PR,
+verify CI, and merge/deploy the exact reviewed source as now explicitly requested
+by the owner. Preserve a consistent private backup and rehearse the schema-5
+migration and compatible code fallback first. Record the actual release identity,
+health, retained assets and timer states after activation. Never restore an older
+database automatically. The implementation commit is identified by Git history.
+
+The [solo visual demo](https://eldritch-fable-mossvale-demo-yizzwe.v2.appdeploy.ai/)
+is separately published in [PR #10](https://github.com/zyxoned/eldritchfable.com/pull/10),
+source `d79d4c07739e190edac449fa939b32925f6a3508`, ready snapshot
+`1793807926358`. It has no multiplayer/accounts/economy connection. Feature PR
+source does not include that experiment.
+
+Private authoring records and inaccessible managed-environment files remain
+unpublished. Existing production services, customer database and Relay watcher
+were not modified or freshly audited by this feature work.
+
+---
+
+Historical handoff retained from current main:
+
 Current task: persistent-effect design revision, October 30, 2026, 07:52 EDT
 (America/New_York).
 Executor: connected GitHub and SentinelX staging tools. This is a design handoff,

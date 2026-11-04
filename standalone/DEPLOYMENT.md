@@ -1,8 +1,8 @@
 # Deploy Eldritch Fable on the existing Linux server
 
-> Verified 2026-10-29: main requires schema **4**; production remains schema **3**, frontend `2011d095` and backend `f05b81a0`. Historical deployment sections below are dated evidence. Use [PROJECT_STATE](../PROJECT_STATE.md) and [DEPLOYMENT_RECOVERY](../DEPLOYMENT_RECOVERY.md) for current identities and recovery instructions. Repository publication does not deploy production.
+> Feature source observed 2026-11-04 requires schema **5**. Production release/schema observations dated 2026-10-29 are historical evidence; this feature has not deployed or re-verified production. Use [PROJECT_STATE](../PROJECT_STATE.md) and [DEPLOYMENT_RECOVERY](../DEPLOYMENT_RECOVERY.md) for current identities and recovery instructions. Repository publication does not deploy production.
 
-The maintained release includes accounts, mail, Tavern, RPG/Stash and the Hollow King expansion. Product import, checkout and PostgreSQL remain separate work. Use schema version 4 as required by server/database.mjs; read [ADVENTURE.md](ADVENTURE.md) and [EXPANSION.md](EXPANSION.md) with these instructions. Repository reconciliation does not deploy this release.
+The maintained release includes accounts, mail, Tavern, RPG/Stash and the Hollow King expansion. Product import, checkout and PostgreSQL remain separate work. Use schema version 5 as required by server/database.mjs; read [ADVENTURE.md](ADVENTURE.md) and [EXPANSION.md](EXPANSION.md) with these instructions. Repository reconciliation does not deploy this release.
 
 ## Historically verified production layout
 
@@ -66,7 +66,7 @@ The rollout performs these steps:
 
 1. Copy the built release and dependencies to a versioned directory under /srv/eldritch-production/releases, omitting .env files. Validate the updated routing with the installed Caddy as the frontend service user.
 2. Pause the mail, recovery and backup timers. Wait for already-running jobs to finish, then stop the API and frontend for a short maintenance window.
-3. Run database work with the API service's existing user and group. Resolve symlinked launch paths before deciding whether to execute the database CLI. Create a consistent mode-600 backup in a new private directory beside the live database, migrate that same database to schema version 4, compare preserved data and check integrity and foreign keys. Require a valid completion report and check that the expected backup is a private SQLite file owned by that user before printing a success message or proceeding.
+3. Run database work with the API service's existing user and group. Resolve symlinked launch paths before deciding whether to execute the database CLI. Create a consistent mode-600 backup in a new private directory beside the live database, migrate that same database to schema version 5, compare preserved data and check integrity and foreign keys. Require a valid completion report and check that the expected backup is a private SQLite file owned by that user before printing a success message or proceeding.
 4. Preserve the old app and frontend entries in a private deployment directory, then point those entries at the new release. Keep the existing production service names, API port and database path.
 5. Apply service overrides and a protected shared runtime file at /etc/eldritch-fable/accounts-runtime.env. Retain the existing SMTP credential file. Run the mail worker with the API service's user and group so its SQLite files remain writable by the API user.
 6. Start the API and frontend. Check API health, unauthenticated session lookup and the account route locally and through https://eldritchfable.com. A release header confirms that public requests reach the new production routing.
@@ -93,7 +93,7 @@ SMTP can be verified without sending mail by running server/mail-worker.mjs --ve
 
 Each rollout prints a private recovery record at /srv/eldritch-production/deployments/<release-id>/deployment.json. It records the previous app/frontend entries, original configuration snapshots and database backup path. Keep it with the backup.
 
-If startup or public routing checks fail, the script stops the new services, selects a prepared schema-compatible recovery app, restores the prior frontend and saved service configuration, and restarts services. For schema 4 recovery, adventure endpoints pause while account, storefront and compatible stash operations remain available; see EXPANSION.md. It retains the migrated database, including any subsequent account changes. It leaves mail and recovery timers paused after a migration failure or code rollback so older recovery/queue code cannot resume automatically. It never replaces the database with an older snapshot automatically. If restoration itself fails, the script reports ROLLBACK_NEEDS_ATTENTION and the recovery record location.
+If startup or public routing checks fail, the script stops the new services, selects a prepared schema-compatible recovery app, restores the prior frontend and saved service configuration, and restarts services. For schema 5 recovery, adventure endpoints pause while account, storefront and compatible stash operations remain available; see EXPANSION.md. It retains the migrated database, including any subsequent account changes. It leaves mail and recovery timers paused after a migration failure or code rollback so older recovery/queue code cannot resume automatically. It never replaces the database with an older snapshot automatically. If restoration itself fails, the script reports ROLLBACK_NEEDS_ATTENTION and the recovery record location.
 
 For routine database tools, inside the active app directory with ELDRITCH_DB set to the verified live database:
 

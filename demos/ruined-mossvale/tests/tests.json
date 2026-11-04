@@ -1,23 +1,25 @@
 [
   {
-    "name": "Explore freely and retain a local hero",
+    "name": "Create a personal hero and retain the look",
     "sanity": true,
     "viewport": "desktop",
     "covers": [
-      "free movement without a quest",
-      "optional journal",
-      "hero class selection",
-      "local save after reload",
-      "truthful solo prototype"
+      "eight class appearances",
+      "cosmetic customization",
+      "animated preview and rotation",
+      "save appearance after reload",
+      "free exploration without a quest",
+      "local solo prototype"
     ],
-    "description": "Verifies a new visitor can immediately move and keep a chosen class and discoveries without accepting a quest.",
+    "description": "Verifies a player can preview class silhouettes, save a personal appearance, and continue freely with the saved hero.",
     "steps": [
-      "Choose Mage in the hero-class selector.",
-      "Click visible ground north of the hero and let the hero walk a short distance.",
-      "Open Journal, read the encountered entries, and choose Back to the road.",
-      "Reload the page."
+      "Open Customize character; choose Knight in Class to try.",
+      "Set Skin tone to Deep, Hair style to Braided, Hair color to Silver, Clothing palette to Ocean, Metal trim to Copper and Build to Broad.",
+      "Try Walk and Attack previews and turn the character left and right.",
+      "Choose Save look, walk a short distance, and reload.",
+      "Reopen Customize character."
     ],
-    "expected": "The hero remains a Mage at the saved position, the journal retains encountered entries, and there was no compulsory introduction or destination-selection screen."
+    "expected": "The Knight and all chosen appearance fields remain selected after reload; the hero uses the saved look in the world, previews animate, and no quest is required before moving."
   },
   {
     "name": "Discover the western passage through the world",
@@ -84,20 +86,22 @@
     "name": "Pause safely and protect the local save from accidental reset",
     "viewport": "mobile",
     "covers": [
-      "modal input isolation",
+      "modal movement isolation",
+      "appearance cancel guardrail",
+      "appearance editor mobile layout",
       "reduced motion setting",
       "reset cancellation",
-      "confirmed local reset",
-      "save guardrail"
+      "confirmed local reset"
     ],
-    "description": "Verifies menus pause play and clearing the demo requires an explicit confirmation.",
+    "description": "Verifies mobile customization can be canceled and menus safely isolate controls while protecting the local save.",
     "steps": [
-      "Move a short distance, open Journal, and verify the hero does not continue walking under it.",
-      "Close Journal and open Pause and settings.",
-      "Enable Reduce ambient motion and effects.",
+      "Hold a direction button briefly, release it, and open Customize character.",
+      "Change the Clothing palette and Class to try, then choose Cancel.",
+      "Reopen Customize character and verify the saved values remain; close it.",
+      "Open Pause and settings and enable Reduce ambient motion and effects.",
       "Choose Start a fresh demo, then Keep exploring.",
       "Open Pause and settings again, choose Start a fresh demo, and confirm Start again."
     ],
-    "expected": "Menus isolate movement; canceling retains the current journey, while confirming starts at the Mossvale hearth with fresh local discoveries and does not affect any live account."
+    "expected": "The editor works without horizontal scrolling and the hero remains still while it is open; Cancel keeps the previous look and class. Canceling reset retains the journey; confirming starts fresh at the hearth and affects no live account."
   }
 ]

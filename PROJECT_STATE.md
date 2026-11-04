@@ -1,5 +1,25 @@
 # Eldritch Fable project state
 
+## Personal heroes and movement feel — November 4, 2026
+
+The existing [ruined-Mossvale demo](https://eldritch-fable-mossvale-demo-yizzwe.v2.appdeploy.ai/)
+now has eight class silhouettes/equipment profiles, a cosmetic appearance editor
+(**C** / **Appearance**), saved skin/hair/clothing/trim/build choices, rotating
+idle/walk/attack previews and weighted character motion. Old saves remain compatible;
+reduced motion is supported. This remains an isolated solo prototype.
+
+Snapshot `1793807926358` is ready with no returned frontend/network/runtime errors.
+Fresh checks: 13 native tests, JavaScript syntax, desktop/mobile save/cancel/reload,
+all eight previews, modal movement isolation, both physical route journeys,
+mobile movement/reset, independent source/path review and deployed customization
+checks passed. [The handoff](docs/workspace/HANDOFF.md) records scope and evidence.
+
+Before this revision the task branch/upstream matched
+`f198ca51729b4131cfde37dce709830df91f81b5`.
+Fresh main is `f50f072e6dd91f94a69882f8cad23b5dec5358d0`; its sole new
+governance document is retained. The server's eight-player/two-visitor feature
+is developed and reviewed separately. Production and customer data are unchanged.
+
 ## Playable ruined-Mossvale demo — October 30, 2026, 08:35 EDT
 
 The owner accepted the design and requested an actual demo.

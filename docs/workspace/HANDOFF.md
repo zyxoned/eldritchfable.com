@@ -1,6 +1,51 @@
 # Eldritch Fable shared workspace handoff
 
-Current task: playable ruined-Mossvale demo, October 30, 2026, 08:35 EDT.
+## Character appearance and movement update — November 4, 2026
+
+The owner requested a distinct look for each class, deeper customization and more
+weight in movement. The existing [solo preview](https://eldritch-fable-mossvale-demo-yizzwe.v2.appdeploy.ai/)
+now includes eight equipment/silhouette profiles; skin, hair, outfit, trim and build
+choices; a staged save/cancel editor; rotation and idle/walk/attack previews;
+responsive acceleration/braking, gait, body lean, cloth follow-through and attack
+recovery. Press **C** or choose **Appearance**. Cosmetic choices preserve combat
+stats and existing version-1 saves receive defaults. Reduced motion is supported.
+
+AppDeploy snapshot `1793807926358` returned **ready**, with empty frontend,
+network and backend error arrays. Its eight changed/new source files were read
+back and exactly match the tested candidate. Five workflow definitions cover the
+changed capabilities, mobile controls and cancellation/reset guardrails; the
+service returned readiness/error snapshots, not five separately reported passes.
+
+Fresh validation:
+- **13/13** native rules/motion/save tests passed; all five JavaScript syntax checks passed.
+- Desktop/mobile browser checks passed for saving and canceling a personal look,
+  reload persistence, eight class previews, and immediate modal movement stop.
+- Physical journeys reached both sample scenes and returned; mobile movement,
+  reset cancellation/confirmation and no horizontal overflow passed.
+- Independent source review found no blocking issue. A focused path simulation
+  reached all three relevant landmarks, emptied paths and stopped at zero speed.
+- Live deployed desktop/mobile customization checks passed with zero page errors.
+- Source scope, whitespace, concealed-content scan and exact snapshot comparison passed.
+
+The application commit before this update was
+`f198ca51729b4131cfde37dce709830df91f81b5`; upstream matched it exactly.
+Fresh main is `f50f072e6dd91f94a69882f8cad23b5dec5358d0`, adding only
+`docs/PROJECT_OS.md` since the prior accepted base. That governance document is
+retained in this branch and its main parent is integrated without overwriting WIP.
+The current implementation commit is identified by Git history/PR #10.
+
+The owner also approved eight regular players plus two admin visitors per party,
+with normal rewards/progression continuing during support. That server work is
+isolated on its own feature branch and is not present in this frontend-only
+prototype. No production migration, restart, merge, email or customer-data action
+is included. The full cave/temple campaign remains outside this bounded demo.
+
+Plan: [character feel](../superpowers/plans/2026-11-04-character-feel.md).
+Next action: try the updated demo and review the separate multiplayer feature PR.
+The managed execution environment remains unavailable; connected staging tools
+provided the actual test and source path. Only this task's own lease is released.
+
+Historical task: playable ruined-Mossvale demo, October 30, 2026, 08:35 EDT.
 Executor: connected GitHub, SentinelX staging and AppDeploy tools.
 
 ## Playable result

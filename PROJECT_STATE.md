@@ -1,5 +1,48 @@
 # Eldritch Fable project state
 
+## Personal heroes and movement feel — November 4, 2026
+
+The existing [ruined-Mossvale demo](https://eldritch-fable-mossvale-demo-yizzwe.v2.appdeploy.ai/)
+now has eight class silhouettes/equipment profiles, a cosmetic appearance editor
+(**C** / **Appearance**), saved skin/hair/clothing/trim/build choices, rotating
+idle/walk/attack previews and weighted character motion. Old saves remain compatible;
+reduced motion is supported. This remains an isolated solo prototype.
+
+Snapshot `1793807926358` is ready with no returned frontend/network/runtime errors.
+Fresh checks: 13 native tests, JavaScript syntax, desktop/mobile save/cancel/reload,
+all eight previews, modal movement isolation, both physical route journeys,
+mobile movement/reset, independent source/path review and deployed customization
+checks passed. [The handoff](docs/workspace/HANDOFF.md) records scope and evidence.
+
+Before this revision the task branch/upstream matched
+`f198ca51729b4131cfde37dce709830df91f81b5`.
+Fresh main is `f50f072e6dd91f94a69882f8cad23b5dec5358d0`; its sole new
+governance document is retained. The server's eight-player/two-visitor feature
+is developed and reviewed separately. Production and customer data are unchanged.
+
+## Playable ruined-Mossvale demo — October 30, 2026, 08:35 EDT
+
+The owner accepted the design and requested an actual demo.
+[The isolated playable preview](https://eldritch-fable-mossvale-demo-yizzwe.v2.appdeploy.ai/)
+is ready: solo free exploration, optional hooks, two physically discoverable short
+encounters, prototype classes/combat, journal, recovery and local saves.
+[Source and controls](demos/ruined-mossvale/README.md) and the
+[demo plan](docs/superpowers/plans/2026-10-30-ruined-mossvale-demo.md) record its scope.
+
+AppDeploy app `eldritch-fable-mossvale-demo-yizzwe`, snapshot
+`1793363480954`, returned ready and no frontend/network/runtime errors.
+Six focused rules tests, syntax checks, desktop route journeys, mobile/reset
+checks and live combat/recovery/touch checks passed. Five preview QA workflow
+definitions are included; detailed five-test pass results were not returned.
+This is a standalone prototype, not the full MMO, server progression or campaign.
+
+Fresh main before this work: `68f91c4531e01ab669953041c5257b3678b8c208`.
+Its source tree equals the prior design head
+`298672a14036998202a035b9d01c8755a03431a4`; histories are preserved.
+Task branch `demo/ruined-mossvale-20261030` starts from that fresh main.
+Only demo source, its plan and handoff/state notes change. The older preview
+and production/customer data remain untouched; production was not re-verified.
+
 ## Private authoring decisions resolved — October 30, 2026
 
 The owner has resolved the private participant policy and new persistent-effect

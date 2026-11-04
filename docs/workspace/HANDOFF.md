@@ -1,106 +1,142 @@
 # Eldritch Fable shared workspace handoff
 
-Current task: persistent-effect design revision, October 30, 2026, 07:52 EDT
-(America/New_York).
-Executor: connected GitHub and SentinelX staging tools. This is a design handoff,
-not a claim of implemented or deployed expedition behavior.
+## Character appearance and movement update — November 4, 2026
 
-## Owner direction and public/private boundary
+The owner requested a distinct look for each class, deeper customization and more
+weight in movement. The existing [solo preview](https://eldritch-fable-mossvale-demo-yizzwe.v2.appdeploy.ai/)
+now includes eight equipment/silhouette profiles; skin, hair, outfit, trim and build
+choices; a staged save/cancel editor; rotation and idle/walk/attack previews;
+responsive acceleration/braking, gait, body lean, cloth follow-through and attack
+recovery. Press **C** or choose **Appearance**. Cosmetic choices preserve combat
+stats and existing version-1 saves receive defaults. Reduced motion is supported.
 
-The owner accepted illustrated top-down 2D and the supplied candlelit
-black/antique-gold "Adventures Become Real" visual target. They now require
-**ruined Mossvale as a freely playable starting area**, optional hooks, decisions
-that affect direction, and a first-time experience without plot spoilers.
+AppDeploy snapshot `1793807926358` returned **ready**, with empty frontend,
+network and backend error arrays. Its eight changed/new source files were read
+back and exactly match the tested candidate. Five workflow definitions cover the
+changed capabilities, mobile controls and cancellation/reset guardrails; the
+service returned readiness/error snapshots, not five separately reported passes.
 
-The earlier arrival route ballot, full destination cards and automatic group
-teleportation are superseded. The [revised design](../superpowers/specs/2026-10-30-eldritch-expeditions-design.md)
-uses physical discovery and affirmative individual travel. Social parties may
-split between runs; members of one run may occupy different accessible floors.
-Each hero has one authoritative active assignment and location. The owner has
-since resolved the concealed narrative continuation and ending. The private
-record is updated; its exact conditions, sequence and dialogue stay unpublished.
-The public design adds durable class-specific equipment and authored-event state.
-Earlier equipment-ownership exclusions are superseded. The owner has now also
-resolved the private participant policy and persistent-effect rules. The public
-design adds acquisition/effect records, player-wide entitlements, saved random
-outcomes and derived health; the exact source/conditions remain private.
+Fresh validation:
+- **13/13** native rules/motion/save tests passed; all five JavaScript syntax checks passed.
+- Desktop/mobile browser checks passed for saving and canceling a personal look,
+  reload persistence, eight class previews, and immediate modal movement stop.
+- Physical journeys reached both sample scenes and returned; mobile movement,
+  reset cancellation/confirmation and no horizontal overflow passed.
+- Independent source review found no blocking issue. A focused path simulation
+  reached all three relevant landmarks, emptied paths and stopped at zero speed.
+- Live deployed desktop/mobile customization checks passed with zero page errors.
+- Source scope, whitespace, concealed-content scan and exact snapshot comparison passed.
 
-Concealed narrative canon is intentionally outside the public repository.
-Its authorized staging-host record is indexed by the per-worktree metadata path
-returned by `git rev-parse --git-path eldritch-private-canon.json`.
-Read that local index through existing authorized host access when writing final
-story content. Do not copy its contents into public docs, bundles, asset names,
-fixtures, screenshots or PR descriptions. Exact private paths stay in metadata.
+The application commit before this update was
+`f198ca51729b4131cfde37dce709830df91f81b5`; upstream matched it exactly.
+Fresh main is `f50f072e6dd91f94a69882f8cad23b5dec5358d0`, adding only
+`docs/PROJECT_OS.md` since the prior accepted base. That governance document is
+retained in this branch and its main parent is integrated without overwriting WIP.
+The current implementation commit is identified by Git history/PR #10.
 
-## Source and workspace observations
+The owner also approved eight regular players plus two admin visitors per party,
+with normal rewards/progression continuing during support. That server work is
+isolated on its own feature branch and is not present in this frontend-only
+prototype. No production migration, restart, merge, email or customer-data action
+is included. The full cave/temple campaign remains outside this bounded demo.
 
-Application main: `4c54082e55279d1f0efa301a5fd40e198405b8d9`.
-Task branch: `docs/mmo-readiness-20261029`, upstream of the same name.
-Application/documentation commit before this update:
-`f4bc674400168c08a4028d2b7b0f18f9709192b1`.
+Plan: [character feel](../superpowers/plans/2026-11-04-character-feel.md).
+Next action: try the updated demo and review the separate multiplayer feature PR.
+The managed execution environment remains unavailable; connected staging tools
+provided the actual test and source path. Only this task's own lease is released.
 
-Before editing/publication the isolated task worktree was clean, with no active
-Git operation, staged/unstaged/untracked changes or unpublished task work.
-Fresh helper inspection/sync found upstream 0/0 and main ahead/behind 5/0.
-Original development and recovery branches are preserved. This session acquired
-its own lease; release only the owning session's token after publication.
+Historical task: playable ruined-Mossvale demo, October 30, 2026, 08:35 EDT.
+Executor: connected GitHub, SentinelX staging and AppDeploy tools.
 
-The managed cloud environment was inaccessible in earlier checks and was not
-reinspected in this revision. Connected staging/source tools suffice; inaccessible
-files are not certified.
-The public draft remains PR #9. Publish only reviewed player-safe documentation
-against the expected branch head, then fetch/fast-forward the clean task checkout
-and verify exact file contents and the remote SHA.
+## Playable result
 
-## Scope and validation
+[Play the isolated demo](https://eldritch-fable-mossvale-demo-yizzwe.v2.appdeploy.ai/).
 
-Intended public files: PROJECT_STATE.md, this handoff, MMO_SKILL_READINESS.md and
-docs/superpowers/specs/2026-10-30-eldritch-expeditions-design.md.
-The private canon record/index is deliberately not a Git source change.
-No runtime, installed skill/dependency, service, database or production change is
-part of this revision.
+The owner accepted the design and asked to actually demo it. This session built
+a bounded single-player prototype: freely explorable ruined Mossvale, optional
+conversations/landmarks, physical discovery of two short sample encounters,
+eight prototype class profiles, readable combat, recovery, journal, touch/keyboard/
+click controls and browser-only saves. It is not the finished MMO or campaign.
 
-An independent party/status-mechanics review checked this scope revision; earlier
-agency/source/builder reviews remain dated evidence for the broader proposal.
-Verify relative links, whitespace, intended-file scope and exclusion of concealed
-canon before publication. Application tests were not rerun for
-documentation-only changes. Earlier exact-main CI passed build/server syntax,
-69 backend and 30 browser tests; see the [earlier handoff](https://github.com/zyxoned/eldritchfable.com/blob/8e967b2ac26f43f33c47947e8f57ec93c0be7832/docs/workspace/HANDOFF.md)
-for dated evidence. No new CI or live-flow result is implied.
+The preview is a **separate frontend-only AppDeploy app**,
+`eldritch-fable-mossvale-demo-yizzwe`, snapshot `1793363480954`.
+AppDeploy reported **ready**, with no frontend/network/runtime errors in its
+returned QA snapshot. Its validator normalized formatting/template files; the
+deployment snapshot is the authority for subsequent preview edits. Read the
+latest stored source before editing that app. The older `mossvale-95cyro` app,
+live Eldritch Fable service and customer data were not changed.
 
-## Watcher operation retained
+## Source and workspace evidence
 
-The existing development Relay watcher was previously verified as a system-managed,
-enabled service checking the enrolled development checkout about every 300 seconds.
-It was not restarted or freshly service-audited during this story revision.
-It does not deploy, push, merge main, run tests or resolve semantic conflicts.
-An editing lease pauses its synchronization; inspect current metadata/journal
-and result timestamps rather than treating a running PID as a fresh fetch.
+Repository: https://github.com/zyxoned/eldritchfable.com.git.
+Fresh accepted main and application/documentation commit before this work:
+`68f91c4531e01ab669953041c5257b3678b8c208`.
+Tree: `b5a635787f598833bf1b3ce8c1f9a382a53d2e63`.
+The previous design branch head `298672a14036998202a035b9d01c8755a03431a4`
+has the exact same tree despite different commit history. Both histories remain
+preserved; do not merge equivalent documentation merely to align their SHAs.
 
-Resolve the designated development unit from private host metadata. These are
-operator controls with a placeholder, not commands executed during this task:
+New isolated task branch: `demo/ruined-mossvale-20261030`, based on fresh main.
+It was clean before editing, enrolled through Workspace Relay, and protected by
+this session's owned lease. Publish through the connected GitHub app because
+host Git push credentials are unavailable. Fetch/fast-forward only this clean
+task checkout after preserving the reviewed candidate; verify exact source
+contents and the remote SHA, then release only this session's token.
 
-```sh
-sudo systemctl status --no-pager <development-relay-unit>
-sudo journalctl --unit <development-relay-unit> --lines 10 --no-pager
-sudo systemctl stop <development-relay-unit>
-sudo systemctl disable --now <development-relay-unit>
-sudo systemctl enable --now <development-relay-unit>
-```
+Authoritative code: [demo source](../../demos/ruined-mossvale/README.md).
+Plan: [playable-demo plan](../superpowers/plans/2026-10-30-ruined-mossvale-demo.md).
+This is an explicitly bounded demo spike, not execution of the entire MMO plan.
+The managed cloud environment remained unavailable; connected staging tools
+provided the actual execution path. Its inaccessible files remain UNKNOWN.
 
-The immutable earlier handoff preserves activation/recovery details. No production
-checkout is enrolled for automatic development repair.
+## Validation performed this session
 
-## Next action and remaining decisions
+- Native rules suite: **6 passed**, zero failures/skips.
+- Node syntax checks: world.js, game.js and render.js passed.
+- Desktop browser journeys physically followed each road, entered its sample
+  scene and returned, retaining discoveries; zero page errors.
+- Mobile pointer movement, canceled reset and confirmed reset passed with no
+  horizontal overflow.
+- Live deployed-browser checks used isolated local-save fixtures to verify real
+  Attack/ability UI, encounter completion surviving reload, defeat/wake recovery,
+  retained discoveries and actual touch movement; zero page errors/overflow.
+- Independent code review found a mismatch between attack warning and damage
+  radius. Both now use one shared 1.7-tile footprint; the focused rules check and
+  renderer smoke passed.
+- Renderer cache checks covered stationary/moving fog, scene changes and bounded
+  masks. Software-browser findings led to a fixed-step loop and wall-clock save
+  timing; this is not a claim of measured 60 FPS on target consumer devices.
+- Five preview workflow definitions are in tests/tests.json. Do not describe
+  them as five separately reported AppDeploy E2E passes; the returned status
+  provided readiness and error-free QA snapshots, not that detailed report.
+- Concealed-content scan, intended-file scope, relative links and whitespace
+  were reviewed. No production application suite was rerun for this isolated demo.
 
-The participant policy and persistent-effect rules are resolved in the private
-authoring source; do not ask those questions again or publish their conditions.
-Present the revised design for approval, stating remaining proposed defaults.
-Temple length, anchor spacing, ordinary rewards/recovery, precise scene reset
-flags and equipment/effect balance remain proposed or delegated authoring work.
-Do not treat clarification of individual rules as approval of every default.
+The local browser binary and missing libraries were downloaded/extracted into
+private task runtime storage; no host package installation, service restart or
+production configuration change was needed. A loopback-only static test server
+served only the demo directory and may be stopped after verification. Generated
+renderer backup siblings were preserved privately rather than published.
 
-After the revised written design is approved, invoke Superpowers writing-plans.
-Do not ask the owner to select 2D versus 3D or accept an upfront route menu again.
-Deployment remains a separate operation under the existing repository rules;
-production was not rechecked or changed in this phase.
+## Private authoring and remaining scope
+
+The approved hidden story and effect rules remain outside public Git/frontend
+content. The private authoring index is available through the task Git metadata
+path returned by `git rev-parse --git-path eldritch-private-canon.json`.
+Use authorized host access to read it; never publish its path or concealed
+contents in docs, screenshots, fixtures, asset names or PR text.
+
+The demo includes no concealed finale, mark mechanism, real XP/coins, accounts,
+multiplayer, full cave depth or full temple campaign. Its saves cannot affect
+the live game. Newcomers can move before accepting any hook, decline interactions,
+choose either road first and return. Discovered entries alone enter the journal.
+
+Next action: collect the owner's hands-on demo feedback and apply targeted demo
+changes, or write the production implementation plan from the accepted design.
+The user has already approved the direction; do not ask the same design/renderer
+questions again. Full server-authoritative MMO work still needs its own staged
+plan and checks; this prototype is not evidence that it exists.
+
+No merge, production deployment, customer database migration, email or live
+account/economy action occurred. The existing Relay watcher was not restarted or
+freshly service-audited; preserve its established operation.

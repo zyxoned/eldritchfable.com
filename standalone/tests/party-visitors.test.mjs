@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { EventEmitter } from 'node:events';
 import { createGameService } from '../server/game.mjs';
-import { digest, migrateDatabase, openDatabase } from '../server/database.mjs';
+import { digest, migrateDatabase, openDatabase, SCHEMA_VERSION } from '../server/database.mjs';
 import { readFileSync } from 'node:fs';
 import { CLASS_CATALOG } from '../shared/class-catalog.mjs';
 import { fixture, verifiedAccount, loginCookie } from './helpers.mjs';
@@ -374,7 +374,7 @@ test('support visitors cannot customize the preserved ordinary character', async
   assert.equal(after.hero_class, before.hero_class);
 });
 
-test('schema five preserves version-four character, admin, session and ledger state', t => {
+test('current schema preserves version-four character, admin, session and ledger state', t => {
   const db = openDatabase(':memory:');
   t.after(() => db.close());
   db.exec('CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY)');
@@ -400,7 +400,7 @@ test('schema five preserves version-four character, admin, session and ledger st
     .run('bramble', 'initial-bramble', 'preserved-account', 22, 123);
   const tables = ['account_users', 'account_sessions', 'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world'];
   const before = Object.fromEntries(tables.map(table => [table, db.prepare('SELECT * FROM ' + table).all()]));
-  assert.equal(migrateDatabase(db), 5);
+  assert.equal(migrateDatabase(db), SCHEMA_VERSION);
   for (const table of tables) {
     const columns = Object.keys(before[table][0]);
     assert.deepEqual(db.prepare('SELECT ' + columns.join(',') + ' FROM ' + table).all(), before[table], table + ' existing columns changed');
@@ -413,7 +413,7 @@ test('schema five preserves version-four character, admin, session and ledger st
   assert.equal(db.prepare('SELECT party_id FROM game_requests').get().party_id, hero.party_id);
   assert.equal(db.prepare('SELECT party_id FROM game_damage').get().party_id, hero.party_id);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
-  assert.equal(migrateDatabase(db), 5, 'Migration remains idempotent');
+  assert.equal(migrateDatabase(db), SCHEMA_VERSION, 'Migration remains idempotent');
 });
 
 test('confirmed regular and visitor leave requests replay after their seat is freed', async t => {

@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { EventEmitter } from 'node:events';
 import { createGameService } from '../server/game.mjs';
-import { digest, openDatabase, migrateDatabase } from '../server/database.mjs';
+import { digest, openDatabase, migrateDatabase, SCHEMA_VERSION } from '../server/database.mjs';
 import { readFileSync } from 'node:fs';
 import { CLASS_CATALOG, PLAYER_CLASS_IDS } from '../shared/class-catalog.mjs';
 import { fixture, verifiedAccount, loginCookie } from './helpers.mjs';
@@ -220,14 +220,14 @@ test('current schema preserves version-three characters, accounts, wallets, ledg
     .run('old-account', 'old-request', 'old-hash', 'Old receipt', 123);
   const tables = ['account_users','account_sessions','game_characters','game_wallets','game_ledger','game_requests'];
   const before = Object.fromEntries(tables.map(table => [table, db.prepare('SELECT * FROM ' + table).all()]));
-  assert.equal(migrateDatabase(db), 5);
+  assert.equal(migrateDatabase(db), SCHEMA_VERSION);
   for (const table of tables) {
     const columns = Object.keys(before[table][0]);
     assert.deepEqual(db.prepare('SELECT ' + columns.join(',') + ' FROM ' + table).all(), before[table], table + ' changed in migration');
   }
   assert.deepEqual(db.prepare('SELECT * FROM game_admin_characters').all(), []);
   assert.equal(db.prepare('SELECT skill_cooldowns_json FROM game_characters').get().skill_cooldowns_json, '{}');
-  assert.equal(migrateDatabase(db), 5, 'Migration is idempotent');
+  assert.equal(migrateDatabase(db), SCHEMA_VERSION, 'Migration is idempotent');
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
 

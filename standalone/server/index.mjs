@@ -1,5 +1,6 @@
 import { newsletterRoute } from './newsletter.mjs';
 import { authRoute } from './auth.mjs';
+import { createAdminService } from './admin.mjs';
 import { createGameService } from './game.mjs';
 import { createServer } from 'node:http';
 import { openDatabase, requireSchema } from './database.mjs';
@@ -12,6 +13,7 @@ const db = openDatabase(databasePath);
 requireSchema(db);
 validateOrigin(process.env.ELDRITCH_ORIGIN);
 const game = createGameService(db);
+const admin = createAdminService(db);
 
 function reply(res, status, body) {
   const payload = JSON.stringify(body);
@@ -34,6 +36,7 @@ const server = createServer(async (req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
   try { if (await authRoute(db, req, res, path)) return;
     if (await newsletterRoute(db, req, res, path)) return;
+    if (await admin.route(req, res, path)) return;
     if (await game.route(req, res, path)) return; }
   catch { console.error('Account request failed'); return reply(res, 500, { error: 'Request failed. Please try again.' }); }
   if (req.method !== 'GET') return reply(res, 405, { error: 'Method not allowed' });

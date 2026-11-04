@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { digest, transaction } from './database.mjs';
 import { sessionUser } from './auth.mjs';
+import { adminSettings } from './admin.mjs';
 import { reply, readJson, sameOriginJson } from './request-security.mjs';
 import { PLAYER_CLASS_IDS } from '../shared/class-catalog.mjs';
 import { APPEARANCE_OPTIONS, sanitizeAppearance } from '../shared/appearance-catalog.mjs';
@@ -149,7 +150,7 @@ export function createGameService(db, options = {}) {
       + "WHERE c.user_id=? AND u.role='admin' AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL "
       + 'AND s.revoked_at IS NULL AND s.expires_at>?',
     ).get(userId, new Date(now()).toISOString());
-    return row ? { ...row, is_admin: true } : null;
+    return row ? { ...row, name: adminSettings(db, userId).visitorName, is_admin: true } : null;
   }
 
   function tableFor(row) {
@@ -185,7 +186,7 @@ export function createGameService(db, options = {}) {
       maxPlayers: MAX_PLAYERS, maxVisitors: MAX_VISITORS,
       revision: world?.revision || 0,
       players: rows.map(row => publicCharacter({ ...row, is_admin: false })),
-      visitors: visitors.map(row => publicCharacter({ ...row, is_admin: true })),
+      visitors: visitors.map(row => publicCharacter({ ...row, name: adminSettings(db, row.user_id).visitorName, is_admin: true })),
       enemies: world?.enemies.map(({ id, x, y, hp, respawnAt }) => ({ id, x, y, hp, respawnAt })) || [],
       effects: world?.effects.filter(effect => effect.at + 1600 > time).slice(-24) || [],
       messages: world?.messages || [], serverTime: time,
@@ -646,8 +647,9 @@ export function createGameService(db, options = {}) {
       const time = now();
       const user = requireUser(req, time);
       const receipt = db.prepare(
-        'SELECT payload_hash,notice FROM game_requests WHERE user_id=? AND request_id=?',
+        'SELECT payload_hash,notice,actor_scope FROM game_requests WHERE user_id=? AND request_id=?',
       ).get(user.id, requestId);
+      if (receipt?.actor_scope === 'admin') requireAdmin(user.id);
       if (receipt) {
         if (receipt.payload_hash !== payloadHash) {
           throw new GameError('This request ID was used for a different action.', 409, 'REQUEST_CONFLICT');

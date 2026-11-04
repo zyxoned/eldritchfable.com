@@ -134,7 +134,7 @@ export function AccountHome({ admin = false }) {
       <p>Visit a random party or solo adventurer as a separate Draconian guardian. You are invulnerable, your strikes scale to the party, and Guardian Boon heals nearby adventurers. Eight regular player seats and two extra visitor slots keep ordinary rewards and progression moving. Your regular character remains saved.</p>
       <p><Link to="/play?visitor=1">Visit a random party</Link></p>
     </section>}
-    {admin && <p>Store administration features will be added separately.</p>}
+    {admin && <section className="auth-resend"><h2>Your private admin tools</h2><p>Open the side panel for realm analytics, your guardian identity, and enabled testing resources.</p><button type="button" className="auth-secondary" onClick={() => window.dispatchEvent(new Event('eldritch:open-admin-tools'))}>Open private admin panel</button></section>}
     <section className="auth-resend"><h2>Change your password</h2><p>Changing your password signs out all your devices.</p><form onSubmit={changePassword}>
       <label>Current password<input required type="password" autoComplete="current-password" maxLength={256} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} /></label>
       <label>New password<input required type="password" autoComplete="new-password" minLength={12} maxLength={256} value={password} onChange={event => setPassword(event.target.value)} /></label>

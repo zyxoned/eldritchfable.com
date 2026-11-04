@@ -21,7 +21,7 @@ const recoveryTimer = 'eldritch-production-healthcheck.timer';
 const backupTimer = 'eldritch-production-backup.timer';
 const origin = 'https://eldritchfable.com';
 const source = resolve(dirname(realpathSync(fileURLToPath(import.meta.url))), '..');
-const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products', 'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world'];
+const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products', 'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world', 'game_parties', 'admin_account_settings', 'admin_audit', 'email_outbox'];
 const delay = ms => new Promise(done => setTimeout(done, ms));
 let phase = 'preflight';
 
@@ -133,9 +133,18 @@ export function productionConfig(original, releaseId) {
 
 const quoteIdentifier = value => '"' + value.replaceAll('"', '""') + '"';
 function preservedColumns(db, selected = tables) {
+  const hasVersions = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations'").get();
+  const legacyQueue = !hasVersions || db.prepare('SELECT COALESCE(MAX(version),0) AS version FROM schema_migrations').get().version < 2;
+
   return Object.fromEntries(selected.flatMap(table => {
     if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table)) return [];
-    return [[table, db.prepare('PRAGMA table_info(' + quoteIdentifier(table) + ')').all().map(column => column.name)]];
+    const columns = db.prepare('PRAGMA table_info(' + quoteIdentifier(table) + ')').all().map(column => column.name);
+    // Schema 2 intentionally deduplicates and redacts legacy queue payloads.
+    // Still preserve every row and all stable legacy fields; schema-2+ mail
+    // records retain the stronger complete-column fingerprint.
+    const kept = table === 'email_outbox' && legacyQueue
+      ? columns.filter(name => !['payload_json', 'status', 'last_error'].includes(name)) : columns;
+    return [[table, kept]];
   }));
 }
 function fingerprints(db, selected) {

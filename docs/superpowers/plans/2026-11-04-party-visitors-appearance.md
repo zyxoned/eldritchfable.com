@@ -77,6 +77,8 @@
 - [x] Rehearse schema-3-to-5 preservation and compatible fallback using private disposable copies only.
 - [x] Run locked installation, server/shared syntax and the full backend suite: 86 passed, no failures/skips.
 - [x] Record final browser results and the reviewed 28-file inventory.
-- [ ] Publish a feature tree from fresh main `f50f072e6dd91f94a69882f8cad23b5dec5358d0`, excluding demo source/history; verify its remote identity and release only owned leases.
+- [x] Publish a feature tree from fresh main `f50f072e6dd91f94a69882f8cad23b5dec5358d0`, excluding demo source/history; verify its remote identity and release only owned leases.
 
 The separately deployed solo demo remains an experiment in [PR #10](https://github.com/zyxoned/eldritchfable.com/pull/10), source `d79d4c07739e190edac449fa939b32925f6a3508`. Neither prototype readiness nor this feature implements the full expedition campaign.
+
+Production release: PR #11 merged and source 9d17c7c2929e76d88287f66db4026e14f8014bf3 activated as 9d17c7c2929e-20261104230355615. Live verification completed at 23:14 UTC on November 4. See PROJECT_STATE.md for evidence.

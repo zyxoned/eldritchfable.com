@@ -1,6 +1,6 @@
 # Deploy Eldritch Fable on the existing Linux server
 
-> Feature source observed 2026-11-04 requires schema **5**. Production release/schema observations dated 2026-10-29 are historical evidence; this feature has not deployed or re-verified production. Use [PROJECT_STATE](../PROJECT_STATE.md) and [DEPLOYMENT_RECOVERY](../DEPLOYMENT_RECOVERY.md) for current identities and recovery instructions. Repository publication does not deploy production.
+> Production verified 2026-11-04 at 23:14 UTC: source 9d17c7c2929e76d88287f66db4026e14f8014bf3, release 9d17c7c2929e-20261104230355615, schema 5. The owner authorized the merge and rollout; backup, migration preservation, fallback and public checks passed. See [PROJECT_STATE](../PROJECT_STATE.md) for evidence. Older dated observations below are historical.
 
 The maintained release includes accounts, mail, Tavern, RPG/Stash and the Hollow King expansion. Product import, checkout and PostgreSQL remain separate work. Use schema version 5 as required by server/database.mjs; read [ADVENTURE.md](ADVENTURE.md) and [EXPANSION.md](EXPANSION.md) with these instructions. Repository reconciliation does not deploy this release.
 

@@ -1,5 +1,39 @@
 # Eldritch Fable shared workspace handoff
 
+## Production activation — November 4, 2026
+
+The owner explicitly requested merging with production. [Feature PR #11](https://github.com/zyxoned/eldritchfable.com/pull/11)
+merged as `abafdb4a95701d4a941a4710bd38fa3e8489d317`.
+The deployed application source is `9d17c7c2929e76d88287f66db4026e14f8014bf3`;
+its tree `387257c86ef1529b7f758d9eaa0fe44d6a3e362e` equals the merge tree.
+
+At 23:14 UTC, frontend manifest and API release headers identify
+`9d17c7c2929e-20261104230355615`. Eight regular players and two additional
+support visitors, per-party worlds, saved character cosmetics and articulated
+class rendering are deployed at [Play](https://eldritchfable.com/play).
+Normal eligible customer rewards continue during visits. The separate solo
+ruined-Mossvale prototype remains in PR #10; the full campaign is not implemented.
+
+Evidence:
+- Locked install, release staging/build, 86 backend tests and 38 desktop/mobile
+  browser tests passed. [GitHub CI 41930130131](https://github.com/zyxoned/eldritchfable.com/actions/runs/41930130131)
+  passed on the exact feature source.
+- A consistent private production copy migrated from schema 3 to 5 with preserved
+  data. The compatible fallback retained account access and stash/exchange while
+  pausing realm routes. The live migration then created a fresh private backup,
+  preserved original data and passed integrity/foreign-key checks.
+- Public manifest, current/retained asset hashes and MIME types, release headers,
+  unauthenticated account/game gates and desktop/mobile browser checks passed.
+- API/web/tunnel services and the intended mail/backup/health timers are healthy.
+  SMTP authentication passed without a new test message; real inbox delivery was
+  not tested.
+- The reviewed source bundle and recovery/retained-asset records are private.
+  No older database was restored. No real customer account was used for browser
+  testing, and concealed authoring remains outside public source.
+
+This section supersedes older statements that the feature is only staged or that
+production remains on schema 3. Future rollouts still require their own authority.
+
 ## Current feature continuation — November 4, 2026
 
 This section supersedes historical task/next-action notes below. The owner

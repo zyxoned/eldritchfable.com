@@ -1,5 +1,28 @@
 # Deployment and recovery
 
+## Current production observation — November 4, 2026
+
+The owner explicitly authorized merging and deploying the party/admin/customization
+feature. PR #11 merged as abafdb4a95701d4a941a4710bd38fa3e8489d317.
+Both application sides now run source 9d17c7c2929e76d88287f66db4026e14f8014bf3,
+release 9d17c7c2929e-20261104230355615, with schema 5. A fresh consistent private
+backup precedes the live migration. Existing data was preserved; integrity,
+foreign keys, compatible account/stash fallback and public checks passed.
+Current and retained assets match their recorded hashes. API/web/tunnel and
+mail/backup/health timers are active.
+
+[The project state](PROJECT_STATE.md) records full evidence. Private deployment,
+backup, source-bundle and recovery records remain on the existing host. No old
+database was restored and no new signup/reset email was sent for verification.
+Future deployments need their own authorization and current-source rehearsal.
+
+## Historical audit and examples — October 29, 2026
+
+The dated schema-3/4 identities, task restrictions and examples below describe
+the previous audit. They do not override the schema-5 production observation
+above. Use the current source's SCHEMA_VERSION and deployment tools for any
+future reviewed release.
+
 Verified 2026-10-29 from the actual Eldritch Fable host and preserved source. This is a runbook, not authorization to execute it. The current task permits repository reconciliation and publication of source/recovery documentation only: no deployment, merge to main, service/configuration changes, database backup/migration/restore, mail sending, or checkout replacement. No deployment, database recovery or migration commands in this document were executed. Build/test and read-only audit commands were executed as recorded in PROJECT_STATE.md. Verification used read-only service/file/HTTP checks and a schema-version-only SQLite query; no customer rows or credential values were read.
 
 ## Verified live baseline

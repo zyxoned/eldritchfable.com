@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from './transport';
+import { sendWithTravelRetry } from './travel-retry.js';
 import {
   CLASSES, PLAYER_CLASS_IDS, REGIONS, DEFAULT_REGION_ID, regionById, WIDTH, HEIGHT, level, questReady, walkable,
   type HeroClass, type Realm, type Appearance,
@@ -161,6 +162,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   const playerRef = useRef<string | null>(null);
   const destination = useRef<{ x: number; y: number } | null>(null);
   const busy = useRef(false);
+  const movementIntent = useRef(0);
   const heldDirection = useRef<{ x: number; y: number } | null>(null);
   const heldPointer = useRef<number | null>(null);
   const thumbRef = useRef<HTMLSpanElement>(null);
@@ -188,6 +190,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   moveAllowed.current = movementEnabled;
 
   function cancelMovement() {
+    movementIntent.current++;
     heldDirection.current = null;
     heldPointer.current = null;
     destination.current = null;
@@ -518,10 +521,23 @@ export default function Mossvale({ user, onSessionExpired }: {
     if (kind === 'move' && (!moveAllowed.current || document.hidden || !movementGate.current(performance.now()))) return false;
     busy.current = true;
     setActionPending(true);
-    if (kind !== 'move') destination.current = null;
+    if (kind === 'travel') cancelMovement();
+    else if (kind !== 'move') destination.current = null;
     const epoch = transitionEpoch.current;
+    const travelIntent = movementIntent.current;
+    const actorId = playerRef.current;
+    const partyId = realmRef.current?.partyId;
+    const sourceRegionId = realmRef.current?.regionId || DEFAULT_REGION_ID;
+    const send = () => api.post('/api/game/action', envelope({ kind, regionId: sourceRegionId, ...extra }));
     try {
-      const result = await api.post('/api/game/action', envelope({ kind, regionId: realmRef.current?.regionId || DEFAULT_REGION_ID, ...extra }));
+      // Keep the busy lock while one known travel cooldown rejection settles.
+      // Blur, dialogs, navigation and replacement actors invalidate this scope.
+      const result = await sendWithTravelRetry(kind, send, () =>
+        travelIntent === movementIntent.current && epoch === transitionEpoch.current
+        && actorId === playerRef.current && partyId === realmRef.current?.partyId
+        && sourceRegionId === (realmRef.current?.regionId || DEFAULT_REGION_ID)
+        && moveAllowed.current && !document.hidden);
+      if (!result) return false;
       if (epoch !== transitionEpoch.current) return false;
       applyReply(result.data);
       if (result.data.notice) {

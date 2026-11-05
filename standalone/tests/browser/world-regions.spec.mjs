@@ -34,11 +34,20 @@ test('three regional views, deliberate travel and saved character advice stay us
   const routes = page.getByRole('region', { name:'World routes', exact:true });
   await expect(routes.locator('[aria-current="location"]')).toContainText('Glade');
   await page.locator('.world-card').screenshot({ path:info.outputPath('region-glade.png') });
+  let outboundTravelRequests = 0;
+  await page.route('**/api/game/action', async route => {
+    const action = route.request().postDataJSON();
+    if (action?.kind === 'travel' && action.exitId === 'east-trail') {
+      outboundTravelRequests++;
+      if (outboundTravelRequests === 1) return route.fulfill({ status:429, contentType:'application/json', body:JSON.stringify({ code:'MOVE_COOLDOWN', error:'Move a little more slowly.' }) });
+    }
+    return route.continue();
+  });
   await routes.getByRole('button', { name:'Walk to crossing', exact:true }).click();
   await expect(routes.getByRole('button', { name:'Travel', exact:true })).toBeVisible({ timeout:20000 });
-  await page.waitForTimeout(200);
   await routes.getByRole('button', { name:'Travel', exact:true }).click();
   await expect(page.locator('.world-heading h2')).toHaveText('Amber Reach');
+  expect(outboundTravelRequests).toBe(2);
   await expect(routes.locator('[aria-current="location"]')).toContainText('Amber Reach');
   await expect(page.locator('.party-region')).toContainText('Amber Reach');
   await page.getByRole('button', { name:/Gather moon crystals/ }).click();
@@ -47,7 +56,6 @@ test('three regional views, deliberate travel and saved character advice stay us
   const coastal = routes.locator('.region-exit').filter({ hasText:'Steps to Mist Harbor' });
   await coastal.getByRole('button', { name:'Walk to crossing', exact:true }).click();
   await expect(coastal.getByRole('button', { name:'Travel', exact:true })).toBeVisible({ timeout:25000 });
-  await page.waitForTimeout(200);
   await coastal.getByRole('button', { name:'Travel', exact:true }).click();
   await expect(page.locator('.world-heading h2')).toHaveText('Mist Harbor');
   await page.locator('.world-card').screenshot({ path:info.outputPath('region-harbor.png') });
@@ -59,5 +67,33 @@ test('three regional views, deliberate travel and saved character advice stay us
   await page.waitForTimeout(500);
   expect(await page.locator('.map-caption').innerText()).toBe(position);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  // An interruption after the rejected request cancels its retry permanently,
+  // even if the dialog is subsequently dismissed. No second travel is queued.
+  let cancelledRequests = 0;
+  let rejectedRoute;
+  const pendingTravel = new Promise(resolve => { rejectedRoute = resolve; });
+  let releaseRejection;
+  const rejectionReady = new Promise(resolve => { releaseRejection = resolve; });
+  await page.route('**/api/game/action', async route => {
+    const action = route.request().postDataJSON();
+    if (action?.kind === 'travel' && action.exitId === 'ridge-steps') {
+      cancelledRequests++;
+      rejectedRoute();
+      await rejectionReady;
+      return route.fulfill({ status:429, contentType:'application/json', body:JSON.stringify({ code:'MOVE_COOLDOWN', error:'Move a little more slowly.' }) });
+    }
+    return route.fallback();
+  });
+  await routes.getByRole('button', { name:'Travel', exact:true }).click();
+  await pendingTravel;
+  await page.getByRole('button', { name:'Open field guide', exact:true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  releaseRejection();
+  await page.waitForTimeout(350);
+  await page.getByRole('button', { name:'Close dialog', exact:true }).click();
+  await page.waitForTimeout(250);
+  expect(cancelledRequests).toBe(1);
+  await expect(page.locator('.world-heading h2')).toHaveText('Mist Harbor');
+  await expect(routes.getByRole('button', { name:'Travel', exact:true })).toBeEnabled();
   expect(errors).toEqual([]);
 });

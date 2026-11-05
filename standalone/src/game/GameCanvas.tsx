@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { drawHero } from '../../shared/hero-renderer.mjs';
 import { LANDMARKS } from '../../shared/exploration-catalog.mjs';
+import { advancePose, createPose, visibleEffects, MAX_RENDER_ACTORS } from './render-motion.js';
 import {
-  WIDTH, HEIGHT, DEFAULT_REGION_ID, regionById, CLASSES, tile as worldTile, type Realm, type Player, type RealmEffect,
+  WIDTH, HEIGHT, DEFAULT_REGION_ID, regionById, CLASSES, tile as worldTile, type Realm, type Player, type RealmEffect, type ResourceNode,
 } from './shared/game';
 
 const S = 32;
@@ -11,7 +12,7 @@ const H = HEIGHT * S;
 const TAU = Math.PI * 2;
 type Effect = RealmEffect;
 type RenderRealm = Realm & { effects?: Effect[] };
-type Pose = { x: number; y: number; heading: number; phase: number; speed: number; leanX: number; leanY: number };
+type Pose = ReturnType<typeof createPose>;
 
 function random(x: number, y: number, salt = 0) {
   const v = Math.sin(x * 127.1 + y * 311.7 + salt * 74.7) * 43758.5453;
@@ -182,7 +183,7 @@ function forest(regionId: string) {
   return layer;
 }
 function hero(c: CanvasRenderingContext2D, p: Player, x: number, y: number, time: number, walking: boolean, pose: Pose, reducedMotion: boolean, attackFx: number, abilityFx: number) {
-  c.save(); c.translate(x, y + 10); c.scale(S, S);
+  c.save(); c.translate(x, y + 10); c.scale(S * 1.08, S * 1.08);
   if (p.heroClass === 'death-knight') {
     // The visiting guardian keeps its Draconian outline around the shared rig.
     const trail = reducedMotion ? 0 : Math.sin(pose.phase - .7) * Math.min(1, pose.speed / 3.8) * .035;
@@ -291,6 +292,61 @@ function paintEffect(c: CanvasRenderingContext2D, effect: Effect, age: number, r
   c.restore();
 }
 
+// These physical props are public opportunities, not rewards or client-owned availability.
+function resource(c: CanvasRenderingContext2D, node: ResourceNode, now: number, nearby: boolean, time: number) {
+  const x = node.x * S + 16, y = node.y * S + 16;
+  const waiting = node.availableAt > now;
+  const color = node.skillId === 'foraging' ? '#b7cf91' : node.skillId === 'mining' ? '#d8b885' : '#91c8d1';
+  c.save();
+  ellipse(c, x + 2, y + 9, 22, 8, '#08151b88');
+  c.globalAlpha = waiting ? .55 : 1;
+  if (node.skillId === 'foraging') {
+    // Broad-leaf beds with clipped stems while regrowing.
+    for (let i = 0; i < 5; i++) {
+      const px = x + (i - 2) * 7, py = y + Math.abs(i - 2) * 2;
+      stroke(c, '#7c9871', 2, [[px, py + 5], [px - 1, py - (waiting ? 3 : 14)]]);
+      if (!waiting) {
+        c.save(); c.translate(px, py - 9); c.rotate((i - 2) * .35);
+        ellipse(c, -4, -2, 7, 4, i % 2 ? '#748e58' : '#9ebc76');
+        ellipse(c, 4, -7, 6, 4, '#b2c787'); c.restore();
+        ellipse(c, px, py - 15, 2, 2, '#e4c489');
+      }
+    }
+    stroke(c, '#827155', 2, [[x - 23, y + 7], [x + 20, y + 10]]);
+  } else if (node.skillId === 'mining') {
+    for (const [dx, dy, size] of [[-10, 2, 12], [7, 0, 17], [0, -8, 12]]) {
+      c.fillStyle = '#4c5b61'; c.beginPath(); c.moveTo(x + dx - size, y + dy + 7);
+      c.lineTo(x + dx - size * .6, y + dy - size); c.lineTo(x + dx + size * .4, y + dy - size * 1.2);
+      c.lineTo(x + dx + size, y + dy); c.closePath(); c.fill();
+      stroke(c, waiting ? '#667474' : '#b8a582', 1.5, [[x + dx - size * .6, y + dy - size], [x + dx + size * .4, y + dy - size * 1.2], [x + dx + size, y + dy]]);
+      if (!waiting) stroke(c, '#e0bc7d', 2, [[x + dx - 5, y + dy - 7], [x + dx + 2, y + dy - 3], [x + dx - 1, y + dy + 2]]);
+    }
+  } else {
+    // A creel and fishing rod stand on a reachable bank tile.
+    c.fillStyle = '#9b8059'; c.fillRect(x - 15, y - 1, 19, 12);
+    ellipse(c, x - 5, y - 1, 10, 4, '#d2b17e'); ellipse(c, x - 5, y - 1, 6, 2, '#504d3b');
+    for (let i = 0; i < 4; i++) stroke(c, '#66553e', 1, [[x - 13 + i * 5, y + 1], [x - 13 + i * 5, y + 10]]);
+    stroke(c, '#b3a078', 2, [[x + 6, y + 8], [x + 13, y - 31]]);
+    stroke(c, '#d0d9cd', .8, [[x + 13, y - 31], [x + 24, y - 8]]);
+    ellipse(c, x + 24, y - 6 + Math.sin(time / 800) * (waiting ? 0 : 1), 2, 3, waiting ? '#6f898c' : '#ded1a3');
+  }
+  c.globalAlpha = 1;
+  // A consistent small badge keeps resource types identifiable at map scale.
+  ellipse(c, x, y + 15, 9, 6, '#132328e8');
+  c.font = 'bold 9px system-ui, sans-serif'; c.textAlign = 'center'; c.fillStyle = color;
+  c.fillText(node.skillId === 'foraging' ? 'F' : node.skillId === 'mining' ? 'M' : '~', x, y + 18);
+  if (nearby) {
+    c.strokeStyle = waiting ? '#899288' : color; c.lineWidth = 1.5;
+    c.beginPath(); c.ellipse(x, y + 9, 26, 12, 0, 0, TAU); c.stroke();
+    const label = node.name + (waiting ? ' · ' + Math.ceil((node.availableAt - now) / 1000) + 's' : ' · Lv. ' + node.requiredLevel);
+    c.font = '600 11px system-ui, sans-serif'; const width = c.measureText(label).width;
+    const lx = Math.max(width / 2 + 8, Math.min(W - width / 2 - 8, x));
+    c.fillStyle = '#10201ff0'; c.fillRect(lx - width / 2 - 6, y + 28, width + 12, 19);
+    c.fillStyle = color; c.fillText(label, lx, y + 41);
+  }
+  c.restore();
+}
+
 export default function GameCanvas({ realm, playerId, onTile }: {
   realm: Realm | null; playerId: string | null; onTile: (x: number, y: number) => void;
 }) {
@@ -302,26 +358,44 @@ export default function GameCanvas({ realm, playerId, onTile }: {
     const canvas=ref.current; if(!canvas) return;const c=canvas.getContext('2d');if(!c)return;
     const pixelRatio=Math.min(window.innerWidth<760?1.25:2,window.devicePixelRatio||1);
     canvas.width=W*pixelRatio;canvas.height=H*pixelRatio;c.setTransform(pixelRatio,0,0,pixelRatio,0,0);
-    let paintedRegion = ""; let ground: HTMLCanvasElement, canopy: HTMLCanvasElement; const poses=new Map<string,Pose>();
+    let paintedRegion = ""; let ground: HTMLCanvasElement, canopy: HTMLCanvasElement;
+    let waterTiles: {x: number; y: number}[] = [], landmarks = LANDMARKS.slice(0, 0);
+    const poses = new Map<string, Pose>();
+    // Static lighting and a reusable mote sprite avoid rebuilding gradients per frame.
+    const shade = document.createElement('canvas'); shade.width = W; shade.height = H;
+    const sc = shade.getContext('2d')!;
+    const vignette = sc.createRadialGradient(W*.5,H*.45,H*.12,W*.5,H*.5,W*.64);
+    vignette.addColorStop(0,'transparent'); vignette.addColorStop(.75,'#07101a20'); vignette.addColorStop(1,'#050b15a0');
+    sc.fillStyle = vignette; sc.fillRect(0, 0, W, H);
+    const mote = document.createElement('canvas'); mote.width = 16; mote.height = 16;
+    const mc = mote.getContext('2d')!; glow(mc, 8, 8, 7, '#d6de9d80'); ellipse(mc, 8, 8, 1, 1, '#e2e4ad');
+    const motes = Array.from({ length: 16 }, (_, i) => ({ x: random(i, 12)*W, y: random(i, 37)*H, phase: i }));
     const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
-    let animation=0,lastFrame=0;let visible=document.visibilityState!=='hidden';
-    const visibility=()=>{visible=document.visibilityState!=='hidden';};document.addEventListener('visibilitychange',visibility);
+    let animation = 0, lastFrame = 0;
+    let visible = document.visibilityState !== 'hidden';
     const draw=(stamp:number)=>{
-      animation=requestAnimationFrame(draw);
-      if(!visible||stamp-lastFrame<32)return;const delta=Math.min(.08,Math.max(.008,(stamp-lastFrame)/1000));lastFrame=stamp;
+      if (!visible) return;
+      animation = requestAnimationFrame(draw);
+      // 60fps positioning; reduced-motion users need no decorative high-rate redraw.
+      if (stamp - lastFrame < (motion.matches ? 32 : 15)) return;
+      const delta = Math.min(.05, Math.max(.008, (stamp-lastFrame)/1000)); lastFrame = stamp;
       const reduced=motion.matches;const time=reduced?0:stamp;
       const state=latest.current;const world=state.realm as RenderRealm|null;
       const regionId = world?.regionId || DEFAULT_REGION_ID;
       const region = regionById(regionId);
       const { spawn: SPAWN, shrine: SHRINE, crystals: CRYSTALS } = region;
-      const tile = (x: number, y: number) => worldTile(x, y, regionId);
       if (paintedRegion !== regionId) {
         ground = terrain(regionId); canopy = forest(regionId); paintedRegion = regionId; poses.clear();
+        waterTiles = [];
+        for (let y = 0; y < HEIGHT; y++) for (let x = 0; x < WIDTH; x++) {
+          if (worldTile(x, y, regionId) === 'water') waterTiles.push({ x, y });
+        }
+        landmarks = LANDMARKS.filter(item => (item.regionId || DEFAULT_REGION_ID) === regionId);
       }
       const now=(world?.serverTime||Date.now())+(Date.now()-state.receivedAt);
       // Cache terrain and forest once; the live layer stays light enough for phones.
       c.clearRect(0,0,W,H);c.imageSmoothingEnabled=true;c.drawImage(ground,0,0);
-      for(let y=0;y<HEIGHT;y++)for(let x=0;x<WIDTH;x++)if(tile(x,y)==='water'){
+      for (const { x, y } of waterTiles) {
         const phase=(time/1000+x*.7+y*.4);c.strokeStyle='#b0d7d22e';c.lineWidth=.9;c.beginPath();c.ellipse(x*S+14+Math.sin(phase)*3,y*S+13,10,2,0,0,Math.PI);c.stroke();
         c.strokeStyle='#81b4c040';c.beginPath();c.moveTo(x*S+8,y*S+25);c.quadraticCurveTo(x*S+17,y*S+23+Math.sin(phase),x*S+25,y*S+25);c.stroke();
       }
@@ -344,7 +418,7 @@ export default function GameCanvas({ realm, playerId, onTile }: {
         ellipse(c,x+16,y-19+Math.sin(time/600)*5,1.5,1.5,'#e0eee6');ellipse(c,x-17,y-6+Math.sin(time/800+2)*4,1,1,'#d8dcb5');
       }
       const explorer = [...(world?.players || []), ...(world?.visitors || [])].find(p => p.id === state.playerId);
-      if (explorer) for (const landmark of LANDMARKS.filter(item => (item.regionId || DEFAULT_REGION_ID) === regionId)) {
+      if (explorer) for (const landmark of landmarks) {
         const nearby = Math.hypot(explorer.x - landmark.x, explorer.y - landmark.y);
         if (nearby > 4) continue;
         const lx = landmark.x * S + 16, ly = landmark.y * S + 16;
@@ -362,34 +436,32 @@ export default function GameCanvas({ realm, playerId, onTile }: {
         c.restore();
       }
       const actors:Array<{y:number;draw:()=>void}>=[];
-      for(const enemy of world?.enemies||[])if(enemy.hp>0)actors.push({y:enemy.y,draw:()=>thornling(c,enemy.x*S+16,enemy.y*S+16,time,enemy.hp,region.theme)});
-      const players=[...(world?.players||[]),...(world?.visitors||[])].filter(p => (p.regionId || DEFAULT_REGION_ID) === regionId);
+      const effects = visibleEffects(world?.effects, now) as Effect[];
+      for (const node of (world?.resourceNodes || []).slice(0, 24)) {
+        if (node.regionId !== regionId) continue;
+        const near = !!explorer && Math.hypot(explorer.x - node.x, explorer.y - node.y) <= 2.8;
+        actors.push({ y: node.y - .3, draw: () => resource(c, node, now, near, time) });
+      }
+      for(const enemy of (world?.enemies||[]).slice(0, 32))if(enemy.hp>0)actors.push({y:enemy.y,draw:()=>thornling(c,enemy.x*S+16,enemy.y*S+16,time,enemy.hp,region.theme)});
+      const players=[...(world?.players||[]),...(world?.visitors||[])].filter(p => (p.regionId || DEFAULT_REGION_ID) === regionId).slice(0, MAX_RENDER_ACTORS);
       for(const p of players){
         const targetX=p.x*S+16,targetY=p.y*S+16;let pos=poses.get(p.id);
-        if(!pos||Math.hypot(pos.x-targetX,pos.y-targetY)>S*4){pos={x:targetX,y:targetY,heading:Math.PI/2,phase:0,speed:0,leanX:0,leanY:0};poses.set(p.id,pos);}
-        const dx=targetX-pos.x,dy=targetY-pos.y;
-        const walking=Math.hypot(dx,dy)>1;
-        const follow=1-Math.exp(-delta*13);
-        const moveX=dx*follow,moveY=dy*follow;
-        pos.x+=moveX;pos.y+=moveY;
-        pos.speed=walking?Math.min(3.8,Math.hypot(moveX,moveY)/S/delta):0;
-        if(walking){
-          const desired=Math.atan2(dy,dx);
-          const turn=Math.atan2(Math.sin(desired-pos.heading),Math.cos(desired-pos.heading));
-          pos.heading+=turn*Math.min(1,delta*18);
-          pos.phase+=Math.hypot(moveX,moveY)/S*8.5;
-        }
-        pos.leanX+=(Math.max(-.06,Math.min(.06,dx/S*.05))-pos.leanX)*follow;
-        pos.leanY+=(Math.max(-.06,Math.min(.06,dy/S*.05))-pos.leanY)*follow;
+        if (!pos) { pos = createPose(targetX, targetY, stamp); poses.set(p.id, pos); }
+        const walking = advancePose(pos, targetX, targetY, stamp, delta, { local: p.id === state.playerId, reducedMotion: reduced, tileSize: S });
         const x=pos.x,y=pos.y;
-        const actorEffects=(world?.effects||[]).filter(effect=>effect.actorId===p.id);
+        const actorEffects = effects.filter(effect => effect.actorId === p.id);
         const hit=actorEffects.find(effect=>['strike','area'].includes(effect.type)&&now-effect.at>=0&&now-effect.at<240);
         const cast=actorEffects.find(effect=>['heal','ward'].includes(effect.type)&&now-effect.at>=0&&now-effect.at<600);
         const attackFx=hit?.at ? .24-(now-hit.at)/1000 : 0;
         const abilityFx=cast?.at ? .6-(now-cast.at)/1000 : 0;
-        actors.push({y:p.y,draw:()=>{
+        actors.push({y:(y-16)/S,draw:()=>{
           if(p.id===state.playerId){glow(c,x,y+8,31,'#e1c98c18');c.strokeStyle='#e6d09c';c.lineWidth=1.2;c.beginPath();c.ellipse(x,y+12,19,7,0,0,TAU);c.stroke();}
           hero(c,p,x,y,time,walking,pos!,reduced,attackFx,abilityFx);
+          const maxHp = Math.max(1, p.maxHp || 100);
+          if (p.hp < maxHp && p.heroClass !== 'death-knight') {
+            c.fillStyle = '#101c23'; c.fillRect(x - 16, y + 22, 32, 4);
+            c.fillStyle = p.hp / maxHp > .35 ? '#a9c38a' : '#e0a38a'; c.fillRect(x - 16, y + 22, 32 * Math.max(0, Math.min(1, p.hp / maxHp)), 4);
+          }
           c.font='600 11px system-ui, sans-serif';c.textAlign='center';const label=p.name+(p.heroClass==='death-knight'?' · ???':p.id===state.playerId?' · you':'');
           const width=c.measureText(label).width;c.fillStyle='#0a1320db';c.fillRect(x-width/2-7,y-(p.heroClass==='wizard'?64:55),width+14,17);
           c.fillStyle=p.heroClass==='death-knight'?'#d0c5f1':'#ede5d0';c.fillText(label,x,y-(p.heroClass==='wizard'?52:43));
@@ -397,19 +469,30 @@ export default function GameCanvas({ realm, playerId, onTile }: {
       }
       for(const id of poses.keys())if(!players.some(player=>player.id===id))poses.delete(id);
       actors.sort((a,b)=>a.y-b.y).forEach(actor=>actor.draw());c.drawImage(canopy,0,0);
-      for(const effect of world?.effects||[])paintEffect(c,effect,now-effect.at,reduced);
-      // Slow fireflies and a soft vignette, never flashes.
-      if(!reduced)for(let i=0;i<23;i++){const x=random(i,12)*W+Math.sin(time/3600+i)*8,y=random(i,37)*H+Math.cos(time/2900+i)*5;const a=.18+Math.sin(time/1400+i)*.13;glow(c,x,y,7,'rgba(214,222,157,'+a+')');ellipse(c,x,y,1,1,'rgba(226,228,173,'+(a+.15)+')');}
-      const vignette=c.createRadialGradient(W*.5,H*.45,H*.12,W*.5,H*.5,W*.64);vignette.addColorStop(0,'transparent');vignette.addColorStop(.75,'#07101a20');vignette.addColorStop(1,'#050b15a0');c.fillStyle=vignette;c.fillRect(0,0,W,H);
+      for (const effect of effects) paintEffect(c, effect, now - effect.at, reduced);
+      // Slow fireflies reuse one tiny sprite; the static vignette is cached.
+      if (!reduced) for (const motePoint of motes) {
+        const i = motePoint.phase;
+        c.globalAlpha = .35 + Math.sin(time / 1400 + i) * .2;
+        c.drawImage(mote, motePoint.x + Math.sin(time/3600+i)*8 - 8, motePoint.y + Math.cos(time/2900+i)*5 - 8);
+      }
+      c.globalAlpha = 1; c.drawImage(shade, 0, 0);
       c.textAlign='center';c.font='10px Georgia, serif';
       const label=(text:string,x:number,y:number)=>{const w=c.measureText(text).width;c.fillStyle='#0c1923cd';c.fillRect(x-w/2-9,y-12,w+18,20);c.fillStyle='#d7c393';c.fillText(text,x,y+2);};
       label('WAYFARER CAMP',(SPAWN.x+1)*S,(SPAWN.y+2)*S);label(regionId === 'glade' ? 'OLD MOON SHRINE' : regionId === 'amberReach' ? 'WATCHSTONE SHRINE' : 'TIDEKEEPER SHRINE',SHRINE.x*S,(SHRINE.y-2)*S);
       for(const exit of region.exits) label('CROSSING',Math.max(60,Math.min(W-60,exit.x*S+16)),exit.y*S+53);
       c.save();c.translate(28*S,3*S);c.strokeStyle='#d6c297';c.lineWidth=1;c.beginPath();c.arc(0,6,19,0,TAU);c.stroke();stroke(c,'#d6c297',1,[[0,-19],[0,25],[-13,6],[13,6]]);c.fillStyle='#eadcba';c.beginPath();c.moveTo(0,-8);c.lineTo(5,12);c.lineTo(0,7);c.lineTo(-5,12);c.closePath();c.fill();c.font='11px Georgia, serif';c.fillText('N',0,-25);c.restore();
     };
-    animation=requestAnimationFrame(draw);
-    return()=>{cancelAnimationFrame(animation);document.removeEventListener('visibilitychange',visibility);};
+    const visibility = () => {
+      visible = document.visibilityState !== 'hidden';
+      cancelAnimationFrame(animation);
+      if (visible) { lastFrame = 0; poses.clear(); animation = requestAnimationFrame(draw); }
+    };
+    document.addEventListener('visibilitychange', visibility);
+    if (visible) animation = requestAnimationFrame(draw);
+    return () => { cancelAnimationFrame(animation); poses.clear(); document.removeEventListener('visibilitychange', visibility); };
+
   },[]);
-  return <canvas ref={ref} width={W} height={H} aria-label={regionById(realm?.regionId).name + " illustrated shared world map. Click a location to walk, or use the arrow keys. Signposts mark crossings to other regions."}
+  return <canvas ref={ref} width={W} height={H} aria-label={regionById(realm?.regionId).name + " illustrated shared world map. Click a location to walk, or use the arrow keys. Signposts mark crossings. Herb beds, ore rocks and fishing creels mark gathering grounds. Use the Wilderness skills controls to walk to or gather from them."}
     onClick={event=>{const b=event.currentTarget.getBoundingClientRect();onTile(Math.floor((event.clientX-b.left)/b.width*WIDTH),Math.floor((event.clientY-b.top)/b.height*HEIGHT));}} />;
 }

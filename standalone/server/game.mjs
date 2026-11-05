@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { digest, transaction } from './database.mjs';
 import { sessionUser } from './auth.mjs';
 import { adminSettings } from './admin.mjs';
+import { createSkillsService, SkillsError } from './skills.mjs';
+import { createAuthoredEngine, AuthoredError } from './authored-engine.mjs';
+import { createExpeditionRoutes, ExpeditionError } from './expedition-routes.mjs';
 import { reply, readJson, sameOriginJson } from './request-security.mjs';
 import { developmentFor, validDevelopmentChoice, outgoingDamage, incomingDamage } from '../shared/character-development.mjs';
 import { REGIONS, DEFAULT_REGION_ID, regionById, regionWalkable } from '../shared/world-catalog.mjs';
@@ -41,12 +44,48 @@ function publicCharacter(row) {
 
 export function createGameService(db, options = {}) {
   const now = options.now || Date.now;
+  const gathering = createSkillsService(db, { now, maxHp: row => combat(row).maxHp });
+  const authored = createAuthoredEngine(db, { now, content: options.authoredContent,
+    contentPath: options.authoredContentPath || process.env.ELDRITCH_AUTHORED_CONTENT,
+    baseCombat: row => ({ maxHp: 100, armor: CLASSES[row.hero_class].armor || 0,
+      damage: outgoingDamage(CLASSES[row.hero_class].damage + Math.floor((db.prepare('SELECT lifetime_xp FROM game_wallets WHERE user_id=?').get(row.user_id)?.lifetime_xp || 0) / 100) * 2, row.battle_stance) }) });
+  const expeditions = createExpeditionRoutes(db, { content: authored.content || {}, combat: authored.combat,
+    recordVictory: authored.recordVictory });
   const streams = new Set();
   const streamInterval = options.sseIntervalMs || 15000;
   const XP_PER_GOLD = 1250;
   const COPPER_PER_GOLD = 1000;
   const MAX_BALANCE = Number.MAX_SAFE_INTEGER;
   let closed = false;
+
+  function combat(row, base = {}) {
+    return row.is_admin ? { maxHp: 100, ...base } : authored.combat(row.user_id, { maxHp: 100, ...base });
+  }
+
+  function projectCharacter(row) {
+    return { ...publicCharacter(row), maxHp: combat(row).maxHp };
+  }
+
+  const away = userId => authored.isLocked(userId) || expeditions.locking(userId);
+  function currentScope(userId, regionId, time) {
+    const event = authored.projection(userId, time)?.encounter;
+    const location = expeditions.location(userId);
+    return event ? 'event:' + event.id : location ? location.scopeId : 'region:' + regionId;
+  }
+  function resumeScenes(partyId, time) {
+    if (!partyId) return;
+    for (const row of db.prepare('SELECT user_id FROM game_characters WHERE party_id=?').all(partyId)) {
+      if (authored.isLocked(row.user_id)) expeditions.release(row.user_id);
+      authored.resume(row.user_id, time);
+    }
+  }
+
+  function reservedMembers(partyId, time) {
+    return db.prepare('SELECT COUNT(DISTINCT c.user_id) AS n FROM game_characters c JOIN account_users u ON u.id=c.user_id '
+      + 'WHERE c.party_id=? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL AND (c.active_until>? OR EXISTS('
+      + 'SELECT 1 FROM game_party_memberships m WHERE m.party_id=c.party_id AND m.user_id=c.user_id AND m.left_at IS NULL))')
+      .get(partyId, time).n;
+  }
 
   function requireUser(req, time) {
     const user = sessionUser(db, req, time);
@@ -187,7 +226,7 @@ export function createGameService(db, options = {}) {
     ).all(partyId, time);
   }
 
-  function realm(world, time, regionId = DEFAULT_REGION_ID) {
+  function realm(world, time, regionId = DEFAULT_REGION_ID, viewerId = null) {
     const rows = regularMembers(world?.id, time);
     const visitors = world ? db.prepare(
       "SELECT c.* FROM game_admin_characters c JOIN account_users u ON u.id=c.user_id "
@@ -195,16 +234,23 @@ export function createGameService(db, options = {}) {
       + "WHERE c.party_id=? AND c.active_until>? AND u.role='admin' AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL "
       + 'AND s.revoked_at IS NULL AND s.expires_at>? ORDER BY c.created_at,c.id',
     ).all(world.id, time, new Date(time).toISOString()) : [];
+    const journey = viewerId ? expeditions.projection(viewerId, time) : null;
+    const authoredView = viewerId ? authored.projection(viewerId, time) : null;
+    const privateLocation = viewerId && away(viewerId);
+    const scopeId = authoredView?.encounter ? 'event:' + authoredView.encounter.id
+      : journey?.active ? journey.active.scopeId : 'region:' + regionId;
     return {
       regionId, region: regionById(regionId),
+      scopeId, journey, authored: authoredView,
       partyId: world?.id || null, partyMode: world?.mode || null,
       maxPlayers: MAX_PLAYERS, maxVisitors: MAX_VISITORS,
       revision: world?.revision || 0,
-      players: rows.map(row => publicCharacter({ ...row, is_admin: false })),
-      visitors: visitors.map(row => publicCharacter({ ...row, name: adminSettings(db, row.user_id).visitorName, is_admin: true })),
-      enemies: world?.enemies.filter(enemy => enemy.regionId === regionId).map(({ id, x, y, hp, respawnAt, regionId }) => ({ id, x, y, hp, respawnAt, regionId })) || [],
-      effects: world?.effects.filter(effect => (effect.regionId || DEFAULT_REGION_ID) === regionId && effect.at + 1600 > time).slice(-24) || [],
+      players: rows.filter(row => row.user_id === viewerId || !privateLocation && !away(row.user_id)).map(row => projectCharacter({ ...row, is_admin: false })),
+      visitors: visitors.map(row => projectCharacter({ ...row, name: adminSettings(db, row.user_id).visitorName, is_admin: true })),
+      enemies: privateLocation ? [] : world?.enemies.filter(enemy => enemy.regionId === regionId).map(({ id, x, y, hp, respawnAt, regionId }) => ({ id, x, y, hp, respawnAt, regionId })) || [],
+      effects: privateLocation ? [] : world?.effects.filter(effect => (effect.regionId || DEFAULT_REGION_ID) === regionId && effect.at + 1600 > time).slice(-24) || [],
       messages: world?.messages || [], serverTime: time,
+      resourceNodes: world && !privateLocation ? gathering.nodes(world.id, regionId) : [],
     };
   }
 
@@ -218,13 +264,15 @@ export function createGameService(db, options = {}) {
     return {
       partyId: row && row.active_until > time ? row.party_id : null,
       playerId: row?.id || null,
-      character: row ? publicCharacter(row) : null,
-      regularCharacter: regular ? publicCharacter(regular) : null,
+      character: row ? projectCharacter(row) : null,
+      regularCharacter: regular ? projectCharacter(regular) : null,
       active: Boolean(row && row.active_until > time),
       adminAccess: role === 'admin',
       adminActive,
       cooldowns: row ? JSON.parse(row.skill_cooldowns_json) : {},
       development: row && !adminActive ? developmentFor(row.hero_class, row.lifetime_xp, row.battle_stance, row.tactic) : null,
+      gathering: row && !adminActive ? gathering.profile(userId) : null,
+      authored: row && !adminActive ? authored.projection(userId, time) : null,
       balanceXp: wallet?.balance_xp || 0,
       lifetimeXp: wallet?.lifetime_xp || 0,
       balanceCopper: wallet?.balance_copper || 0,
@@ -234,7 +282,7 @@ export function createGameService(db, options = {}) {
   function currentResult(world, userId, time, notice = '') {
     const own = profile(userId, time);
     return {
-      realm: realm(world, time, own.character?.regionId),
+      realm: realm(world, time, own.character?.regionId, userId),
       profile: own,
       playerId: own.playerId,
       notice,
@@ -294,6 +342,7 @@ export function createGameService(db, options = {}) {
 
   function joinAdmin(userId, req, time) {
     requireAdmin(userId);
+    if (away(userId)) throw new GameError('Return from your saved journey before beginning a support visit.', 409, 'ACTION_UNAVAILABLE');
     const current = adminCharacter(userId);
     let world;
     if (current?.active_until > time) {
@@ -312,6 +361,8 @@ export function createGameService(db, options = {}) {
     }
     const token = (req.headers.cookie || '').match(/(?:^|;\s*)ef_session=([a-f0-9]{64})(?:;|$)/)?.[1];
     if (!token) throw new GameError('Sign in again before crossing the veil.', 401, 'SIGN_IN_REQUIRED');
+    const ordinaryParty = authored.membership(userId);
+    if (ordinaryParty) authored.left(userId, ordinaryParty, time);
     const sessionHash = digest(token);
     const row = db.prepare('SELECT * FROM game_admin_characters WHERE user_id=?').get(userId);
     if (!row) {
@@ -351,6 +402,8 @@ export function createGameService(db, options = {}) {
     if (!['open', 'solo'].includes(mode)) throw new GameError('Choose an open party or a solo adventure.');
     let row = character(userId);
     let world;
+    const acceptedParty = authored.membership(userId);
+    if (row && authored.isLocked(userId) && input.partyId && input.partyId !== acceptedParty) throw new GameError('Return to your saved encounter before changing parties.', 409, 'ACTION_UNAVAILABLE');
     if (input.partyId !== undefined) {
       if (typeof input.partyId !== 'string') throw new GameError('That party is unavailable.', 409, 'PARTY_CHANGED');
       world = loadWorld(input.partyId);
@@ -361,12 +414,14 @@ export function createGameService(db, options = {}) {
       world = loadWorld(row.party_id);
       db.prepare('UPDATE game_admin_characters SET active_until=0 WHERE user_id=?').run(userId);
       updateCharacter(row, 'active_until=?', time + LEASE_MS);
+      authored.joined(userId, world.id, time);
       return { world, notice: 'Welcome back. Your party and secret stash are safe.' };
     }
-    if (world && regularMembers(world.id, time).length >= MAX_PLAYERS) throw new GameError('That party is full (8/8).', 409, 'PARTY_FULL');
+    if (!world && acceptedParty && row?.party_id === acceptedParty) world = loadWorld(acceptedParty);
+    if (world && acceptedParty !== world.id && reservedMembers(world.id, time) >= MAX_PLAYERS) throw new GameError('That party is full (8/8).', 409, 'PARTY_FULL');
     if (!world && mode === 'open') {
       const candidates = db.prepare("SELECT p.id FROM game_parties p WHERE p.mode='open' ORDER BY p.created_at,p.rowid").all();
-      const candidate = candidates.find(party => regularMembers(party.id, time).length < MAX_PLAYERS);
+      const candidate = candidates.find(party => reservedMembers(party.id, time) < MAX_PLAYERS);
       if (candidate) world = loadWorld(candidate.id);
     }
     if (!world) world = createWorld(mode, userId, time);
@@ -378,12 +433,13 @@ export function createGameService(db, options = {}) {
       row = character(userId);
     } else updateCharacter(row, 'active_until=?,party_id=?', time + LEASE_MS, world.id);
     db.prepare('UPDATE game_admin_characters SET active_until=0 WHERE user_id=?').run(userId);
+    authored.joined(userId, world.id, time);
     systemMessage(world, row.name + ' arrived in the glade.', time);
     return { world, notice: 'Welcome, ' + row.name + '. Your adventure is saved to your account.' };
   }
 
   function supportStats(p, time) {
-    const members = regularMembers(p.party_id, time).filter(row => row.region_id === p.region_id).map(row => ({
+    const members = regularMembers(p.party_id, time).filter(row => row.region_id === p.region_id && !away(row.user_id)).map(row => ({
       damage: CLASSES[row.hero_class].damage + Math.floor(row.lifetime_xp / 100) * 2,
       range: CLASSES[row.hero_class].range, id: row.id,
     })).sort((a, b) => a.damage - b.damage || a.id.localeCompare(b.id));
@@ -408,7 +464,7 @@ export function createGameService(db, options = {}) {
 
   function hurt(p, amount, time) {
     if (p.is_admin) return false;
-    let damage = incomingDamage(Math.max(0, amount - (CLASSES[p.hero_class].armor || 0)), p.battle_stance);
+    let damage = incomingDamage(Math.max(0, amount - combat(p, { armor: CLASSES[p.hero_class].armor || 0 }).armor), p.battle_stance);
     if (p.ward_until > time && p.ward_amount > 0) {
       const absorbed = Math.min(damage, p.ward_amount);
       damage -= absorbed;
@@ -417,7 +473,7 @@ export function createGameService(db, options = {}) {
     if (!damage) return false;
     if (p.hp - damage <= 0) {
       const spawn = regionById(p.region_id).spawn;
-      updateCharacter(p, 'hp=100,x=?,y=?', spawn.x, spawn.y);
+      updateCharacter(p, 'hp=?,x=?,y=?', combat(p).maxHp, spawn.x, spawn.y);
       return true;
     }
     updateCharacter(p, 'hp=?', p.hp - damage);
@@ -439,7 +495,7 @@ export function createGameService(db, options = {}) {
         + 'WHERE d.party_id=? AND c.party_id=? AND d.enemy_id=? AND d.spawn_id=? AND d.damage>0 AND d.damaged_at>=? '
         + 'AND c.region_id=? AND c.active_until>? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL',
       ).all(world.id, world.id, enemy.id, enemy.spawnId, time - 30000, enemy.regionId, time);
-      for (const contributor of contributors) {
+      for (const contributor of contributors.filter(row => !away(row.user_id))) {
         if (credit(contributor.user_id, 15, 'kill:' + enemy.spawnId, 'Thornling defeated', time)) {
           if (enemy.regionId === DEFAULT_REGION_ID) db.prepare('UPDATE game_characters SET kills=kills+1 WHERE user_id=?').run(contributor.user_id);
         }
@@ -459,15 +515,15 @@ export function createGameService(db, options = {}) {
     if ((cooldowns[skill.id] || 0) > time) throw new GameError('That skill is still recovering.', 429, 'SKILL_COOLDOWN');
     if (skill.type === 'heal') {
       const targets = skill.target === 'party'
-        ? regularMembers(p.party_id, time).filter(row => row.region_id === p.region_id && row.hp > 0 && distance(p, row) <= (skill.radius || 0))
+        ? regularMembers(p.party_id, time).filter(row => row.region_id === p.region_id && row.hp > 0 && !away(row.user_id) && distance(p, row) <= (skill.radius || 0))
         : [p];
-      if (!targets.some(row => row.hp < 100)) throw new GameError('Your healing circle is already at full health.', 409, 'HEALTH_FULL');
+      if (!targets.some(row => row.hp < combat(row).maxHp)) throw new GameError('Your healing circle is already at full health.', 409, 'HEALTH_FULL');
       for (const row of targets) {
-        updateCharacter({ ...row, is_admin: false }, 'hp=?', Math.min(100, row.hp + skill.heal));
+        updateCharacter({ ...row, is_admin: false }, 'hp=?', Math.min(combat(row).maxHp, row.hp + combat(p, { healing: skill.heal }).healing));
       }
       effect(world, p, 'heal', p, time, skill.radius || 1);
     } else if (skill.type === 'ward') {
-      updateCharacter(p, 'ward_until=?,ward_amount=?', time + skill.durationMs, skill.ward);
+      updateCharacter(p, 'ward_until=?,ward_amount=?', time + skill.durationMs, combat(p, { ward: skill.ward }).ward);
       effect(world, p, 'ward', p, time, 1);
     } else if (skill.type === 'strike' || skill.type === 'area') {
       // Both visitor attack presentations share one ordinary attack budget.
@@ -480,7 +536,7 @@ export function createGameService(db, options = {}) {
         : [primary];
       let retaliates = false;
       for (const enemy of targets) {
-        if (!damageEnemy(p, enemy, p.is_admin ? supportStats(p, time).damage : outgoingDamage(skill.damage + Math.floor(p.lifetime_xp / 100) * 2, p.battle_stance), world, time)) retaliates = true;
+        if (!damageEnemy(p, enemy, p.is_admin ? supportStats(p, time).damage : combat(p, { damage: outgoingDamage(skill.damage + Math.floor(p.lifetime_xp / 100) * 2, p.battle_stance) }).damage, world, time)) retaliates = true;
       }
       if (retaliates) hurt(p, 9, time);
       if (p.is_admin) updateCharacter(p, 'last_attack_at=?', time);
@@ -488,7 +544,7 @@ export function createGameService(db, options = {}) {
     } else {
       throw new GameError('That class skill is unavailable.', 400, 'SKILL_UNAVAILABLE');
     }
-    cooldowns[skill.id] = time + skill.cooldownMs;
+    cooldowns[skill.id] = time + combat(p, { cooldownMs: skill.cooldownMs }).cooldownMs;
     updateCharacter(p, 'skill_cooldowns_json=?', JSON.stringify(cooldowns));
     return skill.name + (p.is_admin ? ' answered the silence.' : ' cast. Class skills do not spend XP.');
   }
@@ -498,6 +554,22 @@ export function createGameService(db, options = {}) {
     const region = regionById(p.region_id);
     if (input.regionId !== undefined && input.regionId !== p.region_id) {
       throw new GameError('Your region changed. Refresh before continuing.', 409, 'REGION_CHANGED');
+    }
+    if ((away(userId) || input.scopeId !== undefined) && input.scopeId !== currentScope(userId, p.region_id, time)) {
+      throw new GameError('Your adventure moved on. Refresh before continuing.', 409, 'SCOPE_CHANGED');
+    }
+    if (['encounterAttack', 'encounterSkill', 'encounterContinue', 'encounterWitness', 'encounterReturn', 'equip'].includes(input.kind)) {
+      if (p.is_admin) throw new GameError('Support visitors cannot perform this action.', 403, 'ACTION_UNAVAILABLE');
+      if (input.kind === 'equip' && expeditions.locking(userId)) throw new GameError('Return to the open road before changing equipment.', 409, 'ACTION_UNAVAILABLE');
+      return authored.act(userId, input, time) || '';
+    }
+    if (authored.isLocked(userId) && input.kind !== 'chat') throw new GameError('Finish your current encounter before returning to the road.', 409, 'ACTION_UNAVAILABLE');
+    if (input.kind === 'consumeSupply') return gathering.useSupply({ row: p, materialId: input.materialId, time }).notice;
+    if (expeditions.handles(input.kind)) return expeditions.act(userId, input, time) || '';
+    if (expeditions.locking(userId) && input.kind !== 'chat') throw new GameError('Return from your journey before using the open road.', 409, 'ACTION_UNAVAILABLE');
+    if (input.kind === 'gatherResource') {
+      const result = gathering.gather({ row: p, nodeId: input.nodeId, time });
+      return result.notice;
     }
     if (input.kind === 'configure') {
       if (p.is_admin) throw new GameError('End your support visit before configuring your ordinary hero.', 403, 'ADMIN_DEVELOPMENT_DISABLED');
@@ -532,7 +604,7 @@ export function createGameService(db, options = {}) {
         .sort((a, b) => distance(p, a) - distance(p, b));
       const enemy = targets[0];
       if (!enemy) throw new GameError('Move closer to a thornling to attack.');
-      const damage = p.is_admin ? stats.damage : outgoingDamage(stats.damage + Math.floor(p.lifetime_xp / 100) * 2, p.battle_stance);
+      const damage = p.is_admin ? stats.damage : combat(p, { damage: outgoingDamage(stats.damage + Math.floor(p.lifetime_xp / 100) * 2, p.battle_stance) }).damage;
       const killed = damageEnemy(p, enemy, damage, world, time);
       updateCharacter(p, 'last_attack_at=?', time);
       effect(world, p, 'strike', enemy, time);
@@ -551,11 +623,11 @@ export function createGameService(db, options = {}) {
         return 'Moon crystal gathered! 10 XP added to your secret stash.';
       }
       if (distance(p, region.shrine) <= 2) {
-        db.prepare('UPDATE game_characters SET shrine=CASE WHEN region_id=\'glade\' THEN 1 ELSE shrine END,hp=100 WHERE user_id=?').run(userId);
+        db.prepare('UPDATE game_characters SET shrine=CASE WHEN region_id=\'glade\' THEN 1 ELSE shrine END,hp=? WHERE user_id=?').run(combat(p).maxHp, userId);
         return 'The old shrine blesses your journey. Health restored.';
       }
       if (distance(p, region.spawn) <= 2.5) {
-        db.prepare('UPDATE game_characters SET hp=100 WHERE user_id=?').run(userId);
+        db.prepare('UPDATE game_characters SET hp=? WHERE user_id=?').run(combat(p).maxHp, userId);
         return 'Rested at the campfire. Health restored.';
       }
       throw new GameError('Stand beside a new crystal, the shrine, or the campfire.');
@@ -621,11 +693,16 @@ export function createGameService(db, options = {}) {
         ({ world, notice } = join(user.id, input, time));
       } else if (path === '/api/game/leave') {
         const p = activeCharacter(user.id, time);
+        if (!p.is_admin) {
+          authored.left(user.id, p.party_id, time);
+          expeditions.release(user.id);
+        }
         updateCharacter(p, 'active_until=0');
         if (!p.is_admin) systemMessage(world, p.name + ' left the glade.', time);
         notice = 'Your seat is free. Your character and secret stash remain saved.';
       } else if (path === '/api/game/appearance') {
         const p = activeCharacter(user.id, time);
+        if (away(user.id)) throw new GameError('Return to the open road before changing appearance.', 409, 'ACTION_UNAVAILABLE');
         if (p.is_admin) throw new GameError('End your support visit before changing your ordinary hero.', 403, 'ADMIN_APPEARANCE_DISABLED');
         const appearance = input.appearance;
         const keys = Object.keys(APPEARANCE_OPTIONS);
@@ -642,6 +719,7 @@ export function createGameService(db, options = {}) {
         notice = '';
       } else notice = doAction(user.id, input, world, time);
       if (!['/api/game/leave', '/api/game/admin/leave'].includes(path)) renew(user.id, time);
+      resumeScenes(world.id, time);
       world.revision += 1;
       saveWorld(world);
       db.prepare('INSERT INTO game_requests(user_id,request_id,payload_hash,notice,created_at,actor_scope,party_id) VALUES(?,?,?,?,?,?,?)')
@@ -757,7 +835,7 @@ export function createGameService(db, options = {}) {
     try {
       const user = requireUser(stream.req, now());
       const time = now();
-      const current = realm(worldFor(user.id, time), time, profile(user.id, time).character?.regionId);
+      const current = realm(worldFor(user.id, time), time, profile(user.id, time).character?.regionId, user.id);
       if (stream.res.destroyed || stream.res.writableEnded) return closeStream(stream);
       stream.res.write('event: realm\ndata: ' + JSON.stringify(current) + '\n\n');
     } catch (error) {
@@ -846,7 +924,7 @@ export function createGameService(db, options = {}) {
         reply(res, 200, result);
       }
     } catch (error) {
-      if (error instanceof GameError || error.status === 413) {
+      if (error instanceof GameError || error instanceof SkillsError || error instanceof AuthoredError || error instanceof ExpeditionError || error.status === 413) {
         reply(res, error.status, { error: error.message, code: error.code || 'INVALID_REQUEST' });
       } else if (error instanceof SyntaxError) {
         reply(res, 400, { error: 'Invalid JSON request.', code: 'INVALID_REQUEST' });

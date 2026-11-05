@@ -1,9 +1,14 @@
 import { defineConfig } from '@playwright/test';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { syntheticAuthoredContent } from './tests/fixtures/authored-content.mjs';
 
 process.env.ELDRITCH_BROWSER_DB ||= join(mkdtempSync(join(tmpdir(), 'ef-browser-')), 'accounts.db');
+// Isolated browser tests use neutral content outside the checkout, never live lore.
+const authoredFixture = join(mkdtempSync(join(tmpdir(), 'ef-browser-content-')), 'fixture.json');
+writeFileSync(authoredFixture, JSON.stringify(syntheticAuthoredContent), { mode: 0o600 });
+process.env.ELDRITCH_AUTHORED_CONTENT = authoredFixture;
 export default defineConfig({
   testDir: './tests/browser', workers: 1,
   use: { baseURL: 'http://127.0.0.1:4317', trace: 'retain-on-failure', launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined } },

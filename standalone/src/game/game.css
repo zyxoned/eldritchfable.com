@@ -593,3 +593,70 @@ body:has(.ef-rpg) { margin: 0; background: #0d0b13; }
 }
 .ef-rpg .character-path { padding:20px; }
 .ef-rpg .character-path h2 { font:20px Georgia,serif; margin:16px 0 8px; }
+
+/* Compact, server-confirmed gathering progression alongside the illustrated realm. */
+.ef-rpg .gathering-card { margin-top: 16px; padding: 18px; min-width: 0; background: linear-gradient(135deg, #20242266, #16151c 70%); }
+.ef-rpg .gathering-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; color: #bdc99c; }
+.ef-rpg .gathering-heading h2 { margin: 6px 0 0; font: 400 22px/1.2 Georgia, serif; color: #f0e8d6; }
+.ef-rpg .gathering-card .gathering-intro { color: #b9b2be; margin: 9px 0 16px; font-size: 11px; line-height: 1.65; }
+.ef-rpg .gathering-skills { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ef-rpg .gathering-skill { min-width: 0; padding: 12px 10px; border: 1px solid #3d3b41; border-radius: 7px; background: #13171c99; }
+.ef-rpg .skill-foraging { --skill-color: #b7cf91; }
+.ef-rpg .skill-mining { --skill-color: #d8b885; }
+.ef-rpg .skill-fishing { --skill-color: #91c8d1; }
+.ef-rpg .gathering-skill-title { display: flex; align-items: center; gap: 6px; color: var(--skill-color); flex-wrap: wrap; font-size: 11px; }
+.ef-rpg .gathering-skill-title strong { font-weight: 550; }
+.ef-rpg .gathering-skill-title > span { margin-left: auto; font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; color: #e5dcc7; }
+.ef-rpg .gathering-skill progress { appearance: none; display: block; width: 100%; height: 6px; margin: 12px 0 8px; border: 0; border-radius: 4px; overflow: hidden; background: #39323e; color: var(--skill-color); }
+.ef-rpg .gathering-skill progress::-webkit-progress-bar { background: #39323e; }
+.ef-rpg .gathering-skill progress::-webkit-progress-value { background: var(--skill-color); }
+.ef-rpg .gathering-skill progress::-moz-progress-bar { background: var(--skill-color); }
+.ef-rpg .gathering-skill-progress { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px; font-size: 9px; color: #c8c0ca; font-variant-numeric: tabular-nums; }
+.ef-rpg .gathering-skill > small { display: block; margin-top: 8px; color: #bcb7aa; font-size: 9px; line-height: 1.5; }
+.ef-rpg .gathering-spots-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 19px; }
+.ef-rpg .gathering-spots-heading h3 { font: 400 16px Georgia, serif; margin: 0; }
+.ef-rpg .gathering-spots-heading > span { color: #c6b18b; font-size: 9px; }
+.ef-rpg .gathering-route-hint { margin: 7px 0 12px; color: #b9b2be; font-size: 10px; line-height: 1.6; }
+.ef-rpg .gathering-spots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.ef-rpg .gathering-spot { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px; border: 1px solid #3a3340; border-radius: 7px; background: #17151c; }
+.ef-rpg .gathering-spot.is-near { border-color: #837653; background: #28291e70; }
+.ef-rpg .gathering-node-icon { display: grid; place-items: center; color: var(--skill-color); width: 30px; height: 32px; flex: 0 0 30px; border-radius: 5px; background: #ffffff07; }
+.ef-rpg .gathering-node-copy { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.ef-rpg .gathering-node-copy strong { display: block; font-size: 11px; font-weight: 550; }
+.ef-rpg .gathering-node-copy > span { display: block; font-size: 10px; margin-top: 4px; color: #c5bda9; }
+.ef-rpg .gathering-node-copy small { display: block; font-size: 9px; color: #b4acba; margin-top: 4px; }
+.ef-rpg .gathering-action { border: 1px solid #827155; background: #3a3325; color: #eee0bb; border-radius: 5px; min-height: 44px; padding: 8px 11px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 10px; flex-shrink: 0; }
+.ef-rpg .gathering-action:enabled:hover { background: #51452e; }
+.ef-rpg .gathering-feedback { font-size: 10px; line-height: 1.6; color: #e2c9a0; }
+.ef-rpg .gathering-feedback:not(:empty) { padding: 10px 0 0; }
+.ef-rpg .gathering-pack { margin-top: 14px; border-top: 1px solid #3a3340; padding-top: 4px; }
+.ef-rpg .gathering-pack summary { cursor: pointer; min-height: 44px; padding: 13px 0; font-size: 11px; color: #ddd1ba; }
+.ef-rpg .gathering-pack summary > span { font-size: 9px; margin-left: 6px; color: #b9b2be; }
+.ef-rpg .gathering-pack ul { list-style: none; padding: 0; margin: 0 0 9px; }
+.ef-rpg .gathering-pack li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 6px 0; font-size: 10px; color: #cfc7d2; }
+.ef-rpg .gathering-pack li strong { font-variant-numeric: tabular-nums; font-weight: 500; color: #e6d5b0; }
+.ef-rpg .gathering-pack > small, .ef-rpg .gathering-pack > p { font-size: 9px; color: #b9b2be; line-height: 1.6; }
+.ef-rpg .gathering-footnote { color: #afa8b3; font-size: 9px; line-height: 1.7; margin: 7px 0 0; }
+.ef-rpg .canvas-container canvas { image-rendering: auto; }
+@media (max-width: 600px) {
+  .ef-rpg .gathering-card { padding: 14px; }
+  .ef-rpg .gathering-skills { grid-template-columns: 1fr; gap: 7px; }
+  .ef-rpg .gathering-skill { padding: 11px 12px; }
+  .ef-rpg .gathering-skill-title { font-size: 12px; }
+  .ef-rpg .gathering-skill > small { margin-top: 6px; }
+  .ef-rpg .gathering-spots-heading { flex-wrap: wrap; gap: 5px; }
+  .ef-rpg .gathering-spot { gap: 7px; padding: 9px 7px; flex-wrap: wrap; }
+  .ef-rpg .gathering-node-icon { flex-basis: 24px; width: 24px; }
+  .ef-rpg .gathering-node-copy { flex-basis: calc(100% - 40px); }
+  .ef-rpg .gathering-action { margin-left: 31px; flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ef-rpg .gathering-card *, .ef-rpg .gathering-card *::before, .ef-rpg .gathering-card *::after { transition: none !important; animation: none !important; }
+}
+.ef-rpg .encounter-canvas { display: block; width: 100%; height: auto; border: 1px solid #4b414e; border-radius: 7px; background: #131923; margin: 12px 0; image-rendering: auto; }
+
+.ef-rpg .gathering-pack li.supply-row { align-items: center; gap: 8px; padding: 8px 0; }
+.ef-rpg .supply-row > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ef-rpg .supply-row > span small { display: block; color: #b9b2be; font-size: 9px; line-height: 1.5; margin-top: 4px; }
+.ef-rpg .supply-use { border: 1px solid #696f50; background: #2a3326; color: #d9e3bd; border-radius: 5px; padding: 8px; min-height: 44px; min-width: 86px; font-size: 10px; }
+.ef-rpg .supply-use:enabled:hover { background: #3a4530; }

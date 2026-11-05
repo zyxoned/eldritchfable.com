@@ -1,5 +1,9 @@
 # Eldritch Fable project state
 
+## Expedition and gathering candidate — November 5, 2026
+
+An isolated candidate based on verified main `3fe124541bf90a5fb83308b72cc57c8a6348a407` adds server-owned expeditions, private runtime content integration, persistent nonredeemable gathering skills and supplies, and bounded rendering polish. Schema 8 preserves legacy data; focused concurrency, migration, privacy, progression and HTTP tests pass. Final validation passed 216 backend/unit tests, production build, six repeated regional travel scenarios, and 59 desktop/mobile browser tests with one intentional skip. Final source hashes matched isolated staging. Production-copy rehearsal and separate private-content activation remain required before release. No publication, production migration or deployment occurred. Existing wallets and reward rates remain unchanged. See EXPEDITION_REVIEW.md for scope, deliberate content limits and validation gates.
+
 ## Multi-region candidate in preparation — November 5, 2026
 
 An isolated candidate based on freshly verified main 5e290ff96fe489b7af64ad61ad88ae08a7338192 extends the existing multiplayer game with three linked regions and a small original character-development system. It preserves the merged storefront and first Adventure polish. Schema 7 uses additive state with old Glade progress and economy retained; 136 backend/unit tests, production build, populated schema-6 migration preservation, four repeated regional journeys and the full browser suite (53 passed, one intentional skip) passed. Independent backend review and responsive visual review found no remaining blockers. The owner subsequently authorized verification and rollout; source publication/CI and privileged production activation remain separately tracked. No production change was made by this candidate preparation. See WORLD_EXPANSION_REVIEW.md for exact boundaries and release gates.

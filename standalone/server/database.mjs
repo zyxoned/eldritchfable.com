@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { REGIONS, DEFAULT_REGION_ID } from '../shared/world-catalog.mjs';
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 export const digest = value => createHash('sha256').update(value).digest('hex');
 export function transaction(db, action) {
   db.exec('BEGIN IMMEDIATE');
@@ -80,6 +80,10 @@ export function migrateDatabase(db) {
       }
     }
     db.prepare('INSERT INTO schema_migrations(version) VALUES(7)').run();
+  });
+  if (current < 8) transaction(db, () => {
+    db.exec(readFileSync(new URL('./migrations/008-authored-progression.sql', import.meta.url), 'utf8'));
+    db.prepare('INSERT INTO schema_migrations(version) VALUES(8)').run();
   });
   return SCHEMA_VERSION;
 }

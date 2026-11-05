@@ -35,6 +35,8 @@ test('customer can register, verify, sign in, change and reset password, and sig
   await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
   const verification = mailToken(email, 'verify_email', 'verification');
   await page.goto('/verify-email?token=' + verification);
+  await page.getByLabel('New password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm new password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Verify email', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Email verified' })).toBeVisible();
   await expect(page).toHaveURL(/\/verify-email$/);
@@ -91,6 +93,8 @@ test('expired verification offers a working resend form; missing reset links rem
   db.prepare("UPDATE account_tokens SET expires_at='2000-01-01T00:00:00.000Z' WHERE user_id=(SELECT id FROM account_users WHERE email=?)").run(email);
   db.prepare('UPDATE account_mail_requests SET last_requested_at=0 WHERE user_id=(SELECT id FROM account_users WHERE email=?)').run(email); db.close();
   await page.goto('/verify-email?token=' + token);
+  await page.getByLabel('New password', { exact: true }).fill('a-long-enough-passphrase');
+  await page.getByLabel('Confirm new password', { exact: true }).fill('a-long-enough-passphrase');
   await page.getByRole('button', { name: 'Verify email', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('expired');
   await page.getByLabel('Email for verification').fill(email);

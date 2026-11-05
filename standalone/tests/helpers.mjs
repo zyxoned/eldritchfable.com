@@ -26,7 +26,7 @@ export const credentials = { email: 'customer@example.test', password: 'a-very-g
 export async function verifiedAccount(f, details = credentials) {
   await f.request('register', details);
   const token = JSON.parse(f.queued('verify_email', details.email).payload_json).verification;
-  await f.request('verify-email', { token });
+  await f.request('verify-email', { token, password: details.password });
   return details;
 }
 export async function loginCookie(f, details = credentials) {

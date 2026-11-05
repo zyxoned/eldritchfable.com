@@ -45,16 +45,21 @@ export function AccountRecovery({ mode = 'request' }) {
 export function EmailVerification() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [complete, setComplete] = useState(false);
   const token = params.get('token') || '';
-  async function verify() {
+  async function verify(event) {
+    event.preventDefault();
     if (busy) return;
+    if (password !== confirmation) { setError('Your passwords do not match.'); return; }
     setBusy(true); setError('');
     try {
-      await authRequest('verify-email', { token });
+      await authRequest('verify-email', { token, password });
+      setPassword(''); setConfirmation('');
       setMessage('Your email is verified. You can now sign in.');
       setComplete(true);
       navigate('/verify-email', { replace: true });
@@ -62,8 +67,12 @@ export function EmailVerification() {
     finally { setBusy(false); }
   }
   return <AuthShell title={complete ? 'Email verified' : 'Verify your email'}>
-    {!complete && <><p>Confirm your address to activate your account.</p>
-      {token ? <button type="button" disabled={busy} onClick={verify}>{busy ? 'Verifying…' : 'Verify email'}</button> : <p role="alert">This verification link is missing. Request a new one below.</p>}</>}
+    {!complete && <><p>Choose your password to confirm your address and activate your account. This replaces any password entered before email verification.</p>
+      {token ? <form onSubmit={verify}>
+        <label>New password<input required type="password" minLength={12} maxLength={256} autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} /></label>
+        <label>Confirm new password<input required type="password" minLength={12} maxLength={256} autoComplete="new-password" value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label>
+        <button type="submit" disabled={busy}>{busy ? 'Verifying…' : 'Verify email'}</button>
+      </form> : <p role="alert">This verification link is missing. Request a new one below.</p>}</>}
     {message && <p role="status">{message}</p>}{error && <p role="alert">{error}</p>}
     {(!token || error) && !complete && <ResendVerification />}
     <p><Link to="/login">Sign in</Link></p>

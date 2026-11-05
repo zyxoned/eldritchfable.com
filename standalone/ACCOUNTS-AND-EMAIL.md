@@ -31,7 +31,7 @@
 
 ## Implemented account behavior
 
-- Registration and verification-mail creation commit together. Repeating registration does not change an existing password and returns the same public response.
+- Registration and verification-mail creation commit together. Repeating registration does not change an existing password and returns the same public response. Email verification requires the mailbox owner to choose a password and atomically replaces any password supplied before verification; it never activates an untrusted preregistration password. Existing verification links remain usable with the updated form, and already verified accounts are unchanged.
 - Verification links last 24 hours; reset links last 30 minutes. Replays, expired tokens, disabled accounts, and revoked sessions are rejected.
 - `/api/auth/resend-verification` and `/api/auth/request-password-reset` return generic HTTP 202 responses. Each account/purpose has a one-minute cooldown. A pending valid message is reused rather than replaced by another queued copy.
 - `/api/auth/change-password` requires the current password, invalidates outstanding password reset links, and signs out every session. Resetting a password also signs out every session.
@@ -48,4 +48,4 @@ The worker defaults to dry run. SMTP sending requires `ELDRITCH_SEND_EMAIL=YES`.
 
 ## Public account APIs
 
-GET `/api/auth/me` returns `{ user: null }` or public account fields. GET `/api/admin/status` requires an administrator session. POST JSON routes are `register`, `verify-email`, `resend-verification`, `login`, `logout`, `request-password-reset`, `reset-password`, and `change-password` under `/api/auth/`. Change-password takes `{ currentPassword, password }`; verification takes `{ token }`; reset takes `{ token, password }`. Browser state-changing requests require the exact configured Origin. Credentials and tokens are never returned by account lookup.
+GET `/api/auth/me` returns `{ user: null }` or public account fields. GET `/api/admin/status` requires an administrator session. POST JSON routes are `register`, `verify-email`, `resend-verification`, `login`, `logout`, `request-password-reset`, `reset-password`, and `change-password` under `/api/auth/`. Change-password takes `{ currentPassword, password }`; verification takes `{ token, password }`; reset takes `{ token, password }`. Browser state-changing requests require the exact configured Origin. Credentials and tokens are never returned by account lookup.

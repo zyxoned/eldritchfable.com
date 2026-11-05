@@ -32,6 +32,8 @@ test('a verified adventurer earns private XP, exchanges it, and keeps progress a
     token = JSON.parse(mail.payload_json).verification;
   } finally { db.close(); }
   await page.goto('/verify-email?token=' + token);
+  await page.getByLabel('New password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm new password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Verify email', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Email verified' })).toBeVisible();
   await page.goto('/login?next=%2Fplay');

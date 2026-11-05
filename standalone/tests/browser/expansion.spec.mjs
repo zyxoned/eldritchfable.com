@@ -20,7 +20,7 @@ async function createVerifiedAccount(page, testInfo, suffix) {
     userId = db.prepare('SELECT id FROM account_users WHERE email=?').get(email).id;
   } finally { db.close(); }
   const verified = await page.request.post('/api/auth/verify-email', {
-    headers: { Origin: ORIGIN }, data: { token },
+    headers: { Origin: ORIGIN }, data: { token, password: PASSWORD },
   });
   expect(verified.status()).toBe(200);
   return { email, userId };

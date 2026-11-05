@@ -82,12 +82,21 @@ export async function authRoute(db, req, res, path, options = {}) {
   }
   if (action === 'verify-email') {
     if (!validToken(input.token)) return send(400, { error: 'This verification link is invalid or expired. Request a new link.', code: 'INVALID_VERIFICATION' });
+    if (!validPassword(input.password)) return send(400, { error: 'Choose a password between 12 and 256 characters to activate your account.' });
+    if (!activeToken(db, input.token, 'verify_email', now)) return send(400, { error: 'This verification link is invalid or expired. Request a new link.', code: 'INVALID_VERIFICATION' });
+    // Email possession must establish the password, not activate a password
+    // chosen by an unauthenticated person who preregistered this address.
+    const stored = await passwordHash(input.password);
     const verified = transaction(db, () => {
-      const record = activeToken(db, input.token, 'verify_email', now);
+      const verifiedAt = options.now ?? Date.now();
+      const record = activeToken(db, input.token, 'verify_email', verifiedAt);
       if (!record) return false;
-      db.prepare('UPDATE account_users SET email_verified_at=? WHERE id=?').run(new Date(now).toISOString(), record.user_id);
-      db.prepare('UPDATE account_tokens SET used_at=? WHERE token_hash=?').run(new Date(now).toISOString(), digest(input.token));
+      const changed = db.prepare('UPDATE account_users SET email_verified_at=?,password_hash=? WHERE id=? AND email_verified_at IS NULL AND disabled_at IS NULL')
+        .run(new Date(verifiedAt).toISOString(), stored, record.user_id);
+      if (changed.changes !== 1) return false;
+      db.prepare('DELETE FROM account_sessions WHERE user_id=?').run(record.user_id);
       cancelAccountMail(db, record.user_id, 'verify_email', 'already_verified');
+      db.prepare("DELETE FROM account_tokens WHERE user_id=? AND purpose='verify_email'").run(record.user_id);
       return true;
     });
     return send(verified ? 200 : 400, verified ? { ok: true } : { error: 'This verification link is invalid or expired. Request a new link.', code: 'INVALID_VERIFICATION' });

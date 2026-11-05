@@ -1,3 +1,6 @@
+import { REGIONS, DEFAULT_REGION_ID, regionById, regionTile, regionWalkable } from '../../../shared/world-catalog.mjs';
+export { REGIONS, DEFAULT_REGION_ID, regionById };
+export type RegionId = 'glade' | 'amberReach' | 'mistHarbor';
 import { CLASS_CATALOG, PLAYER_CLASS_IDS as PLAYABLE_IDS, ADMIN_CLASS_ID as ADMIN_ID } from '../../../shared/class-catalog.mjs';
 
 export type HeroClass = 'ranger' | 'knight' | 'mage' | 'bard' | 'cleric' | 'wizard' | 'sorcerer' | 'monk' | 'death-knight';
@@ -21,6 +24,7 @@ export const CLASSES = CLASS_CATALOG as Record<HeroClass, ClassDefinition>;
 export type Appearance = { skinTone: string; hairColor: string; hairStyle: string; outfit: string; accent: string; build: string };
 
 export type Player = {
+  regionId?: RegionId;
   appearance?: Appearance;
   id: string;
   name: string;
@@ -65,6 +69,7 @@ export type RealmEffect = {
 };
 
 export type Realm = {
+  regionId?: RegionId;
   partyId: string | null;
   partyMode: 'open' | 'solo' | null;
   maxPlayers: number;
@@ -80,33 +85,16 @@ export type Realm = {
 
 export const WIDTH = 30;
 export const HEIGHT = 22;
-export const SPAWN = { x: 10, y: 13 };
-export const SHRINE = { x: 24, y: 5 };
-
-export const CRYSTALS = [
-  { id: 'moon', x: 7, y: 5 },
-  { id: 'fern', x: 24, y: 15 },
-  { id: 'brook', x: 18, y: 17 },
-];
-
-export const ENEMIES = [
-  { id: 'bramble', x: 17, y: 8 },
-  { id: 'thistle', x: 21, y: 13 },
-  { id: 'briar', x: 13, y: 5 },
-  { id: 'sprig', x: 26, y: 10 },
-];
-
-export function tile(x: number, y: number): 'grass' | 'water' | 'path' | 'bridge' {
-  const river = x >= 3 + Math.floor(y / 7) && x <= 5 + Math.floor(y / 7);
-  if (river && y >= 11 && y <= 13) return 'bridge';
-  if (river) return 'water';
-  if ((y >= 12 && y <= 13 && x < 23) || (x >= 22 && x <= 23 && y > 4 && y < 14)) return 'path';
-  return 'grass';
+// Legacy exports remain useful to the introductory glade and older clients.
+export const SPAWN = regionById(DEFAULT_REGION_ID).spawn;
+export const SHRINE = regionById(DEFAULT_REGION_ID).shrine;
+export const CRYSTALS = regionById(DEFAULT_REGION_ID).crystals;
+export const ENEMIES = regionById(DEFAULT_REGION_ID).enemies;
+export function tile(x: number, y: number, regionId = DEFAULT_REGION_ID): 'grass' | 'water' | 'path' | 'bridge' {
+  return regionTile(regionId, x, y);
 }
-
-export function walkable(x: number, y: number): boolean {
-  return Number.isInteger(x) && Number.isInteger(y) && x >= 1 && y >= 1
-    && x < WIDTH - 1 && y < HEIGHT - 1 && tile(x, y) !== 'water';
+export function walkable(x: number, y: number, regionId = DEFAULT_REGION_ID): boolean {
+  return regionWalkable(regionId, x, y);
 }
 
 export function distance(a: { x: number; y: number }, b: { x: number; y: number }): number {

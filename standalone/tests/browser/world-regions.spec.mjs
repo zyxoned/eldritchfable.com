@@ -1,0 +1,63 @@
+import { test, expect } from '@playwright/test';
+import { randomUUID, randomBytes, createHash, scryptSync } from 'node:crypto';
+import { openDatabase } from '../../server/database.mjs';
+
+test('three regional views, deliberate travel and saved character advice stay usable', async ({ page }, info) => {
+  test.setTimeout(90000);
+  const id = randomUUID(), token = randomBytes(32).toString('hex'), salt = randomBytes(16);
+  const db = openDatabase(process.env.ELDRITCH_BROWSER_DB);
+  try {
+    const hash = 'scrypt$' + salt.toString('hex') + '$' + scryptSync('synthetic-world-passphrase', salt, 64).toString('hex');
+    db.prepare('INSERT INTO account_users(id,email,password_hash,role,email_verified_at) VALUES(?,?,?,?,?)').run(id, 'world-' + id + '@example.test', hash, 'customer', new Date().toISOString());
+    db.prepare('INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(createHash('sha256').update(token).digest('hex'), id, new Date(Date.now()+3600000).toISOString());
+  } finally { db.close(); }
+  await page.context().addCookies([{ name:'ef_session', value:token, url:'http://127.0.0.1:4317', httpOnly:true, sameSite:'Lax' }]);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/play');
+  await page.getByRole('button', { name:'Skip intro', exact:true }).click();
+  await page.getByLabel('Adventurer name', { exact:true }).fill('Coast' + id.slice(0, 8));
+  await page.getByLabel('Solo adventure', { exact:true }).check();
+  await page.getByRole('button', { name:'Enter the glade', exact:true }).click();
+  const path = page.getByRole('region', { name:'Character path', exact:true });
+  await expect(path).toBeVisible();
+  await expect(page.locator('.world-card + .controls-card')).toBeVisible();
+  await path.getByText('Lessons & battle preferences', { exact:true }).click();
+  await expect(path.getByLabel('Battle stance').locator('option[value="guarded"]')).toBeDisabled();
+  await path.getByLabel('Tactical advice', { exact:true }).selectOption('recovery-first');
+  await path.getByRole('button', { name:'Save battle preferences' }).click();
+  await expect(path.getByRole('button', { name:'Save battle preferences' })).toBeDisabled();
+  await page.reload();
+  await expect(path).toBeVisible();
+  await path.getByText('Lessons & battle preferences', { exact:true }).click();
+  await expect(path.getByLabel('Tactical advice', { exact:true })).toHaveValue('recovery-first');
+  const routes = page.getByRole('region', { name:'World routes', exact:true });
+  await expect(routes.locator('[aria-current="location"]')).toContainText('Glade');
+  await page.locator('.world-card').screenshot({ path:info.outputPath('region-glade.png') });
+  await routes.getByRole('button', { name:'Walk to crossing', exact:true }).click();
+  await expect(routes.getByRole('button', { name:'Travel', exact:true })).toBeVisible({ timeout:20000 });
+  await page.waitForTimeout(200);
+  await routes.getByRole('button', { name:'Travel', exact:true }).click();
+  await expect(page.locator('.world-heading h2')).toHaveText('Amber Reach');
+  await expect(routes.locator('[aria-current="location"]')).toContainText('Amber Reach');
+  await expect(page.locator('.party-region')).toContainText('Amber Reach');
+  await page.getByRole('button', { name:/Gather moon crystals/ }).click();
+  await expect(page.locator('.game-notice')).toContainText('Glade');
+  await page.locator('.world-card').screenshot({ path:info.outputPath('region-amber.png') });
+  const coastal = routes.locator('.region-exit').filter({ hasText:'Steps to Mist Harbor' });
+  await coastal.getByRole('button', { name:'Walk to crossing', exact:true }).click();
+  await expect(coastal.getByRole('button', { name:'Travel', exact:true })).toBeVisible({ timeout:25000 });
+  await page.waitForTimeout(200);
+  await coastal.getByRole('button', { name:'Travel', exact:true }).click();
+  await expect(page.locator('.world-heading h2')).toHaveText('Mist Harbor');
+  await page.locator('.world-card').screenshot({ path:info.outputPath('region-harbor.png') });
+  await page.reload();
+  await expect(page.locator('.world-heading h2')).toHaveText('Mist Harbor');
+  await expect(routes.locator('[aria-current="location"]')).toContainText('Mist Harbor');
+  // Journey does not silently continue after the region changes or a reload.
+  const position = await page.locator('.map-caption').innerText();
+  await page.waitForTimeout(500);
+  expect(await page.locator('.map-caption').innerText()).toBe(position);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+});

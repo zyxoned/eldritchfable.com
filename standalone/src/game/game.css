@@ -544,3 +544,52 @@ body:has(.ef-rpg) { margin: 0; background: #0d0b13; }
   .ef-rpg .controls-card .action-buttons button { gap: 5px; }
 }
 .ef-rpg .level-growth-note { margin: 9px 0 0; color: #b9b39f; font-size: 10px; line-height: 1.6; }
+
+/* Original atlas and character paths, scoped to the adventure. */
+.ef-rpg .journey-panel { margin:14px 0; padding:18px; border:1px solid #5f55454d; border-radius:12px; background:linear-gradient(125deg,#29252a,#1c1c24); }
+.ef-rpg .journey-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.ef-rpg .journey-heading > span { display:flex; align-items:center; gap:8px; color:#d8c49a; font-size:10px; letter-spacing:.14em; }
+.ef-rpg .journey-heading small { font-size:10px; color:#b9b0aa; }
+.ef-rpg .region-route { list-style:none; margin:18px 0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.ef-rpg .region-route li { display:flex; align-items:center; gap:9px; padding:10px 8px; border-top:1px solid #675a484d; color:#a99e97; min-width:0; }
+.ef-rpg .region-route li.current { border-color:#d5b97b; color:#f0dfb6; background:#c8aa6710; }
+.ef-rpg .route-number { font:22px Georgia,serif; opacity:.7; }
+.ef-rpg .region-route strong { font:15px Georgia,serif; display:block; }
+.ef-rpg .region-route small { display:block; font-size:9px; line-height:1.6; margin-top:4px; }
+.ef-rpg .region-exits { display:flex; flex-wrap:wrap; gap:12px; }
+.ef-rpg .region-exit { flex:1 1 210px; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px; background:#12131b80; border:1px solid #5e574333; border-radius:8px; }
+.ef-rpg .region-exit strong { display:block; font-size:11px; }
+.ef-rpg .region-exit small { display:block; font-size:10px; color:#b1a99e; margin-top:5px; }
+.ef-rpg .region-exit button { display:flex; align-items:center; justify-content:center; gap:6px; font-size:10px; min-height:42px; padding:8px 12px; }
+.ef-rpg .journey-panel > p { color:#aaa297; font-size:10px; margin:12px 0 0; line-height:1.7; }
+.ef-rpg .region-amberReach .world-heading { background:linear-gradient(110deg,#393029,#25212a); }
+.ef-rpg .region-mistHarbor .world-heading { background:linear-gradient(110deg,#23313b,#22232c); }
+.ef-rpg .map-caption > span:first-child { max-width:80%; line-height:1.6; }
+.ef-rpg .party-slot .party-region { color:#c7b280; font-size:9px; margin-top:3px; }
+.ef-rpg .character-path > p { color:#afa59b; font-size:11px; line-height:1.7; }
+.ef-rpg .path-current { display:flex; gap:8px; align-items:center; padding:10px 0; color:#dfc58e; font-size:12px; }
+.ef-rpg .path-current span { margin-left:auto; color:#a69b93; font-size:9px; }
+.ef-rpg .character-path .tactical-advice { border-left:2px solid #9b8659; padding:8px 10px; background:#c4ab7310; color:#d5c7b1; }
+.ef-rpg .character-path summary { cursor:pointer; padding:12px 0; font-size:11px; color:#ddc695; }
+.ef-rpg .path-lessons { list-style:none; padding:0; margin:8px 0 20px; }
+.ef-rpg .path-lessons li { display:flex; gap:10px; padding:11px 0; border-bottom:1px solid #695c4329; }
+.ef-rpg .lesson-mark { display:grid; place-items:center; flex-shrink:0; width:22px; height:22px; border:1px solid #958052; border-radius:50%; font-size:11px; color:#dfc58e; }
+.ef-rpg .path-lessons strong { font:14px Georgia,serif; display:block; }
+.ef-rpg .path-lessons small { display:block; color:#baa67d; font-size:9px; margin:5px 0; }
+.ef-rpg .character-path details p { color:#b5aaa0; font-size:10px; line-height:1.7; }
+.ef-rpg .path-lessons .locked { opacity:.6; }
+.ef-rpg .character-path label { display:block; font-size:11px; margin:14px 0 8px; }
+.ef-rpg .character-path select { width:100%; color:#e7dcc8; background:#201e27; border:1px solid #6f6349; border-radius:6px; padding:10px; font:inherit; font-size:12px; min-height:44px; }
+.ef-rpg .character-path button { width:100%; min-height:44px; font-size:11px; margin-top:10px; }
+.ef-rpg .path-note { display:block; color:#aaa093; font-size:9px; line-height:1.7; margin-top:12px; }
+@media(max-width:600px) {
+  .ef-rpg .journey-panel { padding:13px; }
+  .ef-rpg .journey-heading { align-items:flex-start; }
+  .ef-rpg .journey-heading small { text-align:right; max-width:90px; }
+  .ef-rpg .region-route { gap:5px; }
+  .ef-rpg .region-route li { flex-direction:column; align-items:flex-start; gap:6px; padding:8px 4px; }
+  .ef-rpg .region-route strong { font-size:13px; }
+  .ef-rpg .region-route small { font-size:8px; }
+}
+.ef-rpg .character-path { padding:20px; }
+.ef-rpg .character-path h2 { font:20px Georgia,serif; margin:16px 0 8px; }

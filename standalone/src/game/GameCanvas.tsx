@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { drawHero } from '../../shared/hero-renderer.mjs';
 import { LANDMARKS } from '../../shared/exploration-catalog.mjs';
 import {
-  WIDTH, HEIGHT, SPAWN, SHRINE, CRYSTALS, CLASSES, tile, type Realm, type Player, type RealmEffect,
+  WIDTH, HEIGHT, DEFAULT_REGION_ID, regionById, CLASSES, tile as worldTile, type Realm, type Player, type RealmEffect,
 } from './shared/game';
 
 const S = 32;
@@ -48,21 +48,26 @@ function tree(c: CanvasRenderingContext2D, x: number, y: number, seed: number, s
   if (seed > .78) { ellipse(c, -16, -20, 2, 1.2, '#d9b67b'); ellipse(c, 17, -36, 1.5, 1, '#b4ccc0'); }
   c.restore();
 }
-function terrain() {
+function terrain(regionId: string) {
+  const region = regionById(regionId);
+  const { spawn: SPAWN, shrine: SHRINE } = region;
+  const tile = (x: number, y: number) => worldTile(x, y, regionId);
+  const highlands = region.theme === 'highlands', coast = region.theme === 'coast';
+  const colors = highlands ? ['#695638', '#877448', '#4d493b'] : coast ? ['#304a57', '#53716e', '#243b50'] : ['#162f36', '#263e36', '#1a2b31'];
   const layer = document.createElement('canvas'); layer.width = W; layer.height = H;
   const c = layer.getContext('2d')!;
   const ground = c.createLinearGradient(0, 0, W, H);
-  ground.addColorStop(0, '#162f36'); ground.addColorStop(.6, '#263e36'); ground.addColorStop(1, '#1a2b31');
+  ground.addColorStop(0, colors[0]); ground.addColorStop(.6, colors[1]); ground.addColorStop(1, colors[2]);
   c.fillStyle = ground; c.fillRect(0, 0, W, H);
   for (let y = 0; y < HEIGHT; y++) for (let x = 0; x < WIDTH; x++) {
     const kind = tile(x, y); const n = random(x, y);
     const px = x * S; const py = y * S;
     if (kind === 'water') {
-      c.fillStyle = '#102a39'; c.fillRect(px, py, S, S);
+      c.fillStyle = coast ? '#193e57' : highlands ? '#405453' : '#102a39'; c.fillRect(px, py, S, S);
       const bank = tile(x - 1, y) !== 'water' || tile(x + 1, y) !== 'water';
       if (bank) { c.fillStyle = '#47727550'; c.fillRect(px, py, S, S); }
     } else if (kind === 'path') {
-      c.fillStyle = '#716550'; c.fillRect(px, py, S, S);
+      c.fillStyle = highlands ? '#ad9060' : coast ? '#818c88' : '#716550'; c.fillRect(px, py, S, S);
       c.fillStyle = '#a4936a20'; c.fillRect(px, py + 8, S, 17);
       for (let i = 0; i < 5; i++) {
         ellipse(c, px + random(x,y,i+1)*S, py+random(x,y,i+9)*S, 1+random(x,y,i+18)*2, .7, '#b4a27a50');
@@ -81,8 +86,8 @@ function terrain() {
     } else {
       for (let i = 0; i < 7; i++) {
         const gx=px+random(x,y,i+1)*S,gy=py+random(x,y,i+10)*S;
-        ellipse(c,gx,gy,2+random(x,y,i+20)*4,1.3,n>.5?'#57735835':'#071f2840');
-        if (i<3) stroke(c,'#71907845',.7,[[gx-1,gy+2],[gx,gy-2],[gx+2,gy]]);
+        ellipse(c,gx,gy,2+random(x,y,i+20)*4,1.3,highlands ? '#d8bc6b50' : coast ? '#82b3a135' : n>.5?'#57735835':'#071f2840');
+        if (i<3) stroke(c,highlands?'#e6cd8f70':coast?'#a5c9bf60':'#71907845',.7,[[gx-1,gy+2],[gx,gy-2],[gx+2,gy]]);
       }
       if (n>.91) {
         const gx=px+17, gy=py+20;
@@ -128,17 +133,51 @@ function terrain() {
   c.strokeStyle='#8b9491';c.lineWidth=13;c.beginPath();c.arc(sx,sy-43,27,Math.PI,0);c.stroke();
   c.strokeStyle='#beab7c';c.lineWidth=1.5;c.beginPath();c.arc(sx,sy-43,29,Math.PI+.12,-.12);c.stroke();
   c.fillStyle='#c4a66f';c.beginPath();c.moveTo(sx,sy-79);c.lineTo(sx+7,sy-67);c.lineTo(sx,sy-59);c.lineTo(sx-7,sy-67);c.closePath();c.fill();
+  if (highlands) {
+    // Wind-worn watchstones and terrace lines distinguish the upland silhouette.
+    for (const [tx, ty, size] of [[3,4,1.2],[8,3,.9],[19,3,1.1],[26,18,1]]) {
+      const x=tx*S+16,y=ty*S+16;
+      ellipse(c,x+9,y+7,29*size,9,'#382f3080');
+      c.fillStyle='#746c58';c.beginPath();c.moveTo(x-16,y);c.lineTo(x-12,y-55*size);c.lineTo(x+9,y-63*size);c.lineTo(x+20,y);c.closePath();c.fill();
+      stroke(c,'#d5c391',2,[[x-12,y-55*size],[x+9,y-63*size],[x+13,y-30]]);
+      stroke(c,'#a9986c',1,[[x-5,y-40],[x+5,y-32],[x-4,y-22]]);
+      for(let j=0;j<3;j++)stroke(c,'#c5aa6b45',1,[[x-40,y+20+j*8],[x-12,y+14+j*8],[x+31,y+18+j*8]]);
+    }
+  }
+  if (coast) {
+    // Harbor beacons, mooring ropes and a quiet skiff at the tidal edge.
+    for(const tx of [9,12,18,22]) {
+      const x=tx*S+16,y=16*S+20;
+      c.fillStyle='#42545e';c.fillRect(x-4,y-32,8,39);
+      stroke(c,'#c0b797',1.5,[[x,y-14],[x+32,y-5],[x+64,y-14]]);
+      glow(c,x,y-35,27,'#ffd98a32');c.fillStyle='#e3c986';c.fillRect(x-6,y-43,12,14);
+      stroke(c,'#344350',2,[[x-8,y-44],[x+8,y-44],[x,y-52],[x-8,y-44]]);
+    }
+    const x=22*S,y=19*S;
+    ellipse(c,x,y+7,43,12,'#102b3970');c.fillStyle='#7a6555';c.beginPath();c.moveTo(x-43,y-8);c.quadraticCurveTo(x,y+30,x+43,y-8);c.closePath();c.fill();
+    stroke(c,'#d7b88a',2,[[x-42,y-8],[x+42,y-8]]);stroke(c,'#a9b7b7',2,[[x,y],[x,y-58]]);
+    c.fillStyle='#b6c6bf';c.beginPath();c.moveTo(x-2,y-55);c.lineTo(x-2,y-12);c.lineTo(x-30,y-13);c.closePath();c.fill();
+  }
+  for (const exit of region.exits) {
+    const x=exit.x*S+16,y=exit.y*S+16;
+    ellipse(c,x,y+7,22,11,'#d5b87b25');
+    stroke(c,'#aa8c60',4,[[x,y+8],[x,y-35]]);
+    c.fillStyle='#bd9c69';c.beginPath();c.moveTo(x-16,y-32);c.lineTo(x+11,y-32);c.lineTo(x+21,y-24);c.lineTo(x+11,y-17);c.lineTo(x-16,y-17);c.closePath();c.fill();
+    stroke(c,'#4b4236',1.5,[[x-7,y-24],[x+10,y-24],[x+5,y-28],[x+10,y-24],[x+5,y-20]]);
+  }
   // Gentle moonlight gives the same terrain depth without changing walkability.
   const light=c.createRadialGradient(W*.74,H*.18,10,W*.7,H*.2,W*.9);light.addColorStop(0,'#b5d6ce18');light.addColorStop(1,'#0209133d');
   c.fillStyle=light;c.fillRect(0,0,W,H);
   return layer;
 }
-function forest() {
+function forest(regionId: string) {
+  const region = regionById(regionId);
+  const tile = (x: number, y: number) => worldTile(x, y, regionId);
   const layer=document.createElement('canvas');layer.width=W;layer.height=H;const c=layer.getContext('2d')!;
   for(let y=0;y<HEIGHT;y++) for(let x=0;x<WIDTH;x++) {
     const border=y<=1||y>=HEIGHT-2||x===0||x===WIDTH-1;
     const grove=(x>=10&&x<=18&&y>=18)||(x>=14&&x<=18&&y>=2&&y<=3)||(x>=27&&y>=15&&y<=18);
-    if((border||grove)&&tile(x,y)==='grass'&&random(x,y,4)>.22) tree(c,x*S+15,y*S+24,random(x,y),.9+random(x,y,9)*.25);
+    if(region.theme === 'forest'&&(border||grove)&&tile(x,y)==='grass'&&random(x,y,4)>.22) tree(c,x*S+15,y*S+24,random(x,y),.9+random(x,y,9)*.25);
   }
   return layer;
 }
@@ -163,16 +202,18 @@ function hero(c: CanvasRenderingContext2D, p: Player, x: number, y: number, time
   });
   c.restore();
 }
-function thornling(c: CanvasRenderingContext2D, x: number, y: number, time: number, hp: number) {
+function thornling(c: CanvasRenderingContext2D, x: number, y: number, time: number, hp: number, theme = 'forest') {
   c.save();c.translate(x,y+Math.sin(time/650+x)*1.5);
   ellipse(c,2,10,15,5,'#04170d80');
-  const g=c.createLinearGradient(-12,-19,13,11);g.addColorStop(0,'#8d9f68');g.addColorStop(1,'#294938');c.fillStyle=g;
+  const g=c.createLinearGradient(-12,-19,13,11);g.addColorStop(0,theme === 'highlands' ? '#d3ad71' : theme === 'coast' ? '#9dcbd3' : '#8d9f68');g.addColorStop(1,theme === 'highlands' ? '#695445' : theme === 'coast' ? '#36687c' : '#294938');c.fillStyle=g;
   c.beginPath();c.moveTo(-13,6);c.bezierCurveTo(-18,-10,-6,-25,2,-22);c.bezierCurveTo(18,-21,21,2,11,11);c.quadraticCurveTo(0,15,-13,6);c.fill();
   for(const side of [-1,1]) {
     stroke(c,'#496247',3,[[side*8,-15],[side*14,-25],[side*13,-32]]);
     stroke(c,'#afaa7c',1,[[side*12,-26],[side*19,-28]]);
     stroke(c,'#506e46',4,[[side*11,0],[side*19,5]]);
   }
+  if(theme==='highlands') stroke(c,'#ecd3a0',3,[[-12,-17],[-7,-30],[0,-21],[8,-33],[13,-15]]);
+  if(theme==='coast') {glow(c,0,-5,25,'#a1e8ed25');stroke(c,'#a2d5d0',2,[[-10,7],[-20,15],[-13,20]]);stroke(c,'#a2d5d0',2,[[9,7],[20,13],[14,19]]);}
   ellipse(c,-5,-5,3,3,'#dfe4a2');ellipse(c,7,-5,3,3,'#dfe4a2');ellipse(c,-4,-5,1,2,'#293b32');ellipse(c,6,-5,1,2,'#293b32');
   stroke(c,'#254634',1.4,[[-2,3],[2,5],[5,3]]);
   if(hp<42&&hp>0) {c.fillStyle='#10242b';c.fillRect(-16,-39,32,4);c.fillStyle='#dfb677';c.fillRect(-16,-39,32*hp/42,4);}
@@ -261,7 +302,7 @@ export default function GameCanvas({ realm, playerId, onTile }: {
     const canvas=ref.current; if(!canvas) return;const c=canvas.getContext('2d');if(!c)return;
     const pixelRatio=Math.min(window.innerWidth<760?1.25:2,window.devicePixelRatio||1);
     canvas.width=W*pixelRatio;canvas.height=H*pixelRatio;c.setTransform(pixelRatio,0,0,pixelRatio,0,0);
-    const ground=terrain(),canopy=forest();const poses=new Map<string,Pose>();
+    let paintedRegion = ""; let ground: HTMLCanvasElement, canopy: HTMLCanvasElement; const poses=new Map<string,Pose>();
     const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
     let animation=0,lastFrame=0;let visible=document.visibilityState!=='hidden';
     const visibility=()=>{visible=document.visibilityState!=='hidden';};document.addEventListener('visibilitychange',visibility);
@@ -270,6 +311,13 @@ export default function GameCanvas({ realm, playerId, onTile }: {
       if(!visible||stamp-lastFrame<32)return;const delta=Math.min(.08,Math.max(.008,(stamp-lastFrame)/1000));lastFrame=stamp;
       const reduced=motion.matches;const time=reduced?0:stamp;
       const state=latest.current;const world=state.realm as RenderRealm|null;
+      const regionId = world?.regionId || DEFAULT_REGION_ID;
+      const region = regionById(regionId);
+      const { spawn: SPAWN, shrine: SHRINE, crystals: CRYSTALS } = region;
+      const tile = (x: number, y: number) => worldTile(x, y, regionId);
+      if (paintedRegion !== regionId) {
+        ground = terrain(regionId); canopy = forest(regionId); paintedRegion = regionId; poses.clear();
+      }
       const now=(world?.serverTime||Date.now())+(Date.now()-state.receivedAt);
       // Cache terrain and forest once; the live layer stays light enough for phones.
       c.clearRect(0,0,W,H);c.imageSmoothingEnabled=true;c.drawImage(ground,0,0);
@@ -296,7 +344,7 @@ export default function GameCanvas({ realm, playerId, onTile }: {
         ellipse(c,x+16,y-19+Math.sin(time/600)*5,1.5,1.5,'#e0eee6');ellipse(c,x-17,y-6+Math.sin(time/800+2)*4,1,1,'#d8dcb5');
       }
       const explorer = [...(world?.players || []), ...(world?.visitors || [])].find(p => p.id === state.playerId);
-      if (explorer) for (const landmark of LANDMARKS) {
+      if (explorer) for (const landmark of LANDMARKS.filter(item => (item.regionId || DEFAULT_REGION_ID) === regionId)) {
         const nearby = Math.hypot(explorer.x - landmark.x, explorer.y - landmark.y);
         if (nearby > 4) continue;
         const lx = landmark.x * S + 16, ly = landmark.y * S + 16;
@@ -314,8 +362,8 @@ export default function GameCanvas({ realm, playerId, onTile }: {
         c.restore();
       }
       const actors:Array<{y:number;draw:()=>void}>=[];
-      for(const enemy of world?.enemies||[])if(enemy.hp>0)actors.push({y:enemy.y,draw:()=>thornling(c,enemy.x*S+16,enemy.y*S+16,time,enemy.hp)});
-      const players=[...(world?.players||[]),...(world?.visitors||[])];
+      for(const enemy of world?.enemies||[])if(enemy.hp>0)actors.push({y:enemy.y,draw:()=>thornling(c,enemy.x*S+16,enemy.y*S+16,time,enemy.hp,region.theme)});
+      const players=[...(world?.players||[]),...(world?.visitors||[])].filter(p => (p.regionId || DEFAULT_REGION_ID) === regionId);
       for(const p of players){
         const targetX=p.x*S+16,targetY=p.y*S+16;let pos=poses.get(p.id);
         if(!pos||Math.hypot(pos.x-targetX,pos.y-targetY)>S*4){pos={x:targetX,y:targetY,heading:Math.PI/2,phase:0,speed:0,leanX:0,leanY:0};poses.set(p.id,pos);}
@@ -355,12 +403,13 @@ export default function GameCanvas({ realm, playerId, onTile }: {
       const vignette=c.createRadialGradient(W*.5,H*.45,H*.12,W*.5,H*.5,W*.64);vignette.addColorStop(0,'transparent');vignette.addColorStop(.75,'#07101a20');vignette.addColorStop(1,'#050b15a0');c.fillStyle=vignette;c.fillRect(0,0,W,H);
       c.textAlign='center';c.font='10px Georgia, serif';
       const label=(text:string,x:number,y:number)=>{const w=c.measureText(text).width;c.fillStyle='#0c1923cd';c.fillRect(x-w/2-9,y-12,w+18,20);c.fillStyle='#d7c393';c.fillText(text,x,y+2);};
-      label('WAYFARER CAMP',11*S,15*S);label('OLD MOON SHRINE',24*S,3*S);
+      label('WAYFARER CAMP',(SPAWN.x+1)*S,(SPAWN.y+2)*S);label(regionId === 'glade' ? 'OLD MOON SHRINE' : regionId === 'amberReach' ? 'WATCHSTONE SHRINE' : 'TIDEKEEPER SHRINE',SHRINE.x*S,(SHRINE.y-2)*S);
+      for(const exit of region.exits) label('CROSSING',Math.max(60,Math.min(W-60,exit.x*S+16)),exit.y*S+53);
       c.save();c.translate(28*S,3*S);c.strokeStyle='#d6c297';c.lineWidth=1;c.beginPath();c.arc(0,6,19,0,TAU);c.stroke();stroke(c,'#d6c297',1,[[0,-19],[0,25],[-13,6],[13,6]]);c.fillStyle='#eadcba';c.beginPath();c.moveTo(0,-8);c.lineTo(5,12);c.lineTo(0,7);c.lineTo(-5,12);c.closePath();c.fill();c.font='11px Georgia, serif';c.fillText('N',0,-25);c.restore();
     };
     animation=requestAnimationFrame(draw);
     return()=>{cancelAnimationFrame(animation);document.removeEventListener('visibilitychange',visibility);};
   },[]);
-  return <canvas ref={ref} width={W} height={H} aria-label="Whispering Glade illustrated shared world map. Click a location to walk, or use the arrow keys. Moon crystals shine blue, thornlings guard the paths, and the old shrine glows in the northeast."
+  return <canvas ref={ref} width={W} height={H} aria-label={regionById(realm?.regionId).name + " illustrated shared world map. Click a location to walk, or use the arrow keys. Signposts mark crossings to other regions."}
     onClick={event=>{const b=event.currentTarget.getBoundingClientRect();onTile(Math.floor((event.clientX-b.left)/b.width*WIDTH),Math.floor((event.clientY-b.top)/b.height*HEIGHT));}} />;
 }

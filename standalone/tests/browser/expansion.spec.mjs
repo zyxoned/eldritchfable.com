@@ -304,11 +304,11 @@ test('another tab can switch away and return to the earlier party without stale 
     const soloResponse = await join({ mode: 'solo' });
     expect(soloResponse.status()).toBe(200);
     const solo = await soloResponse.json();
-    await expect(page.locator('.party-card > p')).toHaveText('Your own glade, with room for visiting help.');
+    await expect(page.locator('.party-card > p')).toHaveText('Your own journey, with room for visiting help.');
     await expect(draft).not.toBeVisible();
     expect((await leave(solo.realm.partyId)).status()).toBe(200);
     expect((await join({ mode: 'open', partyId: firstParty })).status()).toBe(200);
-    await expect(page.locator('.party-card > p')).toHaveText('Your company shares this glade.');
+    await expect(page.locator('.party-card > p')).toHaveText('Your company can explore different regions together.');
     const moveResponse = page.waitForResponse(response => response.url().endsWith('/api/game/action') && response.request().postDataJSON()?.kind === 'move');
     if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: 'Move east', exact: true }).click();
   else { await page.bringToFront(); await page.keyboard.press('ArrowRight'); }

@@ -1,8 +1,9 @@
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { REGIONS, DEFAULT_REGION_ID } from '../shared/world-catalog.mjs';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 export const digest = value => createHash('sha256').update(value).digest('hex');
 export function transaction(db, action) {
   db.exec('BEGIN IMMEDIATE');
@@ -69,6 +70,16 @@ export function migrateDatabase(db) {
   if (current < 6) transaction(db, () => {
     db.exec(readFileSync(new URL('./migrations/006-admin-testing.sql', import.meta.url), 'utf8'));
     db.prepare('INSERT INTO schema_migrations(version) VALUES(6)').run();
+  });
+  if (current < 7) transaction(db, () => {
+    db.exec(readFileSync(new URL('./migrations/007-world-regions.sql', import.meta.url), 'utf8'));
+    for (const party of db.prepare('SELECT id,enemies_json FROM game_parties').all()) {
+      for (const region of Object.values(REGIONS).filter(region => region.id !== DEFAULT_REGION_ID)) {
+        const enemies = region.enemies.map(enemy => ({ ...enemy, regionId: region.id, hp: 42, respawnAt: 0, spawnId: randomUUID() }));
+        db.prepare('INSERT INTO game_region_worlds(party_id,region_id,enemies_json) VALUES(?,?,?)').run(party.id, region.id, JSON.stringify(enemies));
+      }
+    }
+    db.prepare('INSERT INTO schema_migrations(version) VALUES(7)').run();
   });
   return SCHEMA_VERSION;
 }

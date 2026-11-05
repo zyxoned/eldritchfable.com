@@ -55,7 +55,8 @@ for (const heroClass of PLAYER_CLASS_IDS) {
     assert.equal(effect.originX, enemy.x); assert.equal(effect.originY, enemy.y);
     assert.equal(effect.actorId, joined.playerId);
     assert.equal(effect.skillId, undefined);
-    assert.deepEqual(Object.keys(effect).sort(), ['actorId', 'at', 'attackStyle', 'color', 'id', 'originX', 'originY', 'radius', 'type', 'x', 'y'].sort());
+    assert.equal(effect.regionId, 'glade');
+    assert.deepEqual(Object.keys(effect).sort(), ['actorId', 'at', 'attackStyle', 'color', 'id', 'originX', 'originY', 'radius', 'regionId', 'type', 'x', 'y'].sort());
     assert.equal(attacked.realm.enemies[0].hp, 42 - expected[heroClass][1]);
     assert.equal(attacked.profile.lifetimeXp, 0);
     const replayed = await request('/api/game/action', { kind: 'attack', requestId, ...forged });

@@ -29,7 +29,7 @@ export default function FieldNotes({ player, accountId }: { player: Player; acco
   return <section className="card field-notes" aria-label="Field notes">
     <div className="section-kicker">ALONG THE WAY</div>
     <h2>Your field notes</h2>
-    <p>Look for small lantern-marked places as you wander. There is no required order.</p>
+    <p>Look for small lantern-marked places as you wander. Your notebook travels with you.</p>
     {nearby ? <button type="button" className="field-note-examine" onClick={examine}>
       {ids.includes(nearby.id) ? 'Read again' : 'Examine'} · {nearby.title}
     </button> : <p className="field-note-hint">Approach a landmark to examine it.</p>}

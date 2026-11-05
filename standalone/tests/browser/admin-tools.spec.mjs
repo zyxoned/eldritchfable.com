@@ -1,43 +1,42 @@
 import { test, expect } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes, createHash, scryptSync } from 'node:crypto';
 import { openDatabase } from '../../server/database.mjs';
 
 const ORIGIN = 'http://127.0.0.1:4317';
 const PASSWORD = 'private-tools-browser-passphrase-2026';
 
 async function account(page, testInfo, suffix, admin = false) {
+  // Authentication UI has its own suite. These feature fixtures avoid adding
+  // signup/login attempts to the shared test-server IP's production limiter.
   const email = 'admin-tools-' + suffix + '-' + testInfo.project.name + '@example.test';
-  const registered = await page.request.post('/api/auth/register', {
-    headers: { Origin: ORIGIN }, data: { email, password: PASSWORD },
-  });
-  expect(registered.status()).toBe(202);
+  const id = randomUUID();
+  const salt = randomBytes(16);
+  const passwordHash = 'scrypt$' + salt.toString('hex') + '$' + scryptSync(PASSWORD, salt, 64).toString('hex');
   const db = openDatabase(process.env.ELDRITCH_BROWSER_DB);
-  let token, id;
   try {
-    const mail = db.prepare("SELECT payload_json FROM email_outbox WHERE recipient=? AND template='verify_email' ORDER BY rowid DESC LIMIT 1").get(email);
-    token = JSON.parse(mail.payload_json).verification;
-    id = db.prepare('SELECT id FROM account_users WHERE email=?').get(email).id;
-  } finally { db.close(); }
-  const verified = await page.request.post('/api/auth/verify-email', {
-    headers: { Origin: ORIGIN }, data: { token },
-  });
-  expect(verified.status()).toBe(200);
-  if (admin) {
-    const configured = openDatabase(process.env.ELDRITCH_BROWSER_DB);
-    try {
-      configured.prepare("UPDATE account_users SET role='admin' WHERE id=?").run(id);
-      configured.prepare('INSERT INTO admin_account_settings(user_id,visitor_name,testing_enabled,test_xp,test_copper,updated_at) VALUES(?,?,1,0,0,?)')
+    db.prepare('INSERT INTO account_users(id,email,password_hash,role,email_verified_at) VALUES(?,?,?,?,?)')
+      .run(id, email, passwordHash, admin ? 'admin' : 'customer', new Date().toISOString());
+    if (admin) {
+      db.prepare('INSERT INTO admin_account_settings(user_id,visitor_name,testing_enabled,test_xp,test_copper,updated_at) VALUES(?,?,1,0,0,?)')
         .run(id, 'TestKeeper' + (testInfo.project.name === 'mobile' ? 'M' : 'D'), new Date().toISOString());
-    } finally { configured.close(); }
-  }
+    }
+  } finally { db.close(); }
   return { email, id };
 }
 
 async function signIn(page, user, next = '/account') {
-  await page.goto('/login?next=' + encodeURIComponent(next));
-  await page.getByLabel('Email', { exact: true }).fill(user.email);
-  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const token = randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 60 * 60 * 1000);
+  const db = openDatabase(process.env.ELDRITCH_BROWSER_DB);
+  try {
+    db.prepare('INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)')
+      .run(createHash('sha256').update(token).digest('hex'), user.id, expires.toISOString());
+  } finally { db.close(); }
+  await page.context().addCookies([{
+    name: 'ef_session', value: token, url: ORIGIN,
+    httpOnly: true, sameSite: 'Lax', expires: Math.floor(expires.getTime() / 1000),
+  }]);
+  await page.goto(next);
   await expect(page).toHaveURL(new RegExp(next + '$'));
 }
 

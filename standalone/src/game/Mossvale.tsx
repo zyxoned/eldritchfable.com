@@ -146,6 +146,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   const [chat, setChat] = useState('');
   const [guide, setGuide] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [adminToolsOpen, setAdminToolsOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [socketEpoch, setSocketEpoch] = useState(0);
   const realmRef = useRef<Realm | null>(null);
@@ -176,6 +177,19 @@ export default function Mossvale({ user, onSessionExpired }: {
     setAppearanceOpen(false);
     setLeaving(false);
   }, [realm?.partyId, playerId, me?.id, adminActive]);
+
+  useEffect(() => {
+    const changed = (event: Event) => {
+      const next = Boolean((event as CustomEvent).detail?.open);
+      setAdminToolsOpen(next);
+      if (next) {
+        destination.current = null;
+        setGuide(false); setLeaving(false); setAppearanceOpen(false);
+      }
+    };
+    window.addEventListener('eldritch:admin-panel', changed);
+    return () => window.removeEventListener('eldritch:admin-panel', changed);
+  }, []);
 
   function completeIntro() {
     try { localStorage.setItem('eldritch-intro-v1:' + user.id, 'seen'); }
@@ -212,6 +226,18 @@ export default function Mossvale({ user, onSessionExpired }: {
     setProfile(data.profile);
     setPlayerId(data.profile?.active ? data.profile.playerId : null);
   }
+
+  useEffect(() => {
+    let active = true;
+    const changed = () => {
+      const epoch = transitionEpoch.current;
+      void api.get('/api/game/world').then(result => {
+        if (active && epoch === transitionEpoch.current) applyReply(result.data, true);
+      }).catch(err => { if (active) setError(errorMessage(err)); });
+    };
+    window.addEventListener('eldritch:guardian-identity', changed);
+    return () => { active = false; window.removeEventListener('eldritch:guardian-identity', changed); };
+  }, []);
 
   function envelope(extra: Record<string, unknown> = {}) {
     return { requestId: crypto.randomUUID(), partyId: realmRef.current?.partyId || null, ...extra };
@@ -433,7 +459,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   }, [playerId, connected, partyFeatures]);
 
   async function act(kind: string, extra: Record<string, unknown> = {}) {
-    if (!partyFeatures || !playerRef.current || !connected || busy.current || introOpen || guide || leaving || appearanceOpen) return false;
+    if (!partyFeatures || !playerRef.current || !connected || busy.current || introOpen || guide || leaving || appearanceOpen || adminToolsOpen) return false;
     busy.current = true;
     setActionPending(true);
     if (kind !== 'move') destination.current = null;
@@ -479,7 +505,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   }, []);
 
   function go(x: number, y: number) {
-    if (introOpen || guide || leaving || appearanceOpen) return;
+    if (introOpen || guide || leaving || appearanceOpen || adminToolsOpen) return;
     if (!me) { setNotice('Choose a name and enter the glade to start exploring.'); return; }
     if (!connected) { setError('Reconnect to move through the glade.'); return; }
     if (!walkable(x, y)) { setNotice('Use the wooden bridge to cross the brook.'); return; }
@@ -487,7 +513,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   function move(dx: number, dy: number) {
-    if (introOpen || guide || leaving || appearanceOpen) return;
+    if (introOpen || guide || leaving || appearanceOpen || adminToolsOpen) return;
     const currentRealm = realmRef.current;
     const p = [...(currentRealm?.players || []), ...(currentRealm?.visitors || [])].find(v => v.id === playerRef.current);
     if (p) {
@@ -499,7 +525,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      if (!(target instanceof HTMLElement) || target.closest('input, textarea, select, [contenteditable]') || guide || leaving || appearanceOpen || introOpen || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (!(target instanceof HTMLElement) || target.closest('input, textarea, select, [contenteditable]') || guide || leaving || appearanceOpen || adminToolsOpen || introOpen || event.altKey || event.ctrlKey || event.metaKey) return;
       const directions: Record<string, [number, number]> = {
         ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1],
         ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0],
@@ -520,7 +546,7 @@ export default function Mossvale({ user, onSessionExpired }: {
     };
     window.addEventListener('keydown', keydown);
     return () => window.removeEventListener('keydown', keydown);
-  }, [guide, leaving, appearanceOpen, introOpen, me?.heroClass]);
+  }, [guide, leaving, appearanceOpen, adminToolsOpen, introOpen, me?.heroClass]);
 
   async function leaveRealm() {
     destination.current = null;
@@ -554,7 +580,7 @@ export default function Mossvale({ user, onSessionExpired }: {
     }
   }
 
-  const canAct = partyFeatures && !!me && connected && !introOpen && !guide && !leaving && !appearanceOpen && !actionPending;
+  const canAct = partyFeatures && !!me && connected && !introOpen && !guide && !leaving && !appearanceOpen && !adminToolsOpen && !actionPending;
   const questDone = me ? questReady(me) : false;
   const trackEnemy = () => {
     const enemy = realm?.enemies.find(e => e.hp > 0) || ENEMIES[0];

@@ -1,5 +1,31 @@
 # Eldritch Fable shared workspace handoff
 
+## Private administrator tools — November 4, 2026
+
+The owner requested a named Death Knight administrator, renewable testing XP/gold
+and private side panel analytics/tools. Read-only verification confirmed the
+designated account already exists, is verified/enabled, and is one of two admins.
+Account identifiers and operator arguments remain private.
+
+The feature adds schema 6 account settings, a validated visitor-name overlay,
+nonredeemable test balances, immutable audit and protected aggregate analytics.
+The side drawer provides own-profile, test grant/exchange/reset and visitor entry
+controls with keyboard/focus/mobile support. Current sessions, roles and the
+separate testing capability remain authoritative, including receipt retries.
+Normal party scaling, customer XP/wallets and ordinary rewards remain intact.
+
+Base main: 837007659ac19b86a001c1fa8da72ec77a4299d7.
+Fresh locked installation, production build and 95 backend tests passed. Independent
+backend/frontend reviews found no remaining blockers after read sequencing and
+focus fixes. Final desktop/mobile browser verification is pending.
+
+A private copy of actual schema 5 production data migrated to 6 with preservation.
+The existing-admin operator command passed dry-run, configuration and idempotence
+checks on that copy while preserving credentials, sessions, roles and customer
+funds. No live configuration has been applied yet. Next: final browser checks,
+reviewed publication/CI, deployment and private audited account configuration.
+The current live release remains the dated production observation below.
+
 ## Production activation — November 4, 2026
 
 The owner explicitly requested merging with production. [Feature PR #11](https://github.com/zyxoned/eldritchfable.com/pull/11)

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Storefront from './pages/Storefront.jsx';
+import AdminTools from './components/AdminTools.jsx';
 import Adventure from './pages/Adventure.jsx';
 import { Account, AccountHome } from './pages/Account.jsx';
 import { AccountRecovery, EmailVerification, VerificationRecovery } from './pages/AccountRecovery.jsx';
@@ -24,5 +25,5 @@ createRoot(document.getElementById('root')).render(
     <Route path="/newsletter/confirm" element={<NewsletterAction action="confirm" />} />
     <Route path="/newsletter/unsubscribe" element={<NewsletterAction action="unsubscribe" />} />
     <Route path="/*" element={<Storefront />} />
-  </Routes></BrowserRouter></QueryClientProvider></React.StrictMode>
+  </Routes><AdminTools /></BrowserRouter></QueryClientProvider></React.StrictMode>
 );

@@ -260,7 +260,7 @@ function rollbackFixture(t) {
     return '';
   });
   assert.deepEqual(excludedVersions, Array.from({ length: SCHEMA_VERSION - 3 }, (_, index) => index + 4));
-  assert.doesNotMatch(module, /new URL\('\.\/migrations\/00[45]-/);
+  assert.doesNotMatch(module, /new URL\('\.\/migrations\/00[456]-/);
   writeFileSync(modulePath, module);
   const app = join(folder, 'app'), previous = join(folder, 'previous-app');
   symlinkSync(old, app);
@@ -271,6 +271,7 @@ function rollbackFixture(t) {
   assert.equal(readFileSync(join(fallback, 'server/auth.mjs'), 'utf8'), readFileSync(join(old, 'server/auth.mjs'), 'utf8'));
   assert.ok(existsSync(join(fallback, 'server/migrations/004-class-chronicle.sql')));
   assert.ok(existsSync(join(fallback, 'server/migrations/005-party-visitors.sql')));
+  assert.ok(existsSync(join(fallback, 'server/migrations/006-admin-testing.sql')));
   assert.ok(existsSync(join(fallback, 'shared/class-catalog.mjs')));
   assert.ok(existsSync(join(fallback, 'shared/appearance-catalog.mjs')));
   assert.equal(readFileSync(join(fallback, 'server/rollback-legacy-game.mjs'), 'utf8'), readFileSync(join(old, 'server/game.mjs'), 'utf8'));

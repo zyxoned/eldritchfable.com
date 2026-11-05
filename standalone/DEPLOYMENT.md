@@ -1,8 +1,10 @@
 # Deploy Eldritch Fable on the existing Linux server
 
+> The private administrator tools source requires schema **6**. The older dated production observation below records the preceding schema-5 release. Use the current project state and reviewed migration/recovery tools before activation.
+
 > Production verified 2026-11-04 at 23:14 UTC: source 9d17c7c2929e76d88287f66db4026e14f8014bf3, release 9d17c7c2929e-20261104230355615, schema 5. The owner authorized the merge and rollout; backup, migration preservation, fallback and public checks passed. See [PROJECT_STATE](../PROJECT_STATE.md) for evidence. Older dated observations below are historical.
 
-The maintained release includes accounts, mail, Tavern, RPG/Stash and the Hollow King expansion. Product import, checkout and PostgreSQL remain separate work. Use schema version 5 as required by server/database.mjs; read [ADVENTURE.md](ADVENTURE.md) and [EXPANSION.md](EXPANSION.md) with these instructions. Repository reconciliation does not deploy this release.
+The maintained release includes accounts, mail, Tavern, RPG/Stash and the Hollow King expansion. Product import, checkout and PostgreSQL remain separate work. Use schema version 6 as required by server/database.mjs; read [ADVENTURE.md](ADVENTURE.md) and [EXPANSION.md](EXPANSION.md) with these instructions. Repository reconciliation does not deploy this release.
 
 ## Historically verified production layout
 
@@ -66,7 +68,7 @@ The rollout performs these steps:
 
 1. Copy the built release and dependencies to a versioned directory under /srv/eldritch-production/releases, omitting .env files. Validate the updated routing with the installed Caddy as the frontend service user.
 2. Pause the mail, recovery and backup timers. Wait for already-running jobs to finish, then stop the API and frontend for a short maintenance window.
-3. Run database work with the API service's existing user and group. Resolve symlinked launch paths before deciding whether to execute the database CLI. Create a consistent mode-600 backup in a new private directory beside the live database, migrate that same database to schema version 5, compare preserved data and check integrity and foreign keys. Require a valid completion report and check that the expected backup is a private SQLite file owned by that user before printing a success message or proceeding.
+3. Run database work with the API service's existing user and group. Resolve symlinked launch paths before deciding whether to execute the database CLI. Create a consistent mode-600 backup in a new private directory beside the live database, migrate that same database to schema version 6, compare preserved data and check integrity and foreign keys. Require a valid completion report and check that the expected backup is a private SQLite file owned by that user before printing a success message or proceeding.
 4. Preserve the old app and frontend entries in a private deployment directory, then point those entries at the new release. Keep the existing production service names, API port and database path.
 5. Apply service overrides and a protected shared runtime file at /etc/eldritch-fable/accounts-runtime.env. Retain the existing SMTP credential file. Run the mail worker with the API service's user and group so its SQLite files remain writable by the API user.
 6. Start the API and frontend. Check API health, unauthenticated session lookup and the account route locally and through https://eldritchfable.com. A release header confirms that public requests reach the new production routing.

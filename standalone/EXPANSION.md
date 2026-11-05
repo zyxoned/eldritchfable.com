@@ -1,5 +1,22 @@
 # The Hollow King expansion
 
+## Private administrator tools
+
+Schema6 adds own-account administrator preferences and test resources. Verified,
+enabled admins may open the private side drawer for aggregate realm/account/mail
+activity and their own visitor identity. Testing grants additionally require an
+operator-assigned database capability. Test XP and copper remain separate from
+customer wallets, lifetime XP and shop credit. Repeatable grants provide renewable
+testing access; safe integer bounds and request/audit records preserve correctness.
+
+The configured display name overlays the stored legacy Death Knight name across
+profile, roster and chat. Party visitor damage stays scaled to ordinary members,
+and normal eligible rewards continue. The existing two administrator accounts are
+preserved. The operator CLI requires an existing verified enabled admin, supports
+a count guard and dry-run, and creates a private consistent backup before applying
+settings. Never include real account email addresses in source or examples.
+
+
 > Updated 2026-11-04 for eight-player parties, two support visitors and saved appearance. This is source behavior; production rollout remains separate.
 
 The existing same-origin game gains five callings: Bard, Cleric, Wizard,

@@ -3,6 +3,43 @@ import assert from 'node:assert/strict';
 import { fixture, credentials, verifiedAccount, loginCookie } from './helpers.mjs';
 import { clientAddress } from '../server/request-security.mjs';
 
+test('email owner replaces a preregistered password when activating the account', async t => {
+  const f = fixture(t);
+  const attacker = { email: credentials.email, password: 'attacker-chosen-passphrase-123' };
+  await f.request('register', attacker);
+  await f.request('register', credentials);
+  const token = JSON.parse(f.queued('verify_email', credentials.email).payload_json).verification;
+  assert.equal((await f.request('verify-email', { token, password: credentials.password })).status, 200);
+  assert.equal((await f.request('login', attacker)).status, 401);
+  assert.equal((await f.request('login', credentials)).status, 200);
+  assert.equal(f.queued('verify_email', credentials.email).payload_json, '{}');
+  assert.equal((await f.request('verify-email', { token, password: attacker.password })).status, 400);
+  assert.equal((await f.request('login', credentials)).status, 200);
+});
+
+test('email verification requires a valid password without consuming the token', async t => {
+  const f = fixture(t);
+  await f.request('register', credentials);
+  const token = JSON.parse(f.queued('verify_email', credentials.email).payload_json).verification;
+  for (const password of [undefined, '', 'short', 'x'.repeat(257)]) {
+    assert.equal((await f.request('verify-email', { token, password })).status, 400);
+  }
+  assert.equal(f.db.prepare('SELECT email_verified_at FROM account_users').get().email_verified_at, null);
+  assert.equal((await f.request('verify-email', { token, password: credentials.password })).status, 200);
+});
+
+test('concurrent email verifications consume the link exactly once', async t => {
+  const f = fixture(t);
+  await f.request('register', credentials);
+  const token = JSON.parse(f.queued('verify_email', credentials.email).payload_json).verification;
+  const passwords = ['first-verification-passphrase', 'second-verification-passphrase'];
+  const results = await Promise.all(passwords.map(password => f.request('verify-email', { token, password })));
+  assert.deepEqual(results.map(result => result.status).sort(), [200, 400]);
+  for (const [index, password] of passwords.entries()) {
+    assert.equal((await f.request('login', { email: credentials.email, password })).status, results[index].status === 200 ? 200 : 401);
+  }
+});
+
 test('registration verifies ownership, keeps customer role, and supports logout', async t => {
   const f = fixture(t);
   const first = await f.request('register', { ...credentials, role: 'admin' });
@@ -12,8 +49,8 @@ test('registration verifies ownership, keeps customer role, and supports logout'
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM email_outbox').get().n, 1);
   assert.equal((await f.request('login', credentials)).status, 403);
   const token = JSON.parse(f.queued('verify_email', credentials.email).payload_json).verification;
-  assert.equal((await f.request('verify-email', { token })).status, 200);
-  assert.equal((await f.request('verify-email', { token })).status, 400);
+  assert.equal((await f.request('verify-email', { token, password: credentials.password })).status, 200);
+  assert.equal((await f.request('verify-email', { token, password: credentials.password })).status, 400);
   const login = await f.request('login', credentials);
   assert.equal(login.status, 200);
   const cookie = login.headers['Set-Cookie'];
@@ -37,12 +74,12 @@ test('expired verification can be reissued without duplicate mail or a new accou
   await f.request('resend-verification', { email: credentials.email }, { now: now + 61000 });
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM email_outbox').get().n, 1);
   f.db.prepare("UPDATE account_tokens SET expires_at='2000-01-01T00:00:00.000Z'").run();
-  assert.equal((await f.request('verify-email', { token: original })).status, 400);
+  assert.equal((await f.request('verify-email', { token: original, password: credentials.password })).status, 400);
   await f.request('resend-verification', { email: credentials.email }, { now: now + 62000 });
   const replacement = JSON.parse(f.queued('verify_email', credentials.email).payload_json).verification;
   assert.notEqual(replacement, original);
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM account_users').get().n, 1);
-  assert.equal((await f.request('verify-email', { token: replacement })).status, 200);
+  assert.equal((await f.request('verify-email', { token: replacement, password: credentials.password })).status, 200);
   const known = await f.request('resend-verification', { email: credentials.email });
   const unknown = await f.request('resend-verification', { email: 'unknown@example.test' });
   assert.deepEqual(known.body, unknown.body);

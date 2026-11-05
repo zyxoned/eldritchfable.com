@@ -1,5 +1,15 @@
 # Eldritch Fable project state
 
+## Security hardening live — November 5, 2026
+
+Application source 69bfb8d883cd8c65d506d2ab979a505b2246bbdb is deployed as 69bfb8d883cd-20261105013809184, preserving administrator tools and schema 6. Verified at 2026-11-05 01:48:57 UTC: public and local release manifests agree, changed backend source hashes match the tested revision, the public API is online, API/web services are active, and mail/backup/healthcheck timers are active. The operator reported a successful production-copy rehearsal with schema 6 and preserved data before rollout. Private staging passed 103/103 backend and 48/48 desktop/mobile browser tests plus the production build. No credentials or customer data were published.
+
+The transient rollout process has exited. Its protected terminal journal was not independently readable by this reviewer; do not infer an exit code from a collected unit. Additional automated public asset/gate requests received HTTP 403 and were stopped, so those supplemental checks remain unverified. This entry supersedes the pending-rollout note below. Existing account remediation, if needed, is separate from this preventative fix.
+
+## Private security hardening prepared — November 5, 2026
+
+Based on main b4a26fcccd8d60e836f09e087e44e0cd54bf80fc, preserving the deployed administrator tools and schema 6. Private staging validation completed at 2026-11-05 01:14:06 UTC: 103/103 backend tests, production build, and 48/48 desktop/mobile browser tests passed using synthetic data with mail disabled. No production changes or public publication were performed by this preparation. Production-copy rehearsal and authorized rollout remain pending.
+
 ## Private administrator tools live — November 5, 2026
 
 The owner-authorized feature merged in [PR #13](https://github.com/zyxoned/eldritchfable.com/pull/13)

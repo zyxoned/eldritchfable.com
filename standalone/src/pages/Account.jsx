@@ -61,7 +61,7 @@ export function Account({ mode = 'login' }) {
   return <AuthShell title={pending ? 'Check your inbox' : register ? 'Create your account' : 'Welcome back'}>
     {!pending && <form onSubmit={submit}><label>Email<input type="email" autoComplete="email" required maxLength={254} value={email} onChange={event => setEmail(event.target.value)} /></label>
       <label>Password<input type="password" autoComplete={register ? 'new-password' : 'current-password'} minLength={register ? 12 : undefined} maxLength={256} required value={password} onChange={event => setPassword(event.target.value)} aria-describedby={register ? 'password-help' : undefined} /></label>
-      {register && <><small id="password-help">Use at least 12 characters. A few unrelated words make a good passphrase.</small><label>Confirm password<input required type="password" autoComplete="new-password" minLength={12} maxLength={256} value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label></>}
+      {register && <><small id="password-help">Use at least 12 characters. A few unrelated words make a good passphrase. For your security, you will choose your final sign-in password again when you open the verification link in your inbox.</small><label>Confirm password<input required type="password" autoComplete="new-password" minLength={12} maxLength={256} value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label></>}
       <button disabled={busy} type="submit">{busy ? 'Working…' : register ? 'Create account' : 'Sign in'}</button></form>}
     {message && <p role="status">{message}</p>}{error && <p role="alert">{error}</p>}
     {register && <section className="auth-adventure-intro">

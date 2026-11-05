@@ -23,7 +23,14 @@ No analytics service, tracking system, private combat arena or new campaign is a
 - [x] Add schema 6, admin service, validated name overlay and reviewed existing-admin CLI.
 - [x] Build side drawer, game-input isolation and account entry point.
 - [x] Verify authorization, revocation, replay, overflow, test/customer separation and migration preservation.
-- [ ] Verify desktop/mobile drawer workflows, focus, reset guardrail, logout and game input.
-- [ ] Publish reviewed source, run CI and production-copy migration/fallback checks.
-- [ ] Deploy the authorized account feature, configure only the requested existing account with a private backup/audit, and verify live state.
-- [ ] Update source/release evidence and release only owned leases.
+- [x] Verify desktop/mobile drawer workflows, focus, reset guardrail, logout and game input.
+- [x] Publish reviewed source, run CI and production-copy migration/fallback checks.
+- [x] Deploy the authorized account feature, configure only the requested existing account with a private backup/audit, and verify live state.
+- [x] Update source/release evidence and preserve unrelated work and leases.
+
+
+Live verification: source 043737030137f3cd7beb615f6826a6f2267a11e4, release
+043737030137-20261105001552618, schema 6, checked 2026-11-05 00:39:55 UTC.
+Backend 95/95, desktop/mobile 48/48 and feature CI passed. Production account
+configuration preserved credentials/sessions and the count of two admins.
+[Project state](../../../PROJECT_STATE.md) records deployment and recovery evidence.

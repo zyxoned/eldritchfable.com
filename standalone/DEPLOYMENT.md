@@ -1,6 +1,6 @@
 # Deploy Eldritch Fable on the existing Linux server
 
-> The private administrator tools source requires schema **6**. The older dated production observation below records the preceding schema-5 release. Use the current project state and reviewed migration/recovery tools before activation.
+> Production verified 2026-11-05 at 00:39:55 UTC: source 043737030137f3cd7beb615f6826a6f2267a11e4, release 043737030137-20261105001552618, schema **6**. Private administrator tools and the designated existing account configuration are live. Public routes, protected endpoints, source/asset hashes, database integrity, services and timers passed. See [PROJECT_STATE](../PROJECT_STATE.md) for evidence and the initial activation fallback/retry. The dated schema-5 observation below is historical.
 
 > Production verified 2026-11-04 at 23:14 UTC: source 9d17c7c2929e76d88287f66db4026e14f8014bf3, release 9d17c7c2929e-20261104230355615, schema 5. The owner authorized the merge and rollout; backup, migration preservation, fallback and public checks passed. See [PROJECT_STATE](../PROJECT_STATE.md) for evidence. Older dated observations below are historical.
 

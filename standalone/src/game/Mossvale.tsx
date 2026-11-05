@@ -7,13 +7,15 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from './transport';
+import { sendWithTravelRetry } from './travel-retry.js';
 import {
-  CLASSES, PLAYER_CLASS_IDS, CRYSTALS, ENEMIES, SHRINE, SPAWN, WIDTH, HEIGHT, level, questReady, walkable,
+  CLASSES, PLAYER_CLASS_IDS, REGIONS, DEFAULT_REGION_ID, regionById, WIDTH, HEIGHT, level, questReady, walkable,
   type HeroClass, type Realm, type Appearance,
 } from './shared/game';
 import GameCanvas from './GameCanvas';
 import AppearanceEditor from './AppearanceEditor';
 import FieldNotes from './FieldNotes';
+import CharacterPath, { type Development } from './CharacterPath';
 import { renderCharacterPreview } from '../../shared/hero-renderer.mjs';
 import IntroCutscene from './IntroCutscene';
 import { CallingPreview, CharacterCalling, SkillBar } from './ClassDetails';
@@ -38,6 +40,7 @@ type Profile = {
   regularCharacter?: Realm['players'][number] | null;
   adminAccess?: boolean;
   adminActive?: boolean;
+  development?: Development | null;
   cooldowns?: Record<string, number>;
 };
 type Reply = { realm: Realm; profile: Profile; notice?: string; playerId?: string | null };
@@ -63,7 +66,7 @@ function errorMessage(err: unknown): string {
   return e.message || 'Could not reach the realm. Please reconnect and try again.';
 }
 
-function nextStep(start: { x: number; y: number }, target: { x: number; y: number }) {
+function nextStep(start: { x: number; y: number }, target: { x: number; y: number }, regionId = DEFAULT_REGION_ID) {
   const key = (x: number, y: number) => x + ',' + y;
   const queue = [{ ...start, first: null as { x: number; y: number } | null }];
   const seen = new Set([key(start.x, start.y)]);
@@ -73,7 +76,7 @@ function nextStep(start: { x: number; y: number }, target: { x: number; y: numbe
     for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
       const x = current.x + dx;
       const y = current.y + dy;
-      if (!walkable(x, y) || seen.has(key(x, y))) continue;
+      if (!walkable(x, y, regionId) || seen.has(key(x, y))) continue;
       seen.add(key(x, y));
       queue.push({ x, y, first: current.first || { x, y } });
     }
@@ -159,6 +162,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   const playerRef = useRef<string | null>(null);
   const destination = useRef<{ x: number; y: number } | null>(null);
   const busy = useRef(false);
+  const movementIntent = useRef(0);
   const heldDirection = useRef<{ x: number; y: number } | null>(null);
   const heldPointer = useRef<number | null>(null);
   const thumbRef = useRef<HTMLSpanElement>(null);
@@ -171,6 +175,9 @@ export default function Mossvale({ user, onSessionExpired }: {
   const actRef = useRef<(kind: string, extra?: Record<string, unknown>) => Promise<boolean>>(async () => false);
   playerRef.current = playerId;
   const me = [...(realm?.players || []), ...(realm?.visitors || [])].find(p => p.id === playerId);
+  const regionId = realm?.regionId || me?.regionId || DEFAULT_REGION_ID;
+  const region = regionById(regionId);
+  const { crystals: CRYSTALS, enemies: ENEMIES, shrine: SHRINE, spawn: SPAWN } = region;
   const count = realm?.players.length || 0;
   const adminActive = !!profile?.adminActive;
   const query = new URLSearchParams(location.search);
@@ -183,6 +190,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   moveAllowed.current = movementEnabled;
 
   function cancelMovement() {
+    movementIntent.current++;
     heldDirection.current = null;
     heldPointer.current = null;
     destination.current = null;
@@ -195,7 +203,7 @@ export default function Mossvale({ user, onSessionExpired }: {
 
   useEffect(() => {
     cancelMovement();
-  }, [realm?.partyId, playerId, adminActive]);
+  }, [realm?.partyId, realm?.regionId, playerId, adminActive]);
 
   useEffect(() => {
     const stop = () => cancelMovement();
@@ -255,7 +263,7 @@ export default function Mossvale({ user, onSessionExpired }: {
     const previousHero = [...(current?.players || []), ...(current?.visitors || [])].find(p => p.id === playerRef.current);
     const nextHero = [...(next.players || []), ...(next.visitors || [])].find(p => p.id === playerRef.current);
     // Recovery, party changes and actor replacement invalidate held intent.
-    if (switched || (previousHero && (!nextHero || nextHero.hp <= 0 ||
+    if (switched || current?.regionId !== next.regionId || (previousHero && (!nextHero || nextHero.hp <= 0 ||
       Math.abs(nextHero.x - previousHero.x) + Math.abs(nextHero.y - previousHero.y) > 1))) cancelMovement();
     realmRef.current = next;
     setRealm(next);
@@ -310,14 +318,16 @@ export default function Mossvale({ user, onSessionExpired }: {
   }
 
   async function refreshChangedParty(err: unknown) {
-    if ((err as { code?: string }).code !== 'PARTY_CHANGED') return false;
+    const code = (err as { code?: string }).code;
+    if (code !== 'PARTY_CHANGED' && code !== 'REGION_CHANGED') return false;
+    cancelMovement();
     destination.current = null;
     const epoch = ++transitionEpoch.current;
     try {
       const result = await api.get('/api/game/world');
       if (epoch !== transitionEpoch.current) return true;
       applyReply(result.data, true);
-      setNotice('Your party changed in another tab. The current party is now shown.');
+      setNotice(code === 'REGION_CHANGED' ? 'Your region changed in another tab. The current region is now shown.' : 'Your party changed in another tab. The current party is now shown.');
     } catch (failure) {
       if ((failure as { status?: number }).status === 401) { endSession(); onSessionExpired(); }
       setError(errorMessage(failure));
@@ -511,10 +521,23 @@ export default function Mossvale({ user, onSessionExpired }: {
     if (kind === 'move' && (!moveAllowed.current || document.hidden || !movementGate.current(performance.now()))) return false;
     busy.current = true;
     setActionPending(true);
-    if (kind !== 'move') destination.current = null;
+    if (kind === 'travel') cancelMovement();
+    else if (kind !== 'move') destination.current = null;
     const epoch = transitionEpoch.current;
+    const travelIntent = movementIntent.current;
+    const actorId = playerRef.current;
+    const partyId = realmRef.current?.partyId;
+    const sourceRegionId = realmRef.current?.regionId || DEFAULT_REGION_ID;
+    const send = () => api.post('/api/game/action', envelope({ kind, regionId: sourceRegionId, ...extra }));
     try {
-      const result = await api.post('/api/game/action', envelope({ kind, ...extra }));
+      // Keep the busy lock while one known travel cooldown rejection settles.
+      // Blur, dialogs, navigation and replacement actors invalidate this scope.
+      const result = await sendWithTravelRetry(kind, send, () =>
+        travelIntent === movementIntent.current && epoch === transitionEpoch.current
+        && actorId === playerRef.current && partyId === realmRef.current?.partyId
+        && sourceRegionId === (realmRef.current?.regionId || DEFAULT_REGION_ID)
+        && moveAllowed.current && !document.hidden);
+      if (!result) return false;
       if (epoch !== transitionEpoch.current) return false;
       applyReply(result.data);
       if (result.data.notice) {
@@ -552,11 +575,11 @@ export default function Mossvale({ user, onSessionExpired }: {
       const direction = heldDirection.current;
       if (direction) {
         const x = p.x + direction.x, y = p.y + direction.y;
-        if (walkable(x, y)) void actRef.current('move', { x, y });
+        if (walkable(x, y, currentRealm?.regionId)) void actRef.current('move', { x, y });
         return;
       }
       if (!target) return;
-      const step = nextStep(p, target);
+      const step = nextStep(p, target, currentRealm?.regionId);
       if (!step) { destination.current = null; return; }
       void actRef.current('move', step);
     }, MOVE_INTERVAL_MS);
@@ -568,7 +591,7 @@ export default function Mossvale({ user, onSessionExpired }: {
     if (!me) { setNotice('Choose a name and enter the glade to start exploring.'); return; }
     if (!connected) { setError('Reconnect to move through the glade.'); return; }
     if (!moveAllowed.current || document.hidden) return;
-    if (!walkable(x, y)) { setNotice('Use the wooden bridge to cross the brook.'); return; }
+    if (!walkable(x, y, regionId)) { setNotice('Find a bridge or follow the road around the water.'); return; }
     cancelMovement();
     destination.current = { x, y };
   }
@@ -579,7 +602,7 @@ export default function Mossvale({ user, onSessionExpired }: {
     const p = [...(currentRealm?.players || []), ...(currentRealm?.visitors || [])].find(v => v.id === playerRef.current);
     if (p) {
       destination.current = null;
-      if (walkable(p.x + dx, p.y + dy)) void actRef.current('move', { x: p.x + dx, y: p.y + dy });
+      if (walkable(p.x + dx, p.y + dy, currentRealm?.regionId)) void actRef.current('move', { x: p.x + dx, y: p.y + dy });
     }
   }
 
@@ -685,12 +708,13 @@ export default function Mossvale({ user, onSessionExpired }: {
   const canAct = partyFeatures && !!me && connected && !introOpen && !guide && !leaving && !appearanceOpen && !adminToolsOpen && !actionPending;
   const questDone = me ? questReady(me) : false;
   const trackEnemy = () => {
+    if (regionId !== 'glade') { setNotice('Quest thornlings live in Whispering Glade. Follow the crossings west to return.'); return; }
     const enemy = realm?.enemies.find(e => e.hp > 0) || ENEMIES[0];
     go(enemy.x, enemy.y);
   };
   const trackCrystal = () => {
     const crystal = CRYSTALS.find(c => !me?.gathered.includes(c.id)) || CRYSTALS[0];
-    go(crystal.x, crystal.y);
+    if (crystal) go(crystal.x, crystal.y); else setNotice('Moon crystals grow in Whispering Glade. Follow the crossings west to return.');
   };
 
   return (
@@ -780,6 +804,7 @@ export default function Mossvale({ user, onSessionExpired }: {
               </>}
             </section>
 
+            {me && !adminActive && <CharacterPath key={me.id} player={me} development={profile?.development} realm={realm} cooldowns={profile?.cooldowns} enabled={canAct} onSave={(stanceId, tacticId) => act('configure', { stanceId, tacticId })} />}
             {me && <CharacterCalling heroClass={me.heroClass} equipment={me.equipment} />}
             {me && <FieldNotes key={user.id} player={me} accountId={user.id} />}
 
@@ -788,29 +813,29 @@ export default function Mossvale({ user, onSessionExpired }: {
               <h2>{adminActive ? 'Lend a helping hand' : 'Guardian of the Glade'}</h2>
               <p>{adminActive ? 'Players lead their story and earn their own progress. Your visit awards no personal XP or currency.' : 'The woods could use a helping hand.'}</p>
               <div className="quest-list">
-                <button onClick={trackEnemy}><span className={'quest-icon ' + ((me?.kills || 0) >= 3 ? 'complete' : '')}>{(me?.kills || 0) >= 3 ? <Check size={15} /> : <Sword size={15} />}</span><span>Clear thornlings<small>Shared with your party</small></span><b>{Math.min(me?.kills || 0, 3)}/3</b><ChevronRight size={12} /></button>
+                <button onClick={trackEnemy}><span className={'quest-icon ' + ((me?.kills || 0) >= 3 ? 'complete' : '')}>{(me?.kills || 0) >= 3 ? <Check size={15} /> : <Sword size={15} />}</span><span>Clear thornlings<small>Shared with nearby allies</small></span><b>{Math.min(me?.kills || 0, 3)}/3</b><ChevronRight size={12} /></button>
                 <button onClick={trackCrystal}><span className={'quest-icon ' + ((me?.gathered.length || 0) >= 2 ? 'complete' : '')}>{(me?.gathered.length || 0) >= 2 ? <Check size={15} /> : <Gem size={15} />}</span><span>Gather moon crystals<small>Find the blue glow</small></span><b>{Math.min(me?.gathered.length || 0, 2)}/2</b><ChevronRight size={12} /></button>
-                <button onClick={() => go(SHRINE.x, SHRINE.y)}><span className={'quest-icon ' + (me?.shrine ? 'complete' : '')}>{me?.shrine ? <Check size={15} /> : <Sparkles size={15} />}</span><span>Visit the old shrine<small>A little magic awaits</small></span><b>{me?.shrine ? '1' : '0'}/1</b><ChevronRight size={12} /></button>
+                <button onClick={() => regionId === 'glade' ? go(SHRINE.x, SHRINE.y) : setNotice('Visit the old moon shrine in Whispering Glade to finish this objective.')}><span className={'quest-icon ' + (me?.shrine ? 'complete' : '')}>{me?.shrine ? <Check size={15} /> : <Sparkles size={15} />}</span><span>Visit the old shrine<small>A little magic awaits</small></span><b>{me?.shrine ? '1' : '0'}/1</b><ChevronRight size={12} /></button>
               </div>
               <div className="reward"><span>✧</span><span>100 XP <i>→</i> Secret Stash</span><small>QUEST REWARD</small></div>
               {me && !adminActive && <button className="claim-button" disabled={!questDone || me.claimed} onClick={() => void act('claim')}>{me.claimed ? 'Adventure complete ✓' : questDone ? 'Claim your reward' : 'Complete the three objectives'}</button>}
-              <p className="tracking-hint">Tap an objective to walk there.</p>
+              <p className="tracking-hint">{regionId === 'glade' ? 'Tap an objective to walk there.' : 'Moon crystals and the quest shrine are back in Whispering Glade.'}</p>
             </section>
           </aside>
 
           <section className="world-column" aria-label="Game world">
-            <div className="world-card">
+            <div className={"world-card region-" + regionId}>
               <div className="world-heading">
-                <div><div className="section-kicker">ELDRITCH FABLE · {realm?.partyMode === 'solo' ? 'SOLO ADVENTURE' : 'PARTY REALM'}</div><h2>Whispering Glade</h2></div>
+                <div><div className="section-kicker">ELDRITCH FABLE · {realm?.partyMode === 'solo' ? 'SOLO ADVENTURE' : 'PARTY REALM'}</div><h2>{region.name}</h2></div>
                 <div className={'live-pill ' + (connected ? '' : 'offline')}><span /> {connected ? 'LIVE' : loading ? 'CONNECTING' : 'OFFLINE'}<i />{count}/{partyFeatures ? realm.maxPlayers : '—'} <Users size={13} /></div>
               </div>
               <div className="canvas-container">
                 <GameCanvas realm={realm} playerId={playerId} onTile={go} />
                 {!me && <div className="world-invitation"><span className="invite-icon"><Leaf size={15} /></span><div>The glade is waiting.<small>Choose your adventurer to step inside.</small></div><span>✧</span></div>}
                 {notice && <div className="game-notice" role="status">{notice}</div>}
-                <span className="map-corner">THE EMERALD WILDS</span>
+                <span className="map-corner">{region.subtitle || region.name}</span>
               </div>
-              <div className="map-caption"><span><span className="sun-dot" /> A good day for a little adventure.</span><span>{me ? me.x + ', ' + me.y : '30 × 22'} <Compass size={12} /></span></div>
+              <div className="map-caption"><span><span className="sun-dot" /> {region.description}</span><span>{me ? me.x + ', ' + me.y : '30 × 22'} <Compass size={12} /></span></div>
             </div>
             <div className="controls-card">
               <div className="mobile-controls" aria-label="Touch movement controls">
@@ -833,20 +858,33 @@ export default function Mossvale({ user, onSessionExpired }: {
               <button className="help-button" onClick={() => setGuide(true)} aria-label="Open field guide"><BookOpen size={18} /></button>
             </div>
             {me && <SkillBar heroClass={me.heroClass} cooldowns={profile?.cooldowns} serverTime={realm?.serverTime || Date.now()} enabled={canAct} onUse={skillId => void act('skill', { skillId })} />}
-            <div className="world-legend"><span><span className="legend-swatch hero-swatch" /> Adventurers</span><span><span className="legend-swatch enemy-swatch" /> Thornlings</span><span><Gem size={11} color="#749cad" /> Moon crystals</span><span><Flame size={12} color="#b98658" /> Rest at camp</span></div>
+            <section className="journey-panel" aria-label="World routes">
+              <div className="journey-heading"><span><Compass size={14} /> THE OPEN ROAD</span><small>Three regions · one company</small></div>
+              <ol className="region-route">{Object.values(REGIONS).map((place: any, index) => <li key={place.id} className={place.id === regionId ? 'current' : ''} aria-current={place.id === regionId ? 'location' : undefined}>
+                <span className="route-number">0{index + 1}</span><div><strong>{place.name}</strong><small>{place.id === regionId ? 'You are here' : 'Follow the marked crossings'}</small></div>
+              </li>)}</ol>
+              <div className="region-exits">{region.exits.map((exit: any) => {
+                const nearby = near(exit, 1.6);
+                return <div className="region-exit" key={exit.id}><div><strong>{exit.name}</strong><small>To {regionById(exit.to).name}</small></div>
+                  <button type="button" className="secondary-button" disabled={!canAct} onClick={() => nearby ? (cancelMovement(), void act('travel', { exitId: exit.id, regionId })) : go(exit.x, exit.y)}>{nearby ? 'Travel' : 'Walk to crossing'} <ArrowUpRight size={14} /></button>
+                </div>;
+              })}</div>
+              <p>Travel when you reach a crossing. Your hero, party and progress stay with you.</p>
+            </section>
+            <div className="world-legend"><span><span className="legend-swatch hero-swatch" /> Adventurers</span><span><span className="legend-swatch enemy-swatch" /> {regionId === 'amberReach' ? 'Ridge sprites' : regionId === 'mistHarbor' ? 'Tidal wisps' : 'Thornlings'}</span>{regionId === 'glade' && <span><Gem size={11} color="#749cad" /> Moon crystals</span>}<span><Flame size={12} color="#b98658" /> Rest at camp</span></div>
           </section>
 
           <aside className="social-column">
             <section className="card party-card">
               <div className="section-kicker"><span className="kicker-with-icon"><Users size={14} /> THE COMPANY YOU KEEP</span></div>
               <div className="party-title"><h2>Your party</h2><span>{count}<i>/{partyFeatures ? realm.maxPlayers : '—'}</i></span></div>
-              <p>{realm?.partyMode === 'solo' ? 'Your own glade, with room for visiting help.' : 'Your company shares this glade.'}</p>
+              <p>{realm?.partyMode === 'solo' ? 'Your own journey, with room for visiting help.' : 'Your company can explore different regions together.'}</p>
               <div className="party-slots">
                 {Array.from({ length: partyFeatures ? realm.maxPlayers : 0 }, (_, i) => {
                   const player = realm?.players[i];
                   return <div key={player?.id || i} className={'party-slot ' + (player ? 'occupied' : '')}>
                     <div className="slot-avatar"><PixelHero heroClass={player?.heroClass} appearance={player?.appearance} empty={!player} /></div>
-                    <div>{player ? <><strong>{player.name}</strong><small>{player.id === playerId ? 'You · ' : ''}Lv. {player.levelLabel || level(player.xp)} {CLASSES[player.heroClass].name}</small></> : <><strong>Open seat</strong><small>A friend belongs here</small></>}</div>
+                    <div>{player ? <><strong>{player.name}</strong><small>{player.id === playerId ? 'You · ' : ''}Lv. {player.levelLabel || level(player.xp)} {CLASSES[player.heroClass].name}</small><small className="party-region">{regionById(player.regionId).name}</small></> : <><strong>Open seat</strong><small>A friend belongs here</small></>}</div>
                     {player ? <span className="online-dot" /> : <span className="seat-number">0{i + 1}</span>}
                   </div>;
                 })}
@@ -855,7 +893,7 @@ export default function Mossvale({ user, onSessionExpired }: {
                 <div><strong>Visiting guardians</strong><span>{visitorCount} / {partyFeatures ? realm.maxVisitors : '—'}</span></div>
                 {(realm?.visitors || []).map(visitor => <div className="party-slot occupied visitor-slot" key={visitor.id}>
                   <div className="slot-avatar"><PixelHero heroClass={visitor.heroClass} /></div>
-                  <div><strong>{visitor.name}</strong><small>{visitor.id === playerId ? 'You · ' : ''}Draconian guardian · Invulnerable</small></div><span className="online-dot" />
+                  <div><strong>{visitor.name}</strong><small>{visitor.id === playerId ? 'You · ' : ''}Draconian guardian · Invulnerable</small><small className="party-region">{regionById(visitor.regionId).name}</small></div><span className="online-dot" />
                 </div>)}
                 {!visitorCount && <small>Two extra places for visiting help.</small>}
               </section>
@@ -907,7 +945,7 @@ export default function Mossvale({ user, onSessionExpired }: {
             <div className="eyebrow">A WAYFARER’S FIELD GUIDE</div><h2 id="modal-title">A little help for the road.</h2>
             <p>Each Mossvale party has room for eight signed-in adventurers and two visiting guardians. Choose an open party or a solo adventure. An open-party invitation leads to the same glade when a seat is available.</p>
             <div className="guide-steps">
-              <div><Compass /><span><strong>Take the scenic route</strong><p>Click or tap the ground to walk. Use WASD, arrow keys, or drag the thumb control. Hold direction buttons to keep walking; release to stop. Switch between joystick and buttons beneath the map. The wooden bridge crosses the brook.</p></span></div>
+              <div><Compass /><span><strong>Take the scenic route</strong><p>Click or tap the ground to walk. Use WASD, arrow keys, or drag the thumb control. Hold direction buttons to keep walking; release to stop. Switch between joystick and buttons beneath the map. Bridges cross water. Follow a marked crossing, then choose Travel to enter another region. Your party roster shows where everyone is.</p></span></div>
               <div><Sword /><span><strong>Be a guardian, together</strong><p>Walk near a thornling and press Attack or Space. Your calling determines weapon reach and starter skills. Use the skill cards or keys 1 and 2; their cooldowns keep combat paced. Visiting guardians have matching combat power and a healing boon, while normal positive contributors keep earning XP. Healing and wards help your company survive. Active contributors earn XP for their private Secret Stash.</p></span></div>
               <div><Gem /><span><strong>Follow the blue glow</strong><p>Stand beside two different moon crystals and press Interact or E. Then visit the shrine in the northeast and interact with it.</p></span></div>
               <div><Flame /><span><strong>There is always a way home</strong><p>Interact at camp to restore health. Complete all three objectives to claim 100 XP for your Secret Stash. Thornlings return after 20 seconds.</p></span></div>

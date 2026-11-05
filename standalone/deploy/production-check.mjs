@@ -13,7 +13,7 @@ const preservedTables = [
   'account_users', 'account_sessions', 'account_tokens',
   'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries',
   'storefront_collections', 'storefront_products',
-  'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world', 'game_parties', 'admin_account_settings', 'admin_audit', 'email_outbox'
+  'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world', 'game_parties', 'game_region_worlds', 'admin_account_settings', 'admin_audit', 'email_outbox'
 ];
 let checkPhase = 'initializing';
 

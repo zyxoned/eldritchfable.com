@@ -1,5 +1,9 @@
 # Eldritch Fable project state
 
+## Multi-region candidate in preparation — November 5, 2026
+
+An isolated candidate based on freshly verified main 5e290ff96fe489b7af64ad61ad88ae08a7338192 extends the existing multiplayer game with three linked regions and a small original character-development system. It preserves the merged storefront and first Adventure polish. Schema 7 uses additive state with old Glade progress and economy retained; 136 backend/unit tests, production build, populated schema-6 migration preservation, four repeated regional journeys and the full browser suite (53 passed, one intentional skip) passed. Independent backend review and responsive visual review found no remaining blockers. The owner subsequently authorized verification and rollout; source publication/CI and privileged production activation remain separately tracked. No production change was made by this candidate preparation. See WORLD_EXPANSION_REVIEW.md for exact boundaries and release gates.
+
 ## Adventure polish prepared for review — November 5, 2026
 
 A separate local review candidate based on main 5e89afd393a7fd56cc6df92ec1f2a926b570b2f7 adds class attack presentation, held mobile controls, and optional browser-local field notes while preserving schema 6 and existing account/game/economy rules. Backend/unit validation passed 117/117 and the build passed. Owner-approved private-staging Chromium validation passed 51 tests with one intentional desktop skip; the dedicated mobile scenario also passed three repeated runs. The owner subsequently approved publication and merge when applicable; production rollout remains separately gated. Fresh main was unchanged at 5e89afd at 05:05 UTC, and the configured GitHub workflow only builds/tests. See LIVE_ADVENTURE_INTEGRATION.md for source limits and the separate full-world integration plan.

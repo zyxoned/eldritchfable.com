@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createAdminService } from '../server/admin.mjs';
 import { createGameService } from '../server/game.mjs';
-import { digest, migrateDatabase, openDatabase, requireSchema } from '../server/database.mjs';
+import { digest, migrateDatabase, openDatabase, requireSchema, SCHEMA_VERSION } from '../server/database.mjs';
 import { CLASS_CATALOG } from '../shared/class-catalog.mjs';
 import { fixture, verifiedAccount, loginCookie } from './helpers.mjs';
 
@@ -229,11 +229,15 @@ test('schema five upgrades add admin settings without changing existing account,
     db.prepare("INSERT INTO game_requests(user_id,request_id,payload_hash,notice,created_at,actor_scope,party_id) VALUES('legacy','legacy-request','kept','Kept',1,'admin','legacy-mossvale')").run();
     const tables = ['account_users', 'account_sessions', 'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_world', 'game_parties'];
     const before = Object.fromEntries(tables.map(table => [table, db.prepare('SELECT * FROM ' + table).all()]));
-    assert.equal(migrateDatabase(db), 6);
+    assert.equal(migrateDatabase(db), SCHEMA_VERSION);
     requireSchema(db);
-    for (const table of tables) assert.deepEqual(db.prepare('SELECT * FROM ' + table).all(), before[table], table);
+    for (const table of tables) {
+      const columns = Object.keys(before[table][0] || {});
+      if (columns.length) assert.deepEqual(db.prepare('SELECT ' + columns.join(',') + ' FROM ' + table).all(), before[table], table);
+      else assert.equal(db.prepare('SELECT COUNT(*) AS n FROM ' + table).get().n, 0);
+    }
     assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
-    assert.equal(migrateDatabase(db), 6);
+    assert.equal(migrateDatabase(db), SCHEMA_VERSION);
   } finally { db.close(); }
 });
 
@@ -286,7 +290,7 @@ test('operator configuration is dry-run by default, requires backup and preserve
   assert.equal(h.db.prepare('SELECT role FROM account_users WHERE id=?').get(customer.userId).role, 'customer');
 });
 
-test('populated schema six admin, party and mailbox rows survive private backup/rehearsal and audit stays immutable', async t => {
+test('populated current-schema admin, party and mailbox rows survive private backup/rehearsal and audit stays immutable', async t => {
   const folder = mkdtempSync(join(tmpdir(), 'eldritch-admin-six-'));
   t.after(() => rmSync(folder, { recursive: true, force: true }));
   const filename = join(folder, 'current.sqlite');
@@ -304,12 +308,12 @@ test('populated schema six admin, party and mailbox rows survive private backup/
   assert.throws(() => h.db.prepare('DELETE FROM admin_audit WHERE user_id=?').run(owner.userId));
   const { rehearseMigration } = await import('../deploy/production-check.mjs');
   const rehearsal = await rehearseMigration(filename);
-  assert.equal(rehearsal.schemaVersion, 6);
+  assert.equal(rehearsal.schemaVersion, SCHEMA_VERSION);
   assert.equal(rehearsal.preserved, true);
   const { migrateWithBackup } = await import('../deploy/production-rollout.mjs');
   const snapshotFile = join(folder, 'before.sqlite');
   const report = await migrateWithBackup(filename, snapshotFile);
-  assert.equal(report.schemaVersion, 6);
+  assert.equal(report.schemaVersion, SCHEMA_VERSION);
   assert.equal(report.preserved, true);
   const snapshot = openDatabase(snapshotFile, { readOnly: true });
   try {

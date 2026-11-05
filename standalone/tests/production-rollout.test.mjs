@@ -480,3 +480,30 @@ test('preparing another recovery release keeps the original legacy game handler'
   assert.match(readFileSync(join(again, 'server/game.mjs'), 'utf8'), /REALM_MAINTENANCE/);
   assert.ok(existsSync(join(again, 'server/migrations/004-class-chronicle.sql')));
 });
+
+test('schema 7 rehearsal and backup retain regional encounters and character choices', async t => {
+  const folder = mkdtempSync(join(tmpdir(), 'ef-region-preservation-'));
+  t.after(() => rmSync(folder, { recursive: true, force: true }));
+  const filename = join(folder, 'synthetic.sqlite'), snapshot = join(folder, 'backup.sqlite');
+  const db = openDatabase(filename); migrateDatabase(db);
+  db.exec("INSERT INTO account_users(id,email,password_hash,email_verified_at) VALUES('region-hero','region@example.test','test-only','2026-01-01')");
+  db.exec("INSERT INTO game_characters(user_id,id,name,hero_class,party_id,region_id,battle_stance,tactic) VALUES('region-hero','region-hero','RegionHero','ranger','legacy-mossvale','mistHarbor','guarded','recovery-first')");
+  const target = db.prepare("SELECT * FROM game_region_worlds WHERE party_id='legacy-mossvale' AND region_id='mistHarbor'").get();
+  const enemies = JSON.parse(target.enemies_json); enemies[0].hp = 7;
+  db.prepare('UPDATE game_region_worlds SET enemies_json=? WHERE party_id=? AND region_id=?').run(JSON.stringify(enemies), target.party_id, target.region_id);
+  const before = db.prepare('SELECT * FROM game_region_worlds ORDER BY party_id,region_id').all();
+  const hero = db.prepare("SELECT * FROM game_characters WHERE user_id='region-hero'").get(); db.close();
+  assert.equal((await rehearseMigration(filename)).preserved, true);
+  assert.equal((await migrateWithBackup(filename, snapshot)).preserved, true);
+  for (const file of [filename, snapshot]) {
+    const check = openDatabase(file, { readOnly: true });
+    try {
+      assert.deepEqual(check.prepare('SELECT * FROM game_region_worlds ORDER BY party_id,region_id').all(), before);
+      assert.deepEqual(check.prepare("SELECT * FROM game_characters WHERE user_id='region-hero'").get(), hero);
+      assert.deepEqual(check.prepare('PRAGMA foreign_key_check').all(), []);
+    } finally { check.close(); }
+  }
+  for (const script of ['production-check.mjs', 'production-rollout.mjs']) {
+    assert.match(readFileSync(new URL('../deploy/' + script, import.meta.url), 'utf8'), /'game_parties', 'game_region_worlds'/);
+  }
+});

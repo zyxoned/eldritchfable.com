@@ -21,7 +21,7 @@ const recoveryTimer = 'eldritch-production-healthcheck.timer';
 const backupTimer = 'eldritch-production-backup.timer';
 const origin = 'https://eldritchfable.com';
 const source = resolve(dirname(realpathSync(fileURLToPath(import.meta.url))), '..');
-const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products', 'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world', 'game_parties', 'admin_account_settings', 'admin_audit', 'email_outbox'];
+const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products', 'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world', 'game_parties', 'game_region_worlds', 'admin_account_settings', 'admin_audit', 'email_outbox'];
 const delay = ms => new Promise(done => setTimeout(done, ms));
 let phase = 'preflight';
 

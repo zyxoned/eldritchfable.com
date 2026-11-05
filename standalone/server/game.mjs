@@ -3,10 +3,12 @@ import { digest, transaction } from './database.mjs';
 import { sessionUser } from './auth.mjs';
 import { adminSettings } from './admin.mjs';
 import { reply, readJson, sameOriginJson } from './request-security.mjs';
+import { developmentFor, validDevelopmentChoice, outgoingDamage, incomingDamage } from '../shared/character-development.mjs';
+import { REGIONS, DEFAULT_REGION_ID, regionById, regionWalkable } from '../shared/world-catalog.mjs';
 import { PLAYER_CLASS_IDS } from '../shared/class-catalog.mjs';
 import { APPEARANCE_OPTIONS, sanitizeAppearance } from '../shared/appearance-catalog.mjs';
 import {
-  CLASSES, CRYSTALS, ENEMIES, LEASE_MS, MAX_PLAYERS, MAX_VISITORS, SHRINE, SPAWN, distance, walkable,
+  CLASSES, LEASE_MS, MAX_PLAYERS, MAX_VISITORS, SPAWN, distance,
 } from './game-rules.mjs';
 
 class GameError extends Error {
@@ -23,11 +25,12 @@ function publicCharacter(row) {
   return {
     id: row.id, name: row.name, heroClass: row.hero_class,
     appearance: sanitizeAppearance(row.appearance_json ? JSON.parse(row.appearance_json) : undefined),
+    battleStance: privileged ? 'balanced' : row.battle_stance,
     race: privileged ? 'Draconian' : 'Wayfarer',
     levelLabel: privileged ? '???' : String(1 + Math.floor((row.lifetime_xp || 0) / 100)),
     hidden: privileged,
     equipment: definition.equipment,
-    x: row.x, y: row.y, hp: row.hp,
+    x: row.x, y: row.y, hp: row.hp, regionId: row.region_id || DEFAULT_REGION_ID,
     xp: privileged ? 0 : row.lifetime_xp || 0,
     gold: 0, kills: row.kills,
     gathered: JSON.parse(row.gathered_json),
@@ -57,7 +60,10 @@ export function createGameService(db, options = {}) {
     if (!row) throw new GameError('That party is no longer available.', 409, 'PARTY_CHANGED');
     return {
       id: row.id, mode: row.mode, revision: row.revision,
-      enemies: JSON.parse(row.enemies_json),
+      enemies: [
+        ...JSON.parse(row.enemies_json).map(enemy => ({ ...enemy, regionId: DEFAULT_REGION_ID })),
+        ...db.prepare('SELECT enemies_json FROM game_region_worlds WHERE party_id=?').all(partyId).flatMap(region => JSON.parse(region.enemies_json)),
+      ],
       messages: JSON.parse(row.messages_json),
       effects: JSON.parse(row.effects_json),
     };
@@ -66,14 +72,22 @@ export function createGameService(db, options = {}) {
   function saveWorld(world) {
     if (!world) return;
     db.prepare('UPDATE game_parties SET revision=?,enemies_json=?,messages_json=?,effects_json=? WHERE id=?')
-      .run(world.revision, JSON.stringify(world.enemies), JSON.stringify(world.messages.slice(-30)), JSON.stringify(world.effects.slice(-24)), world.id);
+      .run(world.revision, JSON.stringify(world.enemies.filter(enemy => enemy.regionId === DEFAULT_REGION_ID).map(({ regionId, ...enemy }) => enemy)), JSON.stringify(world.messages.slice(-30)), JSON.stringify(world.effects.slice(-24)), world.id);
+    for (const region of Object.values(REGIONS).filter(region => region.id !== DEFAULT_REGION_ID)) {
+      db.prepare('UPDATE game_region_worlds SET enemies_json=? WHERE party_id=? AND region_id=?')
+        .run(JSON.stringify(world.enemies.filter(enemy => enemy.regionId === region.id)), world.id, region.id);
+    }
   }
 
   function createWorld(mode, userId, time) {
     const id = randomUUID();
-    const enemies = ENEMIES.map(enemy => ({ ...enemy, hp: 42, respawnAt: 0, spawnId: randomUUID() }));
+    const enemies = REGIONS.glade.enemies.map(enemy => ({ ...enemy, hp: 42, respawnAt: 0, spawnId: randomUUID() }));
     db.prepare('INSERT INTO game_parties(id,mode,owner_user_id,enemies_json,created_at) VALUES(?,?,?,?,?)')
       .run(id, mode, userId, JSON.stringify(enemies), time);
+    for (const region of Object.values(REGIONS).filter(region => region.id !== DEFAULT_REGION_ID)) {
+      const regionalEnemies = region.enemies.map(enemy => ({ ...enemy, regionId: region.id, hp: 42, respawnAt: 0, spawnId: randomUUID() }));
+      db.prepare('INSERT INTO game_region_worlds(party_id,region_id,enemies_json) VALUES(?,?,?)').run(id, region.id, JSON.stringify(regionalEnemies));
+    }
     return loadWorld(id);
   }
 
@@ -173,7 +187,7 @@ export function createGameService(db, options = {}) {
     ).all(partyId, time);
   }
 
-  function realm(world, time) {
+  function realm(world, time, regionId = DEFAULT_REGION_ID) {
     const rows = regularMembers(world?.id, time);
     const visitors = world ? db.prepare(
       "SELECT c.* FROM game_admin_characters c JOIN account_users u ON u.id=c.user_id "
@@ -182,13 +196,14 @@ export function createGameService(db, options = {}) {
       + 'AND s.revoked_at IS NULL AND s.expires_at>? ORDER BY c.created_at,c.id',
     ).all(world.id, time, new Date(time).toISOString()) : [];
     return {
+      regionId, region: regionById(regionId),
       partyId: world?.id || null, partyMode: world?.mode || null,
       maxPlayers: MAX_PLAYERS, maxVisitors: MAX_VISITORS,
       revision: world?.revision || 0,
       players: rows.map(row => publicCharacter({ ...row, is_admin: false })),
       visitors: visitors.map(row => publicCharacter({ ...row, name: adminSettings(db, row.user_id).visitorName, is_admin: true })),
-      enemies: world?.enemies.map(({ id, x, y, hp, respawnAt }) => ({ id, x, y, hp, respawnAt })) || [],
-      effects: world?.effects.filter(effect => effect.at + 1600 > time).slice(-24) || [],
+      enemies: world?.enemies.filter(enemy => enemy.regionId === regionId).map(({ id, x, y, hp, respawnAt, regionId }) => ({ id, x, y, hp, respawnAt, regionId })) || [],
+      effects: world?.effects.filter(effect => (effect.regionId || DEFAULT_REGION_ID) === regionId && effect.at + 1600 > time).slice(-24) || [],
       messages: world?.messages || [], serverTime: time,
     };
   }
@@ -209,6 +224,7 @@ export function createGameService(db, options = {}) {
       adminAccess: role === 'admin',
       adminActive,
       cooldowns: row ? JSON.parse(row.skill_cooldowns_json) : {},
+      development: row && !adminActive ? developmentFor(row.hero_class, row.lifetime_xp, row.battle_stance, row.tactic) : null,
       balanceXp: wallet?.balance_xp || 0,
       lifetimeXp: wallet?.lifetime_xp || 0,
       balanceCopper: wallet?.balance_copper || 0,
@@ -218,7 +234,7 @@ export function createGameService(db, options = {}) {
   function currentResult(world, userId, time, notice = '') {
     const own = profile(userId, time);
     return {
-      realm: realm(world, time),
+      realm: realm(world, time, own.character?.regionId),
       profile: own,
       playerId: own.playerId,
       notice,
@@ -304,6 +320,10 @@ export function createGameService(db, options = {}) {
     } else {
       updateCharacter({ ...row, is_admin: true }, 'session_hash=?,active_until=?,party_id=?', sessionHash, time + LEASE_MS, world.id);
     }
+    if (!(current?.active_until > time)) {
+      const host = regularMembers(world.id, time).find(member => member.user_id !== userId);
+      if (host) db.prepare('UPDATE game_admin_characters SET region_id=?,x=?,y=? WHERE user_id=?').run(host.region_id, host.x, host.y, userId);
+    }
     // The visitor avatar has separate transient state; normal progress and wallets remain intact.
     const regular = character(userId);
     if (regular?.active_until > time) {
@@ -363,11 +383,11 @@ export function createGameService(db, options = {}) {
   }
 
   function supportStats(p, time) {
-    const members = regularMembers(p.party_id, time).map(row => ({
+    const members = regularMembers(p.party_id, time).filter(row => row.region_id === p.region_id).map(row => ({
       damage: CLASSES[row.hero_class].damage + Math.floor(row.lifetime_xp / 100) * 2,
       range: CLASSES[row.hero_class].range, id: row.id,
     })).sort((a, b) => a.damage - b.damage || a.id.localeCompare(b.id));
-    if (!members.length) throw new GameError('This visit ended because the party left.', 409, 'SEAT_EXPIRED');
+    if (!members.length) throw new GameError('Join a party member in this region before supporting combat.', 409, 'REGION_NO_HERO');
     return members[Math.floor((members.length - 1) / 2)];
   }
 
@@ -378,7 +398,7 @@ export function createGameService(db, options = {}) {
     const attack = type === 'strike' || type === 'area';
     const skill = definition.skills.find(value => value.id === skillId);
     world.effects.push({
-      id: randomUUID(), type, x: target.x, y: target.y,
+      id: randomUUID(), type, x: target.x, y: target.y, regionId: p.region_id,
       color: definition.color, at: time, radius, actorId: p.id,
       ...(attack ? { attackStyle: definition.attackStyle, originX: p.x, originY: p.y,
         ...(skill ? { skillId: skill.id } : {}) } : {}),
@@ -388,7 +408,7 @@ export function createGameService(db, options = {}) {
 
   function hurt(p, amount, time) {
     if (p.is_admin) return false;
-    let damage = Math.max(0, amount - (CLASSES[p.hero_class].armor || 0));
+    let damage = incomingDamage(Math.max(0, amount - (CLASSES[p.hero_class].armor || 0)), p.battle_stance);
     if (p.ward_until > time && p.ward_amount > 0) {
       const absorbed = Math.min(damage, p.ward_amount);
       damage -= absorbed;
@@ -396,7 +416,8 @@ export function createGameService(db, options = {}) {
     }
     if (!damage) return false;
     if (p.hp - damage <= 0) {
-      updateCharacter(p, 'hp=100,x=?,y=?', SPAWN.x, SPAWN.y);
+      const spawn = regionById(p.region_id).spawn;
+      updateCharacter(p, 'hp=100,x=?,y=?', spawn.x, spawn.y);
       return true;
     }
     updateCharacter(p, 'hp=?', p.hp - damage);
@@ -416,11 +437,11 @@ export function createGameService(db, options = {}) {
         'SELECT d.user_id FROM game_damage d JOIN game_characters c ON c.user_id=d.user_id '
         + 'JOIN account_users u ON u.id=d.user_id '
         + 'WHERE d.party_id=? AND c.party_id=? AND d.enemy_id=? AND d.spawn_id=? AND d.damage>0 AND d.damaged_at>=? '
-        + 'AND c.active_until>? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL',
-      ).all(world.id, world.id, enemy.id, enemy.spawnId, time - 30000, time);
+        + 'AND c.region_id=? AND c.active_until>? AND u.disabled_at IS NULL AND u.email_verified_at IS NOT NULL',
+      ).all(world.id, world.id, enemy.id, enemy.spawnId, time - 30000, enemy.regionId, time);
       for (const contributor of contributors) {
         if (credit(contributor.user_id, 15, 'kill:' + enemy.spawnId, 'Thornling defeated', time)) {
-          db.prepare('UPDATE game_characters SET kills=kills+1 WHERE user_id=?').run(contributor.user_id);
+          if (enemy.regionId === DEFAULT_REGION_ID) db.prepare('UPDATE game_characters SET kills=kills+1 WHERE user_id=?').run(contributor.user_id);
         }
       }
       systemMessage(world, p.name + ' defeated a thornling. Its fellow guardians earned 15 XP.', time);
@@ -438,7 +459,7 @@ export function createGameService(db, options = {}) {
     if ((cooldowns[skill.id] || 0) > time) throw new GameError('That skill is still recovering.', 429, 'SKILL_COOLDOWN');
     if (skill.type === 'heal') {
       const targets = skill.target === 'party'
-        ? regularMembers(p.party_id, time).filter(row => row.hp > 0 && distance(p, row) <= (skill.radius || 0))
+        ? regularMembers(p.party_id, time).filter(row => row.region_id === p.region_id && row.hp > 0 && distance(p, row) <= (skill.radius || 0))
         : [p];
       if (!targets.some(row => row.hp < 100)) throw new GameError('Your healing circle is already at full health.', 409, 'HEALTH_FULL');
       for (const row of targets) {
@@ -451,15 +472,15 @@ export function createGameService(db, options = {}) {
     } else if (skill.type === 'strike' || skill.type === 'area') {
       // Both visitor attack presentations share one ordinary attack budget.
       if (p.is_admin && time - p.last_attack_at < 700) throw new GameError('Your weapon is recharging.', 429, 'ATTACK_COOLDOWN');
-      const primary = world.enemies.filter(enemy => enemy.hp > 0 && distance(p, enemy) <= (p.is_admin ? supportStats(p, time).range : skill.range))
+      const primary = world.enemies.filter(enemy => enemy.regionId === p.region_id && enemy.hp > 0 && distance(p, enemy) <= (p.is_admin ? supportStats(p, time).range : skill.range))
         .sort((a, b) => distance(p, a) - distance(p, b))[0];
       if (!primary) throw new GameError('Move closer to a thornling to use ' + skill.name + '.');
       const targets = skill.type === 'area'
-        ? world.enemies.filter(enemy => enemy.hp > 0 && distance(primary, enemy) <= (skill.radius || 0))
+        ? world.enemies.filter(enemy => enemy.regionId === p.region_id && enemy.hp > 0 && distance(primary, enemy) <= (skill.radius || 0))
         : [primary];
       let retaliates = false;
       for (const enemy of targets) {
-        if (!damageEnemy(p, enemy, p.is_admin ? supportStats(p, time).damage : skill.damage + Math.floor(p.lifetime_xp / 100) * 2, world, time)) retaliates = true;
+        if (!damageEnemy(p, enemy, p.is_admin ? supportStats(p, time).damage : outgoingDamage(skill.damage + Math.floor(p.lifetime_xp / 100) * 2, p.battle_stance), world, time)) retaliates = true;
       }
       if (retaliates) hurt(p, 9, time);
       if (p.is_admin) updateCharacter(p, 'last_attack_at=?', time);
@@ -474,9 +495,28 @@ export function createGameService(db, options = {}) {
 
   function doAction(userId, input, world, time) {
     const p = activeCharacter(userId, time);
+    const region = regionById(p.region_id);
+    if (input.regionId !== undefined && input.regionId !== p.region_id) {
+      throw new GameError('Your region changed. Refresh before continuing.', 409, 'REGION_CHANGED');
+    }
+    if (input.kind === 'configure') {
+      if (p.is_admin) throw new GameError('End your support visit before configuring your ordinary hero.', 403, 'ADMIN_DEVELOPMENT_DISABLED');
+      if (!validDevelopmentChoice(p.hero_class, p.lifetime_xp, input.stanceId, input.tacticId)) {
+        throw new GameError('Choose an unlocked stance and a valid battle guide.', 400, 'INVALID_DEVELOPMENT');
+      }
+      updateCharacter(p, 'battle_stance=?,tactic=?', input.stanceId, input.tacticId);
+      return 'Battle approach saved. No XP was spent.';
+    }
+    if (input.kind === 'travel') {
+      const exit = region.exits.find(value => value.id === input.exitId);
+      if (!exit || distance(p, exit) > 1.6) throw new GameError('Walk to the marked exit before traveling.', 409, 'EXIT_TOO_FAR');
+      if (time - p.last_move_at < 160) throw new GameError('Move a little more slowly.', 429, 'MOVE_COOLDOWN');
+      updateCharacter(p, 'region_id=?,x=?,y=?,last_move_at=?', exit.to, exit.arrival.x, exit.arrival.y, time);
+      return 'Entered ' + regionById(exit.to).name + '. Your party remains together across regions.';
+    }
     if (input.kind === 'move') {
       const { x, y } = input;
-      if (!walkable(x, y) || Math.abs(x - p.x) + Math.abs(y - p.y) !== 1) {
+      if (!regionWalkable(p.region_id, x, y) || Math.abs(x - p.x) + Math.abs(y - p.y) !== 1) {
         throw new GameError('Move one tile at a time. Cross the brook using its wooden bridge.');
       }
       if (time - p.last_move_at < 160) throw new GameError('Move a little more slowly.', 429, 'MOVE_COOLDOWN');
@@ -488,11 +528,11 @@ export function createGameService(db, options = {}) {
       if (time - p.last_attack_at < 700) throw new GameError('Your weapon is recharging.', 429, 'ATTACK_COOLDOWN');
       const stats = p.is_admin ? supportStats(p, time) : CLASSES[p.hero_class];
       const targets = world.enemies
-        .filter(e => e.hp > 0 && distance(p, e) <= stats.range)
+        .filter(e => e.regionId === p.region_id && e.hp > 0 && distance(p, e) <= stats.range)
         .sort((a, b) => distance(p, a) - distance(p, b));
       const enemy = targets[0];
       if (!enemy) throw new GameError('Move closer to a thornling to attack.');
-      const damage = p.is_admin ? stats.damage : stats.damage + Math.floor(p.lifetime_xp / 100) * 2;
+      const damage = p.is_admin ? stats.damage : outgoingDamage(stats.damage + Math.floor(p.lifetime_xp / 100) * 2, p.battle_stance);
       const killed = damageEnemy(p, enemy, damage, world, time);
       updateCharacter(p, 'last_attack_at=?', time);
       effect(world, p, 'strike', enemy, time);
@@ -503,18 +543,18 @@ export function createGameService(db, options = {}) {
     if (input.kind === 'interact') {
       if (p.is_admin) return 'The realm stirs around your undying presence. No reward was created.';
       const gathered = JSON.parse(p.gathered_json);
-      const crystal = CRYSTALS.find(c => distance(p, c) <= 1.6 && !gathered.includes(c.id));
+      const crystal = region.crystals.find(c => distance(p, c) <= 1.6 && !gathered.includes(c.id));
       if (crystal) {
         gathered.push(crystal.id);
         credit(userId, 10, 'crystal:' + crystal.id, 'Moon crystal gathered', time);
         db.prepare('UPDATE game_characters SET gathered_json=? WHERE user_id=?').run(JSON.stringify(gathered), userId);
         return 'Moon crystal gathered! 10 XP added to your secret stash.';
       }
-      if (distance(p, SHRINE) <= 2) {
-        db.prepare('UPDATE game_characters SET shrine=1,hp=100 WHERE user_id=?').run(userId);
+      if (distance(p, region.shrine) <= 2) {
+        db.prepare('UPDATE game_characters SET shrine=CASE WHEN region_id=\'glade\' THEN 1 ELSE shrine END,hp=100 WHERE user_id=?').run(userId);
         return 'The old shrine blesses your journey. Health restored.';
       }
-      if (distance(p, SPAWN) <= 2.5) {
+      if (distance(p, region.spawn) <= 2.5) {
         db.prepare('UPDATE game_characters SET hp=100 WHERE user_id=?').run(userId);
         return 'Rested at the campfire. Health restored.';
       }
@@ -716,7 +756,8 @@ export function createGameService(db, options = {}) {
   function sendRealm(stream) {
     try {
       const user = requireUser(stream.req, now());
-      const current = realm(worldFor(user.id, now()), now());
+      const time = now();
+      const current = realm(worldFor(user.id, time), time, profile(user.id, time).character?.regionId);
       if (stream.res.destroyed || stream.res.writableEnded) return closeStream(stream);
       stream.res.write('event: realm\ndata: ' + JSON.stringify(current) + '\n\n');
     } catch (error) {

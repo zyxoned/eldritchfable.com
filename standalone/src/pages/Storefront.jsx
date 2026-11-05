@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Brush, Castle, ChevronRight, Compass, Dices, Hammer, Map as MapIcon, Menu, Package, Search, ShieldCheck, ShoppingBag, Heart, Sparkles, Sword, Trash2, WandSparkles, X } from 'lucide-react';
+import { BookOpen, Box, UserRound, Handshake, Brush, Castle, ChevronRight, Compass, Dices, Hammer, Map as MapIcon, Menu, Package, Search, ShieldCheck, ShoppingBag, Heart, Sparkles, Sword, Trash2, WandSparkles, X } from 'lucide-react';
 import { loadCatalog } from '../api/catalog.js';
 import { PREVIEW_CART_KEY, lineKey, money, normalizeCart, readCart, serializeCart } from '../lib/storefront-preview-core.js';
 import '../styles/storefront.css';
+import '../styles/tavern-reference.css';
 import BagDrawer from '../components/storefront/BagDrawer.jsx';
 
 const ROOT = '';
@@ -80,7 +81,7 @@ function Header() {
   }
   const links = <><Link to="/">The Tavern</Link><Link to="/play">Adventure</Link><Link to="/shop?q=dice">Wares</Link><Link to="/shop?q=miniature">Miniatures</Link><Link to="/shop?q=map">Maps & Aids</Link><Link to="/shop?q=paint">Painting & Terrain</Link><Link to="/shop?q=tools">GM Tools</Link><Link to="/shop?q=cosplay">Cosplay & Digital</Link></>;
   return <><a className="skip-link" href="#ef-main">Skip to content</a><div className="announcement">The next adventure is taking shape · Catalog preview · Checkout opening soon</div>
-    <header className="site-header"><Brand /><nav className="reference-nav" aria-label="Shop categories">{links}</nav><form className="header-search" role="search" onKeyDown={closeSearch} onSubmit={event => { event.preventDefault(); navigate('/shop?q=' + encodeURIComponent(search.trim())); }}><button ref={searchButton} type={searchOpen ? "submit" : "button"} onClick={openSearch} aria-label="Search store" aria-expanded={searchOpen} aria-controls="ef-header-search"><Search aria-hidden="true" /></button><input ref={searchInput} id="ef-header-search" hidden={!searchOpen} aria-label="Search the store" placeholder="Search dice, miniatures, maps, and more..." value={search} onChange={event => setSearch(event.target.value)} /></form><div className="header-actions"><Link to="/account" className="header-account">Account</Link><Link to="/wishlist" className="header-wishlist" aria-label={`Wishlist with ${cart.wishlist.length} products`}><Heart aria-hidden="true" /> <span>Wishlist ({cart.wishlist.length})</span></Link>
+    <header className="site-header"><Brand /><nav className="reference-nav" aria-label="Shop categories">{links}</nav><form className="header-search" role="search" onKeyDown={closeSearch} onSubmit={event => { event.preventDefault(); navigate('/shop?q=' + encodeURIComponent(search.trim())); }}><button ref={searchButton} type={searchOpen ? "submit" : "button"} onClick={openSearch} aria-label="Search store" aria-expanded={searchOpen} aria-controls="ef-header-search"><Search aria-hidden="true" /></button><input ref={searchInput} id="ef-header-search" hidden={!searchOpen} aria-label="Search the store" placeholder="Search dice, miniatures, maps, and more..." value={search} onChange={event => setSearch(event.target.value)} /></form><div className="header-actions"><Link to="/account" className="header-account" aria-label="Account"><UserRound aria-hidden="true" /><span>Account</span></Link><Link to="/wishlist" className="header-wishlist" aria-label={`Wishlist with ${cart.wishlist.length} products`}><Heart aria-hidden="true" /> <span>Wishlist ({cart.wishlist.length})</span></Link>
       <button className="icon-button mobile-only" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} aria-controls="ef-mobile-menu">{menuOpen ? <X /> : <Menu />}</button>
       <button onClick={() => cart.setBagOpen(true)} className="cart-trigger ef-button outline" aria-label={`Shopping bag with ${count} items`}><ShoppingBag aria-hidden="true" /><span className="desktop-only">Bag</span><b>{count}</b></button>
     </div>{menuOpen && <nav id="ef-mobile-menu" className="mobile-nav" aria-label="Mobile navigation">{links}<Link to="/account">Account</Link><Link to="/wishlist">Wishlist ({cart.wishlist.length})</Link></nav>}</header><BagDrawer open={cart.bagOpen} onOpenChange={cart.setBagOpen} items={cart.lines.map(line => { const product = cart.products.find(p => p.id === line.productId); const variant = product?.variants.find(v => v.id === line.variantId); return { ...line, key: lineKey(line), name: product?.name, option: variant?.label, priceCents: variant?.priceCents || 0, url: `${ROOT}/products/${product?.slug}` }; })} subtotal={cart.subtotal} onQuantity={(line, quantity) => cart.setQuantity(line.key, quantity)} onRemove={line => cart.remove(line.key)} notice={cart.notice} shopHref={`${ROOT}/shop`} cartHref={`${ROOT}/bag`} preview /></>;
@@ -123,7 +124,7 @@ function Catalog({ category = '', featured = false }) {
   </section>;
 }
 const tavernCategories = [
-  { slug: 'dice', query: 'dice', title: 'The Wares', description: 'Curated gear, accessories, and essentials for your next adventure.', cta: 'Browse wares' },
+  { slug: 'dice', query: 'dice', title: 'The Loot Cache', description: 'Curated gear, accessories, and essentials for your next adventure.', cta: 'Browse wares' },
   { slug: 'miniatures', query: 'miniature', title: 'Miniatures & Encounters', description: 'Bring your world to life with stunning miniatures and encounters.', cta: 'Explore miniatures' },
   { slug: 'maps', query: 'map', title: 'Maps & Encounter Aids', description: 'Set the scene with maps, tiles, and encounter aids.', cta: 'Explore maps' },
   { slug: 'painting', query: 'paint', title: 'Painting & Terrain Supplies', description: 'Everything you need to paint, build, and customize.', cta: 'Shop supplies' },
@@ -140,7 +141,7 @@ function Home() {
   };
   return <>
     <section className="hero" aria-label="Welcome to the Tavern">
-      <img className="mobile-dragon-image" src="/approved/hero-dragon.webp" alt="Dragon and a fantastical castle in warm torchlight" />
+      <img className="mobile-dragon-image" src="/tavern-reference/hero.webp" alt="Dragon miniature and golden dice on a candlelit tavern table" />
       <div className="hero-illustration" aria-hidden="true" />
       <div className="hero-scrim" />
       <div className="hero-content">
@@ -161,9 +162,9 @@ function Home() {
       <div className="category-grid">
         {tavernCategories.map((category, index) =>
           <article className={'tavern-category tavern-category-' + (index + 1)} key={category.slug}>
-            <Link to={categoryHref(category)} className="tavern-category-image" aria-label={'Explore ' + category.title} />
+            <span className="ornate-frame" aria-hidden="true" /><Link to={categoryHref(category)} className="tavern-category-image" aria-label={'Explore ' + category.title} />
             <div className="tavern-category-copy">
-              <h3>{category.title}</h3><span className="tavern-rule" aria-hidden="true" />
+              <span className="category-medallion" aria-hidden="true">{[<Package />, <Sword />, <BookOpen />, <Brush />, <BookOpen />, <ShieldCheck />][index]}</span><h3>{category.title}</h3><span className="tavern-rule" aria-hidden="true" />
               <p>{category.description}</p>
               <Link to={categoryHref(category)} className="tavern-category-button">{category.cta} <ChevronRight aria-hidden="true" /></Link>
             </div>
@@ -172,7 +173,7 @@ function Home() {
       </div>
     </section>
     <section className="tavern-seek" id="seek" aria-label="Search the store">
-      <h2>Find What <span>You Seek</span></h2>
+      <span className="ornate-frame" aria-hidden="true" /><h2>Find What <span>You Seek</span></h2><Compass className="seek-compass" aria-hidden="true" />
       <form role="search" onSubmit={event => { event.preventDefault(); navigate('/shop?q=' + encodeURIComponent(search.trim())); }}>
         <input value={search} onChange={event => setSearch(event.target.value)} aria-label="Search for wares" placeholder="Search for wares, miniatures, maps, tools, and more…" />
         <button aria-label="Find wares" type="submit"><Search aria-hidden="true" /></button>
@@ -181,7 +182,12 @@ function Home() {
     <section className="values tavern-promise" id="story" aria-labelledby="tavern-promise-title">
       <h2 id="tavern-promise-title">Our Table-Ready Quality Promise</h2>
       <span className="tavern-promise-divider" aria-hidden="true">✧</span>
-      <p>We promise to clearly describe materials, dimensions, and intended tabletop use. We will never claim unverified inventory is available, and we will address damaged or incorrectly described orders according to our published policy.</p>
+      <div className="promise-grid">
+        <div><ShieldCheck aria-hidden="true" /><h3>Clearly Described</h3><p>Materials and dimensions, clearly described.</p></div>
+        <div><Box aria-hidden="true" /><h3>Quality Checked</h3><p>We address damaged or incorrectly described orders.</p></div>
+        <div><Dices aria-hidden="true" /><h3>Table Ready</h3><p>Intended tabletop use explained for every listing.</p></div>
+        <div><Handshake aria-hidden="true" /><h3>Honest Availability</h3><p>We never claim unverified inventory is available.</p></div>
+      </div><p className="promise-policy">Orders are handled according to our published policy. The catalog is in preparation; checkout is not yet available.</p>
     </section>
   </>;
 }
@@ -239,7 +245,7 @@ export default function StorefrontPreview() {
   useEffect(() => { if (location.hash) requestAnimationFrame(() => document.getElementById(location.hash.slice(1))?.scrollIntoView()); }, [location.hash, catalog.isSuccess]);
   if (catalog.isPending) return <div className="ef-storefront"><div className="ef-state" role="status">Loading the collection…</div></div>;
   if (catalog.isError) return <div className="ef-storefront"><div className="ef-state"><h1>The collection is temporarily unavailable.</h1><p>Please try loading it again.</p><button className="ef-button" onClick={() => catalog.refetch()}>Retry</button></div></div>;
-  return <div className="ef-storefront"><PreviewProvider products={catalog.data.products} collections={catalog.data.collections}><Header /><main id="ef-main" tabIndex={-1}><Routes><Route index element={<Home />} /><Route path="shop" element={<Shop />} /><Route path="collections/:slug" element={<Collection />} /><Route path="products/:slug" element={<Product />} /><Route path="bag" element={<Bag />} /><Route path="wishlist" element={<Wishlist />} /><Route path="*" element={<Missing />} /></Routes></main><footer className="tavern-footer">
+  return <div className="ef-storefront"><PreviewProvider products={catalog.data.products} collections={catalog.data.collections}><Header /><main id="ef-main" tabIndex={-1}><Routes><Route index element={<Home />} /><Route path="shop" element={<Shop />} /><Route path="collections/:slug" element={<Collection />} /><Route path="products/:slug" element={<Product />} /><Route path="bag" element={<Bag />} /><Route path="wishlist" element={<Wishlist />} /><Route path="*" element={<Missing />} /></Routes></main><footer className="tavern-footer"><span className="ornate-frame" aria-hidden="true" />
   <div className="footer-brand"><Brand /><p>Legendary gear for stories yet to be told.</p></div>
   <nav aria-label="Shop footer"><h2>Shop</h2><Link to="/">The Tavern</Link><Link to="/shop">All wares</Link><Link to="/shop?q=miniature">Miniatures &amp; Encounters</Link><Link to="/shop?q=map">Maps &amp; Encounter Aids</Link><Link to="/shop?q=paint">Painting &amp; Terrain</Link><Link to="/shop?q=tools">GM Tools</Link></nav>
   <nav aria-label="Help footer"><h2>Help</h2><Link to="/account">Your account</Link><Link to="/bag">Your bag</Link><Link to="/wishlist">Wishlist</Link><Link to="/#story">Our promise</Link></nav>

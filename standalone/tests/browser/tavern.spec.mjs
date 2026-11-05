@@ -128,8 +128,17 @@ test('Tavern category cards use the intended artwork after legacy styles', async
   const cards = page.locator('#categories .tavern-category-image');
   await expect(cards).toHaveCount(6);
   const backgrounds = await cards.evaluateAll(elements => elements.map(element => getComputedStyle(element).backgroundImage));
-  const artwork = ['/approved/cat-dice.webp', '/approved/cat-mini.webp', '/approved/cat-map.webp', '/approved/cat-paint.webp', '/visuals/gm-tools.webp', '/approved/cat-tools.webp'];
+  const artwork = ['/tavern-reference/loot.webp', '/tavern-reference/miniatures.webp', '/tavern-reference/maps.webp', '/tavern-reference/painting.webp', '/tavern-reference/tools.webp', '/tavern-reference/cosplay.webp'];
   for (let index = 0; index < artwork.length; index++) expect(backgrounds[index]).toContain(artwork[index]);
+  await expect(page.locator('.ornate-frame')).toHaveCount(8);
+  expect(await page.locator('.ornate-frame').evaluateAll(elements => elements.every(element => getComputedStyle(element).pointerEvents === 'none'))).toBe(true);
+  await expect(page.locator('.mobile-dragon-image')).toHaveAttribute('src', '/tavern-reference/hero.webp');
+  expect(await page.locator('.tavern-promise').evaluate(element => getComputedStyle(element).backgroundImage)).toContain('/tavern-reference/promise.webp');
+  for (const asset of [...artwork, '/tavern-reference/hero.webp', '/tavern-reference/promise.webp', '/tavern-reference/banner.svg', '/tavern-reference/corner-tl.svg']) {
+    const response = await page.request.get(asset);
+    expect(response.ok(), asset).toBe(true);
+    expect(response.headers()['content-type']).toContain(asset.endsWith('.svg') ? 'image/svg+xml' : 'image/webp');
+  }
 });
 
 test('Header search opens without navigating and Escape restores its trigger', async ({ page }) => {

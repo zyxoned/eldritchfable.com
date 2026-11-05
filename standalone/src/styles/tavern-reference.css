@@ -1,0 +1,138 @@
+/* November 2026 reference treatment. Keep commerce and dialog styles untouched. */
+.ef-storefront { --tavern-gold: #d8ab54; --tavern-pale: #ffe5a5; }
+.ef-storefront .site-header { min-height: 3.15rem; padding-inline: 2.8%; background: #070909; border-bottom: 1px solid #73501f; }
+.ef-storefront .brand strong, .ef-storefront .brand em { color: var(--tavern-pale); }
+.ef-storefront .header-account { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 44px; color: var(--tavern-pale); }
+.ef-storefront .header-account svg { width: 23px; height: 23px; stroke-width: 1.4; }
+.ef-storefront .header-account span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.ef-storefront .hero { border-bottom: 1px solid #80602c; }
+.ef-storefront .hero h1 { color: #ffe6a8; font-weight: 400; font-variant: small-caps; text-shadow: 0 3px 6px #000; letter-spacing: -.025em; }
+.ef-storefront .hero-content { background: transparent !important; }
+.ef-storefront .hero-content>p:not(.eyebrow) { color: #fff9ed; letter-spacing: .22em; }
+.ef-storefront .category-strip { padding: 0 2.2% 1.2%; background-color: #080b0d; background-image: repeating-radial-gradient(circle at 12% 10%, transparent 0 37px, #a26b2420 38px 39px, transparent 40px 65px), repeating-linear-gradient(45deg, transparent 0 80px, #a26b2414 81px, transparent 82px); }
+.ef-storefront .fable-emblem { min-height: 6.3rem; border: 0; background: none; margin-bottom: 0; z-index: 2; }
+.ef-storefront .fable-emblem-icon { position: absolute; top: -4rem; width: 8rem; height: 7rem; padding: 1.2rem 1.8rem; border: 3px double #d6a43f; border-radius: 50% 50% 10% 10%; background: radial-gradient(ellipse at 50% 70%, #cd9262, #49304a 42%, #130e24 70%); color: #080b16; fill: #080b16; filter: drop-shadow(0 0 5px #000); }
+.ef-storefront .fable-emblem h2 { position: relative; max-width: 88%; margin: 0; padding: .65rem 1.8rem; border: 3px double #bd8f38; background: linear-gradient(#151111, #050607 55%, #19100a); box-shadow: 0 0 0 3px #07090b, 0 0 0 4px #a2712d, 0 4px 12px #000; color: #ffe49a; font-size: clamp(1.15rem,2.6vw,2.5rem); }
+.ef-storefront .fable-emblem:before, .ef-storefront .fable-emblem:after { content: '❧'; top: -1.8rem; left: calc(50% - 10rem); font-size: 5rem; line-height: 1; color: #c79b3f; text-shadow: 0 2px #000; transform: rotate(-20deg); }
+.ef-storefront .fable-emblem:after { left: auto; right: calc(50% - 10rem); transform: scaleX(-1) rotate(-20deg); }
+.ef-storefront .fable-orb { position: absolute; bottom: -.1rem; width: 1.8rem; height: 1.8rem; border: 3px double #e9bc60; }
+.ef-storefront .category-strip .category-grid { gap: 1.25vw !important; }
+.ef-storefront .tavern-category { border: 3px double #b18b46; background: #070b0d; box-shadow: inset 0 0 18px #000; }
+.ef-storefront .tavern-category::before, .ef-storefront .tavern-category::after { content: '❧'; width: 2.3rem; height: 2.3rem; border: 0; color: #c29946; font-family: Georgia, serif; font-size: 2rem; line-height: 1; }
+.ef-storefront .tavern-category::after { transform: rotate(180deg); }
+.ef-storefront .category-grid a.tavern-category-image { height: clamp(8rem,13.4vw,16rem) !important; background-position: center 46%; }
+.ef-storefront .tavern-category-copy { position: relative; min-height: 7rem; padding: .05rem .75rem .65rem 22%; background: repeating-radial-gradient(circle at 0 100%,transparent 0 17px,#98651e19 18px 19px,transparent 20px 32px); }
+.ef-storefront .category-medallion { position: absolute; top: -.6rem; left: 2%; display: grid; place-items: center; width: 17%; aspect-ratio: 1; border-radius: 45% 45% 50% 50%; border: 3px double #d5a649; background: radial-gradient(#1b1a1b,#05080b); box-shadow: 0 0 0 3px #0b0b0c, 0 0 0 4px #9a6c2b; color: #e9b95c; }
+.ef-storefront .category-medallion svg { width: 67%; height: 67%; stroke-width: 1.3; }
+.ef-storefront .tavern-category h3 { font-size: clamp(1rem,1.9vw,1.9rem); white-space: normal; color: #fce8b5; }
+.ef-storefront .tavern-rule { display: none; }
+.ef-storefront .tavern-category p { margin: .3rem 0 .55rem; font-size: clamp(.7rem,1.15vw,1.05rem); line-height: 1.3; letter-spacing: .035em; color: #e9e7e3; }
+.ef-storefront .category-grid a.tavern-category-button { min-height: 1.9rem !important; padding: .35rem .8rem !important; border-color: #d4aa50 !important; background: #060809 !important; color: #ffe9af !important; font-size: clamp(.58rem,.95vw,.85rem) !important; }
+.ef-storefront .tavern-seek { position: relative; min-height: 5.8rem; padding: 1rem 20% 1rem 9.5%; grid-template-columns: 9rem minmax(0,1fr); gap: 1.2rem; outline: 3px double #956625; outline-offset: -10px; background-color: #0c0d0d; }
+.ef-storefront .tavern-seek h2 { color: #ffe3a0; }
+.ef-storefront .tavern-seek form { height: 2.7rem; background: #dfd0ba; border: 3px double #bb8e42; }
+.ef-storefront .seek-compass { position: absolute; right: 10%; width: 4.2rem; height: 4.2rem; color: #d3a447; stroke-width: 1; }
+.ef-storefront .values.tavern-promise { min-height: 13rem; padding: .6rem 6% 1rem; background-image: linear-gradient(#17142035,#06090c90),url('/tavern-reference/promise.webp'); background-position: center; gap: .2rem; }
+.ef-storefront .tavern-promise h2 { font-size: clamp(1.3rem,2.6vw,2.5rem); color: #ffe3a0; }
+.ef-storefront .promise-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); width: 100%; gap: 1.5rem; }
+.ef-storefront .promise-grid>div { position: relative; padding: .2rem .6rem; }
+.ef-storefront .promise-grid>div+div:before { content: ''; position: absolute; left: -.75rem; bottom: 0; height: 3rem; width: 1px; background: linear-gradient(transparent,#b9883d,transparent); }
+.ef-storefront .promise-grid svg { width: 2.7rem; height: 2.7rem; padding: .35rem; border: 3px double #b78b3d; border-radius: 38%; stroke-width: 1.4; color: #f3c76b; background: #080c0dbb; }
+.ef-storefront .promise-grid h3 { margin: .2rem 0; font-family: Georgia,serif; font-variant: small-caps; font-size: 1rem; color: #ffe3a0; font-weight: 400; }
+.ef-storefront .promise-grid p { margin: 0; font-size: .75rem; line-height: 1.3; }
+.ef-storefront .tavern-promise .promise-policy { max-width: 65rem; font-size: .7rem; margin-top: .5rem; color: #c8bda7; }
+.ef-storefront footer.tavern-footer { padding-block: 1rem; border-top: 3px double #9f7432; background-image: radial-gradient(ellipse at 0 100%,#6c481f22,transparent 20%),radial-gradient(ellipse at 100% 100%,#6c481f22,transparent 20%); }
+@media(min-width:701px) {
+  .ef-storefront .hero { height: 41.2vw !important; max-height: 42rem; min-height: 25rem !important; padding-right: 3% !important; }
+  .ef-storefront .hero:before { width: 100% !important; background-image: url('/tavern-reference/hero.webp') !important; background-size: cover !important; background-position: 25% 50% !important; }
+  .ef-storefront .hero-scrim { background: linear-gradient(90deg,transparent 35%,#08090970 60%,#080909a0) !important; }
+  .ef-storefront .hero-content { width: 42% !important; max-width: 42% !important; }
+  .ef-storefront .hero h1 { font-size: clamp(2.4rem,5.4vw,5.6rem) !important; line-height: .95 !important; }
+}
+@media(min-width:701px) and (max-width:900px) {
+  .ef-storefront .site-header { grid-template-columns: auto 1fr 2.6rem auto; height: auto; }
+  .ef-storefront .reference-nav { grid-row: 2; grid-column: 1/-1; justify-content: center; gap: 1.5rem; flex-wrap: wrap; }
+}
+@media(max-width:700px) {
+  .ef-storefront .site-header { padding-inline: .65rem; }
+  .ef-storefront .hero { padding-right: 0 !important; padding-bottom: 3rem !important; }
+  .ef-storefront .hero-content { padding: .5rem 1rem 1rem !important; }
+  .ef-storefront .hero-actions { align-items: center; }
+  .ef-storefront .hero-actions .ef-button { flex: none; }
+  .ef-storefront .fable-emblem { min-height: 6rem; margin-bottom: .6rem; }
+  .ef-storefront .fable-emblem-icon { top: -2.5rem; width: 5rem; height: 4.5rem; padding: .6rem; }
+  .ef-storefront .fable-emblem h2 { max-width: 96%; font-size: 1.2rem; padding: .65rem 1rem; }
+  .ef-storefront .category-strip { padding-inline: .75rem; padding-bottom: 1rem; }
+  .ef-storefront .category-strip .category-grid { gap: 1rem !important; }
+  .ef-storefront .category-grid a.tavern-category-image { height: 42vw !important; max-height: 18rem; }
+  .ef-storefront .tavern-category-copy { min-height: 8rem; padding: .2rem .8rem .8rem 22%; }
+  .ef-storefront .tavern-category h3 { font-size: 1.35rem; }
+  .ef-storefront .tavern-category p { font-size: .85rem; }
+  .ef-storefront .category-grid a.tavern-category-button { min-height: 44px !important; font-size: .7rem !important; }
+  .ef-storefront .tavern-seek { padding: 1.3rem 1.5rem; grid-template-columns: 1fr; gap: .8rem; }
+  .ef-storefront .tavern-seek h2 { font-size: 1.55rem; }
+  .ef-storefront .tavern-seek h2 span { display: inline; }
+  .ef-storefront .seek-compass { display: none; }
+  .ef-storefront .tavern-seek form { height: 3rem; }
+  .ef-storefront .values.tavern-promise { padding: 1.5rem 1rem; }
+  .ef-storefront .promise-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem .5rem; }
+  .ef-storefront .promise-grid>div+div:before { display: none; }
+  .ef-storefront .promise-grid p { font-size: .8rem; }
+}
+
+@media(max-width:700px) { .ef-storefront .hero:after { background-image: linear-gradient(0deg,#09070e,transparent 24%),url('/tavern-reference/hero.webp') !important; background-position: center,25% center !important; } }
+
+@media(max-width:700px) { .ef-storefront .hero .mobile-dragon-image { object-position: 22% center; } }
+
+@media(min-width:901px) { .ef-storefront .reference-nav { gap: clamp(.4rem,.8vw,.85rem); } .ef-storefront .reference-nav a { font-size: clamp(.56rem,.76vw,.76rem); } }
+
+/* Reusable, scalable gold filigree. Decorative layers never capture input. */
+.ef-storefront .ornate-frame { position: absolute; inset: 0; z-index: 2; pointer-events: none; background-image: url('/tavern-reference/corner-tl.svg'),url('/tavern-reference/corner-tr.svg'),url('/tavern-reference/corner-bl.svg'),url('/tavern-reference/corner-br.svg'); background-position: top left,top right,bottom left,bottom right; background-size: 62px 62px; background-repeat: no-repeat; }
+.ef-storefront .tavern-category:before,.ef-storefront .tavern-category:after { display: none; }
+.ef-storefront footer.tavern-footer { position: relative; padding: 1.2rem 3.2% 1.5rem; }
+.ef-storefront .tavern-footer>.ornate-frame { background-size: 90px 90px; }
+.ef-storefront .tavern-seek>.ornate-frame { inset: 7px 5%; background-size: 48px 48px; border: 1px solid #9e742d; }
+.ef-storefront .tavern-seek { outline: none; }
+.ef-storefront .fable-emblem h2:before,.ef-storefront .fable-emblem h2:after { content: '✧'; position: absolute; top: 50%; transform: translateY(-50%); color: #ffe6a0; font-size: 1.1em; }
+.ef-storefront .fable-emblem h2:before { left: .35rem; }
+.ef-storefront .fable-emblem h2:after { right: .35rem; }
+.ef-storefront .tavern-promise { background-position: center 31% !important; }
+@media(max-width:700px) {
+ .ef-storefront .tavern-category .ornate-frame { background-size: 72px 72px; }
+ .ef-storefront footer.tavern-footer { padding: 1.5rem 1.25rem 2rem; }
+ .ef-storefront .tavern-seek>.ornate-frame { inset: 6px; }
+ .ef-storefront .fable-emblem h2 { padding-inline: 1.6rem; }
+}
+.ef-storefront .fable-emblem h2 { padding: .9rem 2.5rem; border: 0; box-shadow: none; background: url('/tavern-reference/banner.svg') center / 100% 100% no-repeat; min-width: 70%; }
+.ef-storefront .fable-emblem h2:before { left: 1.5rem; }
+.ef-storefront .fable-emblem h2:after { right: 1.5rem; }
+@media(max-width:700px) { .ef-storefront .fable-emblem h2 { min-width: 0; padding: .9rem 2rem; } .ef-storefront .fable-emblem h2:before { left: .8rem; } .ef-storefront .fable-emblem h2:after { right: .8rem; } }
+@media(max-width:700px) { .ef-storefront .header-account { display: none; } }
+
+/* Purpose-made, text-free category artwork. */
+.ef-storefront .tavern-category:nth-child(1) .tavern-category-image { background-image: linear-gradient(0deg,#070b0d,transparent 24%),url('/tavern-reference/loot.webp') !important; }
+.ef-storefront .tavern-category:nth-child(2) .tavern-category-image { background-image: linear-gradient(0deg,#070b0d,transparent 24%),url('/tavern-reference/miniatures.webp') !important; }
+.ef-storefront .tavern-category:nth-child(3) .tavern-category-image { background-image: linear-gradient(0deg,#070b0d,transparent 24%),url('/tavern-reference/maps.webp') !important; }
+.ef-storefront .tavern-category:nth-child(4) .tavern-category-image { background-image: linear-gradient(0deg,#070b0d,transparent 24%),url('/tavern-reference/painting.webp') !important; }
+.ef-storefront .tavern-category:nth-child(5) .tavern-category-image { background-image: linear-gradient(0deg,#070b0d,transparent 24%),url('/tavern-reference/tools.webp') !important; }
+.ef-storefront .tavern-category:nth-child(6) .tavern-category-image { background-image: linear-gradient(0deg,#070b0d,transparent 24%),url('/tavern-reference/cosplay.webp') !important; }
+/* Visual QA: protect two-line hero, unrotate icons, and balance card type. */
+.ef-storefront .category-medallion svg { transform: none; }
+.ef-storefront .tavern-category h3 { font-size: clamp(1rem,1.65vw,1.65rem); }
+.ef-storefront .tavern-footer>.ornate-frame { display: block; width: 100%; height: 100%; justify-self: stretch; }
+.ef-storefront .promise-grid p,.ef-storefront .promise-policy,.ef-storefront .tavern-footer p,.ef-storefront .tavern-footer nav a,.ef-storefront .footer-update>span { font-family: Arial,ui-sans-serif,sans-serif; }
+.ef-storefront .tavern-seek { grid-template-columns: minmax(9rem,12.5vw) minmax(0,1fr); }
+@media(min-width:701px) {
+ .ef-storefront .hero-content { width: 44% !important; max-width: 44% !important; }
+ .ef-storefront .hero h1 { width: 100%; max-width: none; font-size: clamp(2.1rem,5vw,5.2rem) !important; }
+ .ef-storefront .hero h1 span { white-space: nowrap; }
+}
+@media(max-width:700px) { .ef-storefront .tavern-category h3 { font-size: 1.35rem; } .ef-storefront .tavern-seek { grid-template-columns: 1fr; } }
+/* Keep filigree clear of live copy and give the crest an illustrated center. */
+.ef-storefront .tavern-footer>.ornate-frame { background-size: 30px 30px,30px 30px,90px 90px,90px 90px; }
+.ef-storefront .fable-emblem-icon { background: url('/tavern-reference/promise.webp') right 25% / 400% no-repeat; color: transparent; fill: transparent; }
+.ef-storefront .fable-emblem:before,.ef-storefront .fable-emblem:after { content: ''; width: 10rem; height: 4rem; top: -1.8rem; left: calc(50% - 13rem); background: url('/tavern-reference/flourish.svg') center / contain no-repeat; transform: none; }
+.ef-storefront .fable-emblem:after { left: auto; right: calc(50% - 13rem); transform: scaleX(-1); }
+@media(max-width:700px) { .ef-storefront .fable-emblem:before,.ef-storefront .fable-emblem:after { display: none; } .ef-storefront footer.tavern-footer { padding-inline: 2rem; } }
+@media(max-width:700px) { .ef-storefront footer.tavern-footer { padding-bottom: 6rem; } }
+@media(max-width:700px) { .ef-storefront .tavern-seek { padding-inline: 2.5rem; } .ef-storefront .tavern-seek>.ornate-frame { background-size: 32px 32px; } }

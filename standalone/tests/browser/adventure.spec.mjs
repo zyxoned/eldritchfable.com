@@ -66,7 +66,7 @@ test('a verified adventurer earns private XP, exchanges it, and keeps progress a
   expect(pacedSteps).toBe(1);
   await expect(async () => {
     await page.getByRole('button', { name: 'Attack', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('15 XP', { timeout: 400 });
+    await expect(page.locator('.game-notice[role="status"]')).toContainText('15 XP', { timeout: 400 });
   }).toPass({ intervals: [800], timeout: 8000 });
   await page.getByRole('link', { name: 'Secret Stash', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Your private XP balance' })).toContainText('15 XP');

@@ -32,6 +32,7 @@ export type Player = {
   x: number;
   y: number;
   hp: number;
+  maxHp?: number;
   xp: number;
   gold: number;
   kills: number;
@@ -68,7 +69,26 @@ export type RealmEffect = {
   attackStyle?: AttackStyle; originX?: number; originY?: number; skillId?: string;
 };
 
+export type GatheringSkillId = 'foraging' | 'mining' | 'fishing';
+export type GatheringSkill = {
+  id: GatheringSkillId; name: string; level: number; xp: number; levelXp: number;
+  nextLevelXp: number; maxLevel: number; totalGathered: number;
+};
+export type ResourceNode = {
+  id: string; name: string; regionId: RegionId; skillId: GatheringSkillId; materialId: string;
+  x: number; y: number; requiredLevel: number; xp: number; regrowMs: number; availableAt: number;
+};
+export type GatheringProfile = {
+  skills: GatheringSkill[];
+  inventory: { id: string; name: string; skillId: GatheringSkillId; quantity: number; healHp?: number }[];
+  cooldownUntil: number;
+  maxInventory: number; nonredeemable: true;
+};
+
 export type Realm = {
+  scopeId?: string;
+  journey?: any;
+  authored?: any;
   regionId?: RegionId;
   partyId: string | null;
   partyMode: 'open' | 'solo' | null;
@@ -81,6 +101,7 @@ export type Realm = {
   serverTime: number;
   visitors: Player[];
   effects?: RealmEffect[];
+  resourceNodes?: ResourceNode[];
 };
 
 export const WIDTH = 30;

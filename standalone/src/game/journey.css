@@ -1,0 +1,12 @@
+.ef-rpg .journey-scene { padding: 20px; margin: 14px 0; min-width: 0; }
+.ef-rpg .journey-scene h2 { margin: 8px 0 14px; }
+.ef-rpg .scene-description { color: #cfc5b3; font-size: 14px; line-height: 1.7; white-space: pre-line; }
+.ef-rpg .journey-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 16px; }
+.ef-rpg .journey-actions button { min-height: 44px; padding: 10px 16px; }
+.ef-rpg .journey-footnote { font-size: 12px; color: #a49782; line-height: 1.6; }
+.ef-rpg .journey-discovery { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; }
+.ef-rpg .journey-discovery h3 { margin: 0 0 5px; font-size: 16px; }
+.ef-rpg .journey-discovery p,.ef-rpg .journey-discovery small { display: block; color: #a49782; margin: 0; font-size: 12px; }
+.ef-rpg .journey-possessions { margin-top: 14px; padding-top: 12px; border-top: 1px solid #8f754833; }
+.ef-rpg .journey-possessions summary { cursor: pointer; padding: 8px 0; }
+@media(max-width: 420px) { .ef-rpg .journey-scene { padding: 14px; } .ef-rpg .journey-discovery { align-items: stretch; flex-direction: column; } }

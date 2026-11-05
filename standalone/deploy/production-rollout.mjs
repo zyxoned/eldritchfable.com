@@ -21,7 +21,7 @@ const recoveryTimer = 'eldritch-production-healthcheck.timer';
 const backupTimer = 'eldritch-production-backup.timer';
 const origin = 'https://eldritchfable.com';
 const source = resolve(dirname(realpathSync(fileURLToPath(import.meta.url))), '..');
-const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products', 'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world', 'game_parties', 'game_region_worlds', 'admin_account_settings', 'admin_audit', 'email_outbox'];
+const tables = ['account_users', 'account_sessions', 'account_tokens', 'newsletter_subscribers', 'newsletter_campaigns', 'newsletter_deliveries', 'storefront_collections', 'storefront_products', 'game_characters', 'game_admin_characters', 'game_wallets', 'game_ledger', 'game_requests', 'game_damage', 'game_world', 'game_parties', 'game_region_worlds', 'game_party_memberships', 'game_source_acquisitions', 'game_combat_effects', 'game_benefit_entitlements', 'game_authored_victories', 'game_authored_events', 'game_authored_members', 'game_authored_claims', 'game_authored_witnesses', 'game_owned_equipment', 'game_skills', 'game_materials', 'game_gathering_state', 'game_resource_nodes', 'game_route_discoveries', 'game_route_runs', 'game_route_stages', 'game_route_members', 'game_route_contributions', 'game_route_completions', 'admin_account_settings', 'admin_audit', 'email_outbox'];
 const delay = ms => new Promise(done => setTimeout(done, ms));
 let phase = 'preflight';
 

@@ -1,5 +1,9 @@
 # Eldritch Fable project state
 
+## Adventure polish prepared for review — November 5, 2026
+
+A separate local review candidate based on main 5e89afd393a7fd56cc6df92ec1f2a926b570b2f7 adds class attack presentation, held mobile controls, and optional browser-local field notes while preserving schema 6 and existing account/game/economy rules. Backend/unit validation passed 117/117 and the build passed. Owner-approved private-staging Chromium validation passed 51 tests with one intentional desktop skip; the dedicated mobile scenario also passed three repeated runs. The owner subsequently approved publication and merge when applicable; production rollout remains separately gated. Fresh main was unchanged at 5e89afd at 05:05 UTC, and the configured GitHub workflow only builds/tests. See LIVE_ADVENTURE_INTEGRATION.md for source limits and the separate full-world integration plan.
+
 ## Security hardening live — November 5, 2026
 
 Application source 69bfb8d883cd8c65d506d2ab979a505b2246bbdb is deployed as 69bfb8d883cd-20261105013809184, preserving administrator tools and schema 6. Verified at 2026-11-05 01:48:57 UTC: public and local release manifests agree, changed backend source hashes match the tested revision, the public API is online, API/web services are active, and mail/backup/healthcheck timers are active. The operator reported a successful production-copy rehearsal with schema 6 and preserved data before rollout. Private staging passed 103/103 backend and 48/48 desktop/mobile browser tests plus the production build. No credentials or customer data were published.

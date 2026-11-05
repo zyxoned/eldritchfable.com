@@ -8,8 +8,10 @@ export type Skill = {
   target: 'enemy' | 'self' | 'party';
   damage?: number; heal?: number; range?: number; radius?: number; ward?: number; durationMs?: number;
 };
+export type AttackStyle = 'arrow' | 'blade' | 'arcane' | 'notes' | 'radiance' | 'runes' | 'embers' | 'palm' | 'generic';
 export type ClassDefinition = {
   id: HeroClass; name: string; color: string; description: string; role: string; lore: string;
+  attackName: string; attackStyle: AttackStyle;
   damage: number; range: number; armor: number; equipment: Equipment[]; skills: Skill[];
 };
 export const PLAYER_CLASS_IDS = PLAYABLE_IDS as readonly Exclude<HeroClass, 'death-knight'>[];
@@ -59,6 +61,7 @@ export type ChatMessage = {
 export type RealmEffect = {
   id: string; type: 'strike' | 'area' | 'heal' | 'ward' | 'execute';
   x: number; y: number; color: string; at: number; radius?: number; actorId: string;
+  attackStyle?: AttackStyle; originX?: number; originY?: number; skillId?: string;
 };
 
 export type Realm = {

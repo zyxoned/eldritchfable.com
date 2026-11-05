@@ -1,14 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { drawHero } from '../../shared/hero-renderer.mjs';
+import { LANDMARKS } from '../../shared/exploration-catalog.mjs';
 import {
-  WIDTH, HEIGHT, SPAWN, SHRINE, CRYSTALS, CLASSES, tile, type Realm, type Player,
+  WIDTH, HEIGHT, SPAWN, SHRINE, CRYSTALS, CLASSES, tile, type Realm, type Player, type RealmEffect,
 } from './shared/game';
 
 const S = 32;
 const W = WIDTH * S;
 const H = HEIGHT * S;
 const TAU = Math.PI * 2;
-type Effect = { id: string; type: string; x: number; y: number; color?: string; at: number; radius?: number; actorId?: string };
+type Effect = RealmEffect;
 type RenderRealm = Realm & { effects?: Effect[] };
 type Pose = { x: number; y: number; heading: number; phase: number; speed: number; leanX: number; leanY: number };
 
@@ -177,8 +178,60 @@ function thornling(c: CanvasRenderingContext2D, x: number, y: number, time: numb
   if(hp<42&&hp>0) {c.fillStyle='#10242b';c.fillRect(-16,-39,32,4);c.fillStyle='#dfb677';c.fillRect(-16,-39,32*hp/42,4);}
   c.restore();
 }
-function paintEffect(c: CanvasRenderingContext2D, effect: Effect, age: number) {
-  if(age<0||age>1600) return;const t=age/1600;const x=effect.x*S+16,y=effect.y*S+16;const color=effect.color||'#dfc294';
+// Optional metadata keeps old persisted effects and mixed-version replies readable.
+function paintClassAttack(c: CanvasRenderingContext2D, effect: Effect, t: number): boolean {
+  const x = effect.x * S + 16, y = effect.y * S + 7;
+  const ox = Number.isFinite(effect.originX) ? effect.originX! * S + 16 : x;
+  const oy = Number.isFinite(effect.originY) ? effect.originY! * S + 7 : y;
+  const color = effect.color || '#dfc294';
+  const travel = Math.min(1, t * 4);
+  const px = ox + (x - ox) * travel, py = oy + (y - oy) * travel;
+  const radius = effect.type === 'area' ? (effect.radius || 1) * S : 24;
+  switch (effect.attackStyle) {
+    case 'arrow': {
+      const angle = Math.atan2(y - oy, x - ox);
+      c.save(); c.translate(px, py); c.rotate(angle);
+      stroke(c, color, 2, [[-19, 0], [9, 0], [3, -5], [9, 0], [3, 5]]);
+      stroke(c, color, 1, [[-17, 0], [-23, -4], [-19, 0], [-23, 4]]); c.restore();
+      break;
+    }
+    case 'blade':
+      c.lineWidth = 4; c.beginPath(); c.arc(x, y, 12 + t * 23, -2.6 + t, .6 + t); c.stroke();
+      stroke(c, color, 2, [[x - 15, y + 15], [x + 15, y - 15]]); break;
+    case 'arcane':
+      ellipse(c, px, py, 6, 6, color);
+      c.beginPath(); c.arc(x, y, radius * (.25 + t), 0, TAU); c.stroke();
+      for (let i = 0; i < 4; i++) { const a = i * TAU / 4 + t; ellipse(c, x + Math.cos(a) * radius * t, y + Math.sin(a) * radius * t, 3, 3, color); }
+      break;
+    case 'notes':
+      for (let i = 0; i < 3; i++) {
+        const nx = px + (i - 1) * 15, ny = py - Math.sin(t * Math.PI + i) * 10;
+        ellipse(c, nx, ny, 5, 3, color); stroke(c, color, 2, [[nx + 4, ny], [nx + 4, ny - 17], [nx + 10, ny - 13]]);
+      } break;
+    case 'radiance':
+      stroke(c, color, 4, [[x, y - 54], [x, y + 12]]);
+      for (let i = 0; i < 6; i++) { const a = i * TAU / 6; stroke(c, color, 2, [[x + Math.cos(a) * 10, y + Math.sin(a) * 10], [x + Math.cos(a) * (18 + t * 20), y + Math.sin(a) * (18 + t * 20)]]); }
+      break;
+    case 'runes':
+      c.save(); c.translate(x, y); c.rotate(t * .7);
+      c.strokeRect(-radius * .6, -radius * .6, radius * 1.2, radius * 1.2);
+      stroke(c, color, 2, [[0, -radius], [radius, 0], [0, radius], [-radius, 0], [0, -radius]]);
+      c.restore(); break;
+    case 'embers':
+      for (let i = 0; i < 10; i++) {
+        const a = i * TAU / 10; const r = radius * (.2 + t);
+        ellipse(c, x + Math.cos(a) * r, y + Math.sin(a) * r - t * 14, 3, 5 * (1 - t) + 1, i % 2 ? color : '#f4cf89');
+      } break;
+    case 'palm':
+      for (let i = 0; i < 3; i++) { c.beginPath(); c.ellipse(x + (i - 1) * 10, y, 7 + t * 23, 12 + t * 16, -.4, -.9, Math.PI * 1.4); c.stroke(); }
+      break;
+    default: return false;
+  }
+  return true;
+}
+
+function paintEffect(c: CanvasRenderingContext2D, effect: Effect, age: number, reducedMotion = false) {
+  if(age<0||age>1600) return;const t=reducedMotion ? .35 : age/1600;const x=effect.x*S+16,y=effect.y*S+16;const color=effect.color||'#dfc294';
   c.save();c.globalAlpha=(1-t)*.85;c.strokeStyle=color;c.lineWidth=2;
   if(effect.type==='execute') {
     glow(c,x,y-15,68*(.3+t),'#afa7ef80');
@@ -187,6 +240,8 @@ function paintEffect(c: CanvasRenderingContext2D, effect: Effect, age: number) {
   } else if(effect.type==='heal'||effect.type==='ward') {
     const r=(effect.radius||1)*S*(.5+t*.3);c.beginPath();c.ellipse(x,y,r,r*.45,0,0,TAU);c.stroke();
     for(let i=0;i<7;i++){const a=i*TAU/7;const px=x+Math.cos(a)*r,py=y+Math.sin(a)*r*.45-t*28;stroke(c,color,2,[[px-3,py],[px+3,py]]);stroke(c,color,2,[[px,py-3],[px,py+3]]);}
+  } else if ((effect.type === 'strike' || effect.type === 'area') && paintClassAttack(c, effect, t)) {
+    // The class-specific presentation uses the same server-confirmed hit.
   } else {
     const radius=effect.type==='area'?(effect.radius||1.5)*S:19;
     c.beginPath();c.arc(x,y-9,radius*(.35+t),-2.6+t,1.1+t);c.stroke();
@@ -240,6 +295,24 @@ export default function GameCanvas({ realm, playerId, onTile }: {
         stroke(c,'#dafaf6',.9,[[x,y-28+b],[x-2,y-8+b],[x+5,y+6+b]]);
         ellipse(c,x+16,y-19+Math.sin(time/600)*5,1.5,1.5,'#e0eee6');ellipse(c,x-17,y-6+Math.sin(time/800+2)*4,1,1,'#d8dcb5');
       }
+      const explorer = [...(world?.players || []), ...(world?.visitors || [])].find(p => p.id === state.playerId);
+      if (explorer) for (const landmark of LANDMARKS) {
+        const nearby = Math.hypot(explorer.x - landmark.x, explorer.y - landmark.y);
+        if (nearby > 4) continue;
+        const lx = landmark.x * S + 16, ly = landmark.y * S + 16;
+        c.save();
+        glow(c, lx, ly - 12, 23, '#f3d58e30');
+        stroke(c, '#b49b6b', 2, [[lx, ly + 6], [lx, ly - 25], [lx + 9, ly - 25], [lx + 9, ly - 21]]);
+        c.fillStyle = '#e9ce8c'; c.fillRect(lx + 5, ly - 21, 8, 11);
+        c.strokeStyle = '#756442'; c.lineWidth = 1; c.strokeRect(lx + 5, ly - 21, 8, 11);
+        if (nearby <= 1.8) {
+          c.font = '11px Georgia, serif'; c.textAlign = 'center';
+          const width = c.measureText(landmark.title).width;
+          c.fillStyle = '#10201ee6'; c.fillRect(lx - width / 2 - 6, ly + 17, width + 12, 18);
+          c.fillStyle = '#ead6a5'; c.fillText(landmark.title, lx, ly + 30);
+        }
+        c.restore();
+      }
       const actors:Array<{y:number;draw:()=>void}>=[];
       for(const enemy of world?.enemies||[])if(enemy.hp>0)actors.push({y:enemy.y,draw:()=>thornling(c,enemy.x*S+16,enemy.y*S+16,time,enemy.hp)});
       const players=[...(world?.players||[]),...(world?.visitors||[])];
@@ -276,7 +349,7 @@ export default function GameCanvas({ realm, playerId, onTile }: {
       }
       for(const id of poses.keys())if(!players.some(player=>player.id===id))poses.delete(id);
       actors.sort((a,b)=>a.y-b.y).forEach(actor=>actor.draw());c.drawImage(canopy,0,0);
-      for(const effect of world?.effects||[])paintEffect(c,effect,now-effect.at);
+      for(const effect of world?.effects||[])paintEffect(c,effect,now-effect.at,reduced);
       // Slow fireflies and a soft vignette, never flashes.
       if(!reduced)for(let i=0;i<23;i++){const x=random(i,12)*W+Math.sin(time/3600+i)*8,y=random(i,37)*H+Math.cos(time/2900+i)*5;const a=.18+Math.sin(time/1400+i)*.13;glow(c,x,y,7,'rgba(214,222,157,'+a+')');ellipse(c,x,y,1,1,'rgba(226,228,173,'+(a+.15)+')');}
       const vignette=c.createRadialGradient(W*.5,H*.45,H*.12,W*.5,H*.5,W*.64);vignette.addColorStop(0,'transparent');vignette.addColorStop(.75,'#07101a20');vignette.addColorStop(1,'#050b15a0');c.fillStyle=vignette;c.fillRect(0,0,W,H);

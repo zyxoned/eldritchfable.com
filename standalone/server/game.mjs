@@ -371,10 +371,17 @@ export function createGameService(db, options = {}) {
     return members[Math.floor((members.length - 1) / 2)];
   }
 
-  function effect(world, p, type, target, time, radius = 0) {
+  function effect(world, p, type, target, time, radius = 0, skillId) {
+    // Presentation is derived only from the authenticated actor and catalog.
+    // Never spread client input into public realm events.
+    const definition = CLASSES[p.hero_class];
+    const attack = type === 'strike' || type === 'area';
+    const skill = definition.skills.find(value => value.id === skillId);
     world.effects.push({
       id: randomUUID(), type, x: target.x, y: target.y,
-      color: CLASSES[p.hero_class].color, at: time, radius, actorId: p.id,
+      color: definition.color, at: time, radius, actorId: p.id,
+      ...(attack ? { attackStyle: definition.attackStyle, originX: p.x, originY: p.y,
+        ...(skill ? { skillId: skill.id } : {}) } : {}),
     });
     world.effects = world.effects.filter(value => value.at + 1600 > time).slice(-24);
   }
@@ -456,7 +463,7 @@ export function createGameService(db, options = {}) {
       }
       if (retaliates) hurt(p, 9, time);
       if (p.is_admin) updateCharacter(p, 'last_attack_at=?', time);
-      effect(world, p, skill.type, primary, time, skill.radius || 0);
+      effect(world, p, skill.type, primary, time, skill.radius || 0, skill.id);
     } else {
       throw new GameError('That class skill is unavailable.', 400, 'SKILL_UNAVAILABLE');
     }

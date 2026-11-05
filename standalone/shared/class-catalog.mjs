@@ -15,6 +15,7 @@ function deepFreeze(value) {
 export const CLASS_CATALOG = deepFreeze({
   ranger: {
     id: 'ranger', name: 'Ranger', color: '#9bbd70', role: 'Wilds scout',
+    attackName: 'Thorn Arrow', attackStyle: 'arrow',
     description: 'Living longbow · 3-tile range',
     lore: 'The Briarwardens remember every path the Hollow King has tried to erase. They bind their arrows with living thorn and guide lost travelers home by the light of the moon.',
     damage: 14, range: 3, armor: 1,
@@ -30,6 +31,7 @@ export const CLASS_CATALOG = deepFreeze({
   },
   knight: {
     id: 'knight', name: 'Knight', color: '#d7a66b', role: 'Lantern vanguard',
+    attackName: 'Oathblade Slash', attackStyle: 'blade',
     description: 'Oathbound blade · 2-tile range',
     lore: 'When the roads went dark, the Lantern Order carried a spark from the last hearth into the woods. Its knights swear to stand between the Hollow King and anyone who still has a story to tell.',
     damage: 22, range: 2, armor: 3,
@@ -45,6 +47,7 @@ export const CLASS_CATALOG = deepFreeze({
   },
   mage: {
     id: 'mage', name: 'Mage', color: '#a88cdb', role: 'Glade arcanist',
+    attackName: 'Arcane Bolt', attackStyle: 'arcane',
     description: 'Arcane bolt · 3-tile range',
     lore: 'Glade mages learn magic from stories rather than books: a river’s first journey, a fallen star’s last wish. They keep those small wonders alive where the Hollow King’s silence begins.',
     damage: 18, range: 3, armor: 1,
@@ -60,6 +63,7 @@ export const CLASS_CATALOG = deepFreeze({
   },
   bard: {
     id: 'bard', name: 'Bard', color: '#dc9ab8', role: 'Resonant storyteller',
+    attackName: 'Silverstring Note', attackStyle: 'notes',
     description: 'Silverstring lute · Party support',
     lore: 'The Last Chorus travels from hearth to hearth, collecting the names the Hollow King would steal. A bard’s song can turn a lonely campfire into a company, or make a monster remember fear.',
     damage: 12, range: 3, armor: 1,
@@ -75,6 +79,7 @@ export const CLASS_CATALOG = deepFreeze({
   },
   cleric: {
     id: 'cleric', name: 'Cleric', color: '#e8d49a', role: 'Keeper of first light',
+    attackName: 'Dawnlight Strike', attackStyle: 'radiance',
     description: 'Dawncandle mace · Party healing',
     lore: 'The Dawnkeepers do not worship an absent sun. They tend the first light that rises in a frightened heart, carrying small candles into places where the Hollow King has declared the night eternal.',
     damage: 16, range: 2, armor: 2,
@@ -90,6 +95,7 @@ export const CLASS_CATALOG = deepFreeze({
   },
   wizard: {
     id: 'wizard', name: 'Wizard', color: '#87b9e8', role: 'Runebound scholar',
+    attackName: 'Runic Spark', attackStyle: 'runes',
     description: 'Runic staff · Long-range control',
     lore: 'The Starfall Collegium survived by hiding its library inside a single unfinished spell. Its wizards study every rune with care: one correctly spoken word may someday unmake the Hollow King’s crown.',
     damage: 20, range: 4, armor: 0,
@@ -105,6 +111,7 @@ export const CLASS_CATALOG = deepFreeze({
   },
   sorcerer: {
     id: 'sorcerer', name: 'Sorcerer', color: '#e08b66', role: 'Cinderblood channeler',
+    attackName: 'Cinder Surge', attackStyle: 'embers',
     description: 'Innate emberstorm · Burst magic',
     lore: 'No school teaches the storm that lives in a sorcerer’s blood. Those called Cinderborn hear the world’s broken heartbeat, and answer with a fire the Hollow King can neither command nor extinguish.',
     damage: 21, range: 3, armor: 0,
@@ -120,6 +127,7 @@ export const CLASS_CATALOG = deepFreeze({
   },
   monk: {
     id: 'monk', name: 'Monk', color: '#70bcb0', role: 'Disciple of the quiet river',
+    attackName: 'Quiet River Palm', attackStyle: 'palm',
     description: 'Focused fists · Swift melee',
     lore: 'At Quiet River monastery, the first lesson is to listen and the last is to act without hatred. Its wandering monks meet the Hollow King’s hunger with a stillness no stolen crown can purchase.',
     damage: 17, range: 2, armor: 1,
@@ -135,6 +143,7 @@ export const CLASS_CATALOG = deepFreeze({
   },
   'death-knight': {
     id: 'death-knight', name: 'Death Knight', color: '#b9a7ef', role: 'Veiled guardian',
+    attackName: 'Veiled Strike', attackStyle: 'generic',
     description: 'Draconian visitor · Level ???',
     lore: 'A Draconian guardian walks between the verses of the waking woods. Their ancient armor shelters a quiet oath: lend strength to a company without taking its story away.',
     damage: 0, range: 2, armor: 0,

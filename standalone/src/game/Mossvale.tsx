@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { MOVE_INTERVAL_MS, createMovementGate, thumbDirection } from './mobile-input.js';
 import {
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, BookOpen, Check,
   ChevronRight, Compass, Flame, Gem, Leaf, LogOut, MessageCircle, Radio,
@@ -7,11 +8,12 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import { api } from './transport';
 import {
-  CLASSES, PLAYER_CLASS_IDS, CRYSTALS, ENEMIES, SHRINE, WIDTH, HEIGHT, level, questReady, walkable,
+  CLASSES, PLAYER_CLASS_IDS, CRYSTALS, ENEMIES, SHRINE, SPAWN, WIDTH, HEIGHT, level, questReady, walkable,
   type HeroClass, type Realm, type Appearance,
 } from './shared/game';
 import GameCanvas from './GameCanvas';
 import AppearanceEditor from './AppearanceEditor';
+import FieldNotes from './FieldNotes';
 import { renderCharacterPreview } from '../../shared/hero-renderer.mjs';
 import IntroCutscene from './IntroCutscene';
 import { CallingPreview, CharacterCalling, SkillBar } from './ClassDetails';
@@ -157,6 +159,12 @@ export default function Mossvale({ user, onSessionExpired }: {
   const playerRef = useRef<string | null>(null);
   const destination = useRef<{ x: number; y: number } | null>(null);
   const busy = useRef(false);
+  const heldDirection = useRef<{ x: number; y: number } | null>(null);
+  const heldPointer = useRef<number | null>(null);
+  const thumbRef = useRef<HTMLSpanElement>(null);
+  const moveAllowed = useRef(false);
+  const movementGate = useRef(createMovementGate());
+  const [directionButtons, setDirectionButtons] = useState(true);
   const resumed = useRef(false);
   const visitorAttempted = useRef(false);
   const messages = useRef<HTMLDivElement>(null);
@@ -170,6 +178,44 @@ export default function Mossvale({ user, onSessionExpired }: {
   const invitedParty = query.get('party');
   const partyFeatures = !!realm && Array.isArray(realm.visitors) && realm.maxPlayers === 8 && realm.maxVisitors === 2 && 'partyId' in realm;
   const visitorCount = realm?.visitors?.length || 0;
+  const movementEnabled = partyFeatures && !!me && me.hp > 0 && connected && !joining && !visitorBusy
+    && !introOpen && !guide && !leaving && !appearanceOpen && !adminToolsOpen;
+  moveAllowed.current = movementEnabled;
+
+  function cancelMovement() {
+    heldDirection.current = null;
+    heldPointer.current = null;
+    destination.current = null;
+    if (thumbRef.current) thumbRef.current.style.transform = 'translate(0px, 0px)';
+  }
+
+  useEffect(() => {
+    if (!movementEnabled) cancelMovement();
+  }, [movementEnabled]);
+
+  useEffect(() => {
+    cancelMovement();
+  }, [realm?.partyId, playerId, adminActive]);
+
+  useEffect(() => {
+    const stop = () => cancelMovement();
+    const focus = (event: FocusEvent) => {
+      if ((event.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]')) stop();
+    };
+    window.addEventListener('blur', stop);
+    window.addEventListener('pagehide', stop);
+    window.addEventListener('resize', stop);
+    document.addEventListener('visibilitychange', stop);
+    document.addEventListener('focusin', focus);
+    return () => {
+      stop();
+      window.removeEventListener('blur', stop);
+      window.removeEventListener('pagehide', stop);
+      window.removeEventListener('resize', stop);
+      document.removeEventListener('visibilitychange', stop);
+      document.removeEventListener('focusin', focus);
+    };
+  }, []);
 
   useEffect(() => {
     // A draft belongs to one active ordinary hero. A cross-tab party or mode
@@ -206,9 +252,11 @@ export default function Mossvale({ user, onSessionExpired }: {
     const current = realmRef.current;
     const switched = !!current && next.partyId !== current.partyId;
     if (!switched && current && next.revision < current.revision) return false;
-    if (switched) {
-      destination.current = null;
-    }
+    const previousHero = [...(current?.players || []), ...(current?.visitors || [])].find(p => p.id === playerRef.current);
+    const nextHero = [...(next.players || []), ...(next.visitors || [])].find(p => p.id === playerRef.current);
+    // Recovery, party changes and actor replacement invalidate held intent.
+    if (switched || (previousHero && (!nextHero || nextHero.hp <= 0 ||
+      Math.abs(nextHero.x - previousHero.x) + Math.abs(nextHero.y - previousHero.y) > 1))) cancelMovement();
     realmRef.current = next;
     setRealm(next);
     return true;
@@ -460,6 +508,7 @@ export default function Mossvale({ user, onSessionExpired }: {
 
   async function act(kind: string, extra: Record<string, unknown> = {}) {
     if (!partyFeatures || !playerRef.current || !connected || busy.current || introOpen || guide || leaving || appearanceOpen || adminToolsOpen) return false;
+    if (kind === 'move' && (!moveAllowed.current || document.hidden || !movementGate.current(performance.now()))) return false;
     busy.current = true;
     setActionPending(true);
     if (kind !== 'move') destination.current = null;
@@ -468,7 +517,10 @@ export default function Mossvale({ user, onSessionExpired }: {
       const result = await api.post('/api/game/action', envelope({ kind, ...extra }));
       if (epoch !== transitionEpoch.current) return false;
       applyReply(result.data);
-      if (result.data.notice) setNotice(result.data.notice);
+      if (result.data.notice) {
+        setNotice(result.data.notice);
+        if (result.data.notice.includes('campfire restored you')) cancelMovement();
+      }
       setError('');
       return true;
     } catch (err) {
@@ -476,7 +528,7 @@ export default function Mossvale({ user, onSessionExpired }: {
       // A delayed response can put the next step inside the server cooldown.
       // Keep the route so the movement timer retries instead of stopping early.
       if (kind === 'move' && (err as { code?: string }).code === 'MOVE_COOLDOWN') return false;
-      destination.current = null;
+      cancelMovement();
       if ((err as { response?: { status?: number } }).response?.status === 401) {
         endSession(); onSessionExpired();
       } else if ((err as { code?: string }).code === 'SEAT_EXPIRED') {
@@ -496,11 +548,18 @@ export default function Mossvale({ user, onSessionExpired }: {
       const target = destination.current;
       const currentRealm = realmRef.current;
       const p = [...(currentRealm?.players || []), ...(currentRealm?.visitors || [])].find(v => v.id === playerRef.current);
-      if (!target || !p || busy.current) return;
+      if (!moveAllowed.current || document.hidden || !p || p.hp <= 0 || busy.current) return;
+      const direction = heldDirection.current;
+      if (direction) {
+        const x = p.x + direction.x, y = p.y + direction.y;
+        if (walkable(x, y)) void actRef.current('move', { x, y });
+        return;
+      }
+      if (!target) return;
       const step = nextStep(p, target);
       if (!step) { destination.current = null; return; }
       void actRef.current('move', step);
-    }, 230);
+    }, MOVE_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -508,18 +567,56 @@ export default function Mossvale({ user, onSessionExpired }: {
     if (introOpen || guide || leaving || appearanceOpen || adminToolsOpen) return;
     if (!me) { setNotice('Choose a name and enter the glade to start exploring.'); return; }
     if (!connected) { setError('Reconnect to move through the glade.'); return; }
+    if (!moveAllowed.current || document.hidden) return;
     if (!walkable(x, y)) { setNotice('Use the wooden bridge to cross the brook.'); return; }
+    cancelMovement();
     destination.current = { x, y };
   }
 
   function move(dx: number, dy: number) {
-    if (introOpen || guide || leaving || appearanceOpen || adminToolsOpen) return;
+    if (!moveAllowed.current || document.hidden) return;
     const currentRealm = realmRef.current;
     const p = [...(currentRealm?.players || []), ...(currentRealm?.visitors || [])].find(v => v.id === playerRef.current);
     if (p) {
       destination.current = null;
       if (walkable(p.x + dx, p.y + dy)) void actRef.current('move', { x: p.x + dx, y: p.y + dy });
     }
+  }
+
+  function steerThumb(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerId !== heldPointer.current) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left - rect.width / 2;
+    const y = event.clientY - rect.top - rect.height / 2;
+    heldDirection.current = thumbDirection(x, y);
+    const length = Math.hypot(x, y), radius = rect.width * .28;
+    const scale = length > radius ? radius / length : 1;
+    if (thumbRef.current) thumbRef.current.style.transform = `translate(${x * scale}px, ${y * scale}px)`;
+  }
+
+  function startThumb(event: ReactPointerEvent<HTMLElement>) {
+    if (!moveAllowed.current || document.hidden || event.button !== 0 || heldPointer.current !== null) return;
+    event.preventDefault();
+    cancelMovement();
+    heldPointer.current = event.pointerId;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    steerThumb(event);
+    const direction = heldDirection.current;
+    if (direction) move(direction.x, direction.y);
+  }
+
+  function releaseMovement(event: ReactPointerEvent<HTMLElement>) {
+    if (event.pointerId === heldPointer.current) cancelMovement();
+  }
+
+  function holdDirection(event: ReactPointerEvent<HTMLButtonElement>, x: number, y: number) {
+    if (!moveAllowed.current || document.hidden || event.button !== 0 || heldPointer.current !== null) return;
+    event.preventDefault();
+    cancelMovement();
+    heldPointer.current = event.pointerId;
+    heldDirection.current = { x, y };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    move(x, y);
   }
 
   useEffect(() => {
@@ -532,6 +629,7 @@ export default function Mossvale({ user, onSessionExpired }: {
       };
       if (directions[event.key]) {
         event.preventDefault();
+        cancelMovement();
         move(...directions[event.key]);
       } else if ((event.key === '1' || event.key === '2') && me) {
         const skill = CLASSES[me.heroClass].skills[Number(event.key) - 1];
@@ -580,6 +678,10 @@ export default function Mossvale({ user, onSessionExpired }: {
     }
   }
 
+  const attackLabel = me ? CLASSES[me.heroClass].attackName || 'Attack' : 'Attack';
+  const near = (point: { x: number; y: number }, range: number) => !!me && Math.hypot(me.x - point.x, me.y - point.y) <= range;
+  const interactLabel = me && !adminActive ? CRYSTALS.some(c => !me.gathered.includes(c.id) && near(c, 1.6)) ? 'Gather crystal'
+    : near(SHRINE, 2) ? 'Visit shrine' : near(SPAWN, 2.5) ? 'Rest at camp' : 'Interact' : 'Interact';
   const canAct = partyFeatures && !!me && connected && !introOpen && !guide && !leaving && !appearanceOpen && !adminToolsOpen && !actionPending;
   const questDone = me ? questReady(me) : false;
   const trackEnemy = () => {
@@ -646,7 +748,8 @@ export default function Mossvale({ user, onSessionExpired }: {
                 <div className="stat-label"><span><span className="health-dot" /> Health</span><strong>{adminActive ? 'Invulnerable' : me.hp + ' / 100'}</strong></div>
                 <div className="progress health"><span style={{ width: me.hp + '%' }} /></div>
                 {!adminActive && <><div className="stat-label"><span>Next level</span><strong>{me.xp % 100} / 100 XP</strong></div>
-                <div className="progress xp"><span style={{ width: me.xp % 100 + '%' }} /></div></>}
+                <div className="progress xp"><span style={{ width: me.xp % 100 + '%' }} /></div>
+                <p className="level-growth-note">+2 attack damage per level. Exchanging XP does not lower your level.</p></>}
                 {adminActive && <div className="visitor-status"><Shield size={13} /> UNDYING · SSS</div>}
                 <Link to="/stash" className="gold-line"><Gem size={14} /> {profile?.balanceXp || 0}<span>Secret Stash · XP</span><ArrowUpRight size={12} /></Link>
                 {!adminActive && <button type="button" className="customize-button secondary-button" disabled={!canAct} onClick={customize}>Customize character</button>}
@@ -678,6 +781,7 @@ export default function Mossvale({ user, onSessionExpired }: {
             </section>
 
             {me && <CharacterCalling heroClass={me.heroClass} equipment={me.equipment} />}
+            {me && <FieldNotes key={user.id} player={me} accountId={user.id} />}
 
             <section className="card quest-card">
               <div className="section-kicker"><span className="kicker-with-icon"><Compass size={14} /> YOUR FIRST ADVENTURE</span></div>
@@ -709,21 +813,26 @@ export default function Mossvale({ user, onSessionExpired }: {
               <div className="map-caption"><span><span className="sun-dot" /> A good day for a little adventure.</span><span>{me ? me.x + ', ' + me.y : '30 × 22'} <Compass size={12} /></span></div>
             </div>
             <div className="controls-card">
+              <div className="mobile-controls" aria-label="Touch movement controls">
+                {directionButtons ? <div className="touch-direction-pad">
+                  {([[-1, 0, 'west', ArrowLeft], [0, -1, 'north', ArrowUp], [0, 1, 'south', ArrowDown], [1, 0, 'east', ArrowRight]] as const).map(([x, y, label, Icon]) =>
+                    <button key={label} className={'touch-' + label} aria-label={'Move ' + label} disabled={!movementEnabled}
+                      onPointerDown={event => holdDirection(event, x, y)} onPointerUp={releaseMovement} onPointerCancel={releaseMovement} onLostPointerCapture={releaseMovement}
+                      onClick={event => { if (event.detail === 0) move(x, y); }}><Icon size={19} /></button>)}
+                </div> : <div className="thumb-stick" role="group" aria-label="Drag to walk. Arrow keys or direction buttons also work." aria-disabled={!movementEnabled}
+                  onPointerDown={startThumb} onPointerMove={steerThumb} onPointerUp={releaseMovement} onPointerCancel={releaseMovement} onLostPointerCapture={releaseMovement}>
+                  <span className="thumb-compass" aria-hidden="true">✧</span><span className="thumb-grip" ref={thumbRef} aria-hidden="true" />
+                </div>}
+                <button type="button" className="touch-mode-toggle" onClick={() => { cancelMovement(); setDirectionButtons(value => !value); }}>{directionButtons ? 'Use joystick' : 'Use buttons'}</button>
+              </div>
               <div className="keyboard-hint"><span className="key-group"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></span><span>Wander<small>or click the ground</small></span></div>
               <div className="action-buttons">
-                <button aria-label="Attack" className="attack-button" disabled={!canAct} onClick={() => void act('attack')}><Sword size={17} /><span>Attack</span><kbd>SPACE</kbd></button>
-                <button aria-label="Interact" className="interact-button" disabled={!canAct || adminActive} onClick={() => void act('interact')}><Sparkles size={17} /><span>Interact</span><kbd>E</kbd></button>
+                <button aria-label="Attack" className="attack-button" disabled={!canAct} title={'Attack · ' + attackLabel} onClick={() => void act('attack')}><Sword size={17} /><span>{attackLabel}</span><kbd>SPACE</kbd></button>
+                <button aria-label="Interact" className="interact-button" disabled={!canAct || adminActive} onClick={() => void act('interact')}><Sparkles size={17} /><span>{interactLabel}</span><kbd>E</kbd></button>
               </div>
               <button className="help-button" onClick={() => setGuide(true)} aria-label="Open field guide"><BookOpen size={18} /></button>
             </div>
             {me && <SkillBar heroClass={me.heroClass} cooldowns={profile?.cooldowns} serverTime={realm?.serverTime || Date.now()} enabled={canAct} onUse={skillId => void act('skill', { skillId })} />}
-            <div className="mobile-controls" aria-label="Touch movement controls">
-              <button aria-label="Move west" disabled={!canAct} onClick={() => move(-1, 0)}><ArrowLeft size={19} /></button>
-              <button aria-label="Move north" disabled={!canAct} onClick={() => move(0, -1)}><ArrowUp size={19} /></button>
-              <button aria-label="Move south" disabled={!canAct} onClick={() => move(0, 1)}><ArrowDown size={19} /></button>
-              <button aria-label="Move east" disabled={!canAct} onClick={() => move(1, 0)}><ArrowRight size={19} /></button>
-              <span>Tap to wander</span>
-            </div>
             <div className="world-legend"><span><span className="legend-swatch hero-swatch" /> Adventurers</span><span><span className="legend-swatch enemy-swatch" /> Thornlings</span><span><Gem size={11} color="#749cad" /> Moon crystals</span><span><Flame size={12} color="#b98658" /> Rest at camp</span></div>
           </section>
 
@@ -798,7 +907,7 @@ export default function Mossvale({ user, onSessionExpired }: {
             <div className="eyebrow">A WAYFARER’S FIELD GUIDE</div><h2 id="modal-title">A little help for the road.</h2>
             <p>Each Mossvale party has room for eight signed-in adventurers and two visiting guardians. Choose an open party or a solo adventure. An open-party invitation leads to the same glade when a seat is available.</p>
             <div className="guide-steps">
-              <div><Compass /><span><strong>Take the scenic route</strong><p>Click or tap the ground to walk. Use WASD, arrow keys, or the touch buttons. The wooden bridge crosses the brook.</p></span></div>
+              <div><Compass /><span><strong>Take the scenic route</strong><p>Click or tap the ground to walk. Use WASD, arrow keys, or drag the thumb control. Hold direction buttons to keep walking; release to stop. Switch between joystick and buttons beneath the map. The wooden bridge crosses the brook.</p></span></div>
               <div><Sword /><span><strong>Be a guardian, together</strong><p>Walk near a thornling and press Attack or Space. Your calling determines weapon reach and starter skills. Use the skill cards or keys 1 and 2; their cooldowns keep combat paced. Visiting guardians have matching combat power and a healing boon, while normal positive contributors keep earning XP. Healing and wards help your company survive. Active contributors earn XP for their private Secret Stash.</p></span></div>
               <div><Gem /><span><strong>Follow the blue glow</strong><p>Stand beside two different moon crystals and press Interact or E. Then visit the shrine in the northeast and interact with it.</p></span></div>
               <div><Flame /><span><strong>There is always a way home</strong><p>Interact at camp to restore health. Complete all three objectives to claim 100 XP for your Secret Stash. Thornlings return after 20 seconds.</p></span></div>

@@ -1,5 +1,47 @@
 # Eldritch Fable shared workspace handoff
 
+## Private administrator tools live — November 5, 2026
+
+The owner-authorized feature merged in [PR #13](https://github.com/zyxoned/eldritchfable.com/pull/13)
+as `4fdf06d6263d92c58999d2eae31a36b9b3e99200`.
+Application source `043737030137f3cd7beb615f6826a6f2267a11e4`, tree
+`ae9cf55412a58589985fc04fc45141974efd1cac`, is deployed as
+`043737030137-20261105001552618`, schema **6**.
+
+Verified at 2026-11-05 00:39:55 UTC: public manifest and release headers, eight current/
+retained asset hashes and MIME types, protected administrator/game endpoints,
+database integrity/foreign keys, source/runtime hashes and API/web/tunnel/timer
+health passed. [CI 41939374992](https://github.com/zyxoned/eldritchfable.com/actions/runs/41939374992)
+passed; fresh backend **95/95** and desktop/mobile **48/48** tests passed.
+Independent authority/UI review and production-copy migration/configuration/
+fallback rehearsals passed. Expanded browser fixtures use isolated synthetic
+sessions so production signup/login limits remain unchanged.
+
+The designated existing account was already a verified enabled administrator.
+The reviewed operator command configured its Death Knight visitor name and
+testing capability, preserving credentials, sessions and the count of two
+administrators. Personal identifiers remain outside public source. Test XP/gold
+are renewable nonredeemable balances with receipt/audit records; ordinary
+wallets, lifetime XP and party-scaled offense are unchanged.
+
+Signed-in administrators can open the side tab or [/admin](https://eldritchfable.com/admin).
+Tools include aggregate account/realm/mail activity, own visitor-name settings,
+enabled test grant/exchange/reset and own audit history. Current server-side
+role/session checks protect the panel; testing operations additionally require
+the account capability. The owner's existing login is retained.
+
+The initial activation validation stopped and selected the compatible fallback.
+A reviewed diagnostic retry then passed every original public/local gate, with
+additional administrator checks; no validation was relaxed. The first failing
+check was not captured by the original log, so its cause remains unproven.
+
+Fresh private migration and configuration backups, the source bundle, retained-
+asset ledger and verification reports are archived in the release's protected
+deployment record. No old database was restored, and no new signup/reset email
+was sent for verification. This supersedes the earlier pending-feature and
+schema-5 observations below. The separate solo demo and future campaign scope
+remain as previously documented.
+
 ## Private administrator tools — November 4, 2026
 
 The owner requested a named Death Knight administrator, renewable testing XP/gold

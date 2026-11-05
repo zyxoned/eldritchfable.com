@@ -17,8 +17,8 @@ npm run test:browser
 
 GitHub Actions runs the build, server tests and desktop/mobile browser tests. Read [project state](PROJECT_STATE.md) for source reconciliation and the limits of local/runtime evidence; successful CI does not prove deployment or inbox delivery.
 
-The [adventure notes](standalone/ADVENTURE.md) and [expansion notes](standalone/EXPANSION.md) cover the six-player realm, eight callings, administrator seventh avatar and private XP exchange. Checkout, physical gear redemption and additional XP-priced ability purchases remain unavailable.
+The [adventure notes](standalone/ADVENTURE.md) and [expansion notes](standalone/EXPANSION.md) cover eight-player parties, eight callings, two additional administrator visitors and private XP exchange. Checkout, physical gear redemption and additional XP-priced ability purchases remain unavailable.
 
-Follow [Linux deployment](standalone/DEPLOYMENT.md) for an explicitly authorized rollout. Current source requires schema 4. Preserve customer accounts, sessions, mail and game/economy data. See [account/email notes](standalone/ACCOUNTS-AND-EMAIL.md), [migration history](MIGRATION.md) and the [historical archive](recovery/README.md).
+Follow [Linux deployment](standalone/DEPLOYMENT.md) for an explicitly authorized rollout. Current source requires schema 6. Preserve customer accounts, sessions, mail and game/economy data. See [account/email notes](standalone/ACCOUNTS-AND-EMAIL.md), [migration history](MIGRATION.md) and the [historical archive](recovery/README.md).
 
 Verified current server/source identities, exact unresolved differences and the recoverable CANDY archive are recorded in [PROJECT_STATE.md](PROJECT_STATE.md), [SOURCE_RECONCILIATION.md](SOURCE_RECONCILIATION.md) and [DEPLOYMENT_RECOVERY.md](DEPLOYMENT_RECOVERY.md).

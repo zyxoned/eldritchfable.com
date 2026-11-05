@@ -1,0 +1,13 @@
+.ef-rpg .field-notes { padding: 20px 18px; min-width: 0; }
+.ef-rpg .field-notes h2 { font: 400 21px Georgia, serif; color: #efe3cf; margin: 15px 0 10px; }
+.ef-rpg .field-notes > p, .ef-rpg .field-note-entries p { font-size: 12px; line-height: 1.65; color: #b5b9ad; }
+.ef-rpg .field-notes button { min-height: 44px; width: 100%; padding: 10px 12px; text-align: left; border: 1px solid #8f7d494d; background: #16221b; color: #e0cf9e; cursor: pointer; line-height: 1.4; }
+.ef-rpg .field-notes button:hover { background: #263329; }
+.ef-rpg .field-notes button:focus-visible { outline: 2px solid #dfc687; outline-offset: 3px; }
+.ef-rpg .field-notes .field-note-toggle { margin-top: 9px; background: transparent; }
+.ef-rpg .field-note-entries { max-height: 340px; overflow: auto; margin: 14px 0; padding-right: 6px; }
+.ef-rpg .field-note-entries article + article { border-top: 1px solid #8f7d493d; padding-top: 12px; margin-top: 12px; }
+.ef-rpg .field-note-entries h3 { font: 16px Georgia, serif; color: #e4d5ad; margin: 0 0 6px; }
+.ef-rpg .field-notes > small { display: block; font-size: 10px; line-height: 1.6; color: #8c9b90; margin-top: 12px; }
+.ef-rpg .field-note-hint { font-style: italic; }
+@media (max-width: 760px) { .ef-rpg .field-notes { order: 3; width: 100%; padding: 20px; } }

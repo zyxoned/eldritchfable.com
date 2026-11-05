@@ -513,3 +513,34 @@
 
 /* Keep the realm flush with the viewport on direct route visits. */
 body:has(.ef-rpg) { margin: 0; background: #0d0b13; }
+
+
+/* Touch intent uses the same server-authoritative movement cadence as keyboard input. */
+.ef-rpg .controls-card .mobile-controls { display: none; }
+.ef-rpg .action-buttons button { min-height: 44px; }
+.ef-rpg .action-buttons button span { overflow-wrap: anywhere; }
+.ef-rpg .help-button { min-width: 44px; min-height: 44px; justify-content: center; align-items: center; }
+@media (max-width: 1000px), (pointer: coarse) {
+  .ef-rpg .controls-card { display: grid; grid-template-columns: 134px minmax(0, 1fr); gap: 8px 12px; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+  .ef-rpg .controls-card .keyboard-hint { display: none; }
+  .ef-rpg .controls-card .mobile-controls { display: flex; flex-direction: column; grid-column: 1; grid-row: 1 / 3; margin: 0; gap: 2px; align-items: center; }
+  .ef-rpg .thumb-stick { width: 118px; height: 118px; position: relative; border-radius: 50%; background: radial-gradient(circle, #403a2d 0 35%, #1b201bd9 36% 65%, #b79b5744 66% 67%, #161e18 68%); border: 1px solid #b99d6577; touch-action: none; user-select: none; }
+  .ef-rpg .thumb-stick[aria-disabled='true'] { opacity: .45; }
+  .ef-rpg .thumb-compass { position: absolute; inset: 0; display: grid; place-items: center; color: #c6b48988; font-size: 70px; }
+  .ef-rpg .thumb-grip { position: absolute; width: 46px; height: 46px; top: calc(50% - 23px); left: calc(50% - 23px); border: 1px solid #dbc38b; border-radius: 50%; background: radial-gradient(circle at 35% 20%, #737752, #353c2a); box-shadow: 0 4px 12px #0008; pointer-events: none; }
+  .ef-rpg .touch-direction-pad { display: grid; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); gap: 1px; }
+  .ef-rpg .mobile-controls .touch-direction-pad button { width: 44px; height: 44px; touch-action: none; user-select: none; }
+  .ef-rpg .touch-west { grid-column: 1; grid-row: 2; } .ef-rpg .touch-north { grid-column: 2; grid-row: 1; }
+  .ef-rpg .touch-south { grid-column: 2; grid-row: 3; } .ef-rpg .touch-east { grid-column: 3; grid-row: 2; }
+  .ef-rpg .mobile-controls .touch-mode-toggle { width: auto; min-width: 112px; min-height: 44px; height: auto; padding: 8px; font-size: 11px; border: 0; background: transparent; color: #dbc38b; text-decoration: underline; text-underline-offset: 3px; }
+  .ef-rpg .controls-card .action-buttons { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: 8px; }
+  .ef-rpg .controls-card .action-buttons button { width: 100%; min-height: 52px; padding: 9px 8px; font-size: 11px; }
+  .ef-rpg .controls-card .action-buttons button svg { flex-shrink: 0; }
+  .ef-rpg .controls-card .action-buttons kbd { display: none; }
+  .ef-rpg .controls-card .help-button { grid-column: 2; grid-row: 2; justify-self: center; }
+}
+@media (max-width: 360px) {
+  .ef-rpg .controls-card { gap: 6px; padding: 8px; }
+  .ef-rpg .controls-card .action-buttons button { gap: 5px; }
+}
+.ef-rpg .level-growth-note { margin: 9px 0 0; color: #b9b39f; font-size: 10px; line-height: 1.6; }

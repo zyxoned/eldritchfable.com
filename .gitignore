@@ -11,3 +11,11 @@ standalone/dist/
 *.sqlite-wal
 *.log
 test-results/
+
+# Owner-supplied business records stay outside public source and build assets.
+.private/
+private-business-records/
+business-profile.private.json
+LLC Certification.pdf
+EIN Eldritch Fable.pdf
+eldritch-business-records-private-*.zip

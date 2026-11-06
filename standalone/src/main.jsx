@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Storefront from './pages/Storefront.jsx';
+import Checkout, { CheckoutReturn } from './pages/Checkout.jsx';
 import AdminTools from './components/AdminTools.jsx';
 import Adventure from './pages/Adventure.jsx';
 import { Account, AccountHome } from './pages/Account.jsx';
@@ -15,6 +16,8 @@ createRoot(document.getElementById('root')).render(
     <Route path="/login" element={<Account key="login" mode="login" />} />
     <Route path="/register" element={<Account key="register" mode="register" />} />
     <Route path="/account" element={<AccountHome />} />
+    <Route path="/checkout" element={<Checkout />} />
+    <Route path="/checkout/return" element={<CheckoutReturn />} />
     <Route path="/play" element={<Adventure key="play" />} />
     <Route path="/stash" element={<Adventure key="stash" stash />} />
     <Route path="/forgot-password" element={<AccountRecovery key="request" mode="request" />} />

@@ -1,5 +1,43 @@
 # Eldritch Fable project state
 
+## Stripe checkout candidate — November 6, 2026
+
+Prepared in an isolated cloud checkout at 11:08 EST (America/New_York), based on
+verified main `1023c62c23d89645fbfe7e06ee813ee59fba5b3f`. Code commit before this
+handoff: `ae1e920878932836596c741f88abe668a9804de4`, on
+`feature/stripe-payments-tax-sandbox-20261106`. The branch is **local and
+unpublished**. Automatic approval review rejected the GitHub push, citing missing
+explicit authorization to publish source. A read-only GitHub ref check returned
+404, confirming that this branch was not published. No draft PR or CI run exists.
+
+The Stripe app was already installed and connected to Eldritch Fable LLC's
+sandbox. Its implementation planner selected hosted one-time web Checkout.
+The candidate adds `/checkout`, `/checkout/return`, a Review checkout bag link,
+server-authorized admin sandbox payments, authoritative catalog/Price validation,
+stock reservations, idempotent retries, raw-signature webhook handling and a
+durable fulfillment/review queue. Additive schema 9 preserves the existing data;
+it starts with no sellable inventory. Stripe SDK 23.1.0/API 2026-10-28.endive are
+pinned. Game behavior, eight-player parties, XP and wallets are outside this change.
+
+Fresh verification: `npm ci --no-audit --no-fund`, `npm test` (**245 passed**),
+`npm run build`, changed-module syntax checks and `git diff --check` passed.
+Independent review findings concerning authorization after an external await,
+currency selection, transformed quantities and completed-attempt retries were
+corrected and regression-tested. The actual catalog uses `price_cents`, which
+the browser maps to `priceCents`; checkout now matches that contract.
+
+Browser discovery finds 74 desktop/mobile tests. Local Chromium execution is
+blocked by the workspace: the earlier 60-test attempt failed at browser launch
+with `socket() failed: Operation not permitted`, before application assertions.
+The managed browser download also returned a truncated ZIP. No browser pass is
+claimed; remote CI requires publication first. Real Stripe payment and Tax
+calculation remain unverified: no application key/signing secret is available in
+this workspace, Tax settings are pending a head-office address, and the connected
+sandbox has no registrations. Real merchandise/stock and shipping inputs are also
+needed. Checkout defaults to disabled and accepts no live key. Production has not
+been inspected or deployed by this task. See [STRIPE.md](standalone/STRIPE.md) and
+the [current handoff](docs/workspace/HANDOFF.md) for the exact continuation.
+
 ## Expedition and gathering candidate — November 5, 2026
 
 An isolated candidate based on verified main `3fe124541bf90a5fb83308b72cc57c8a6348a407` adds server-owned expeditions, private runtime content integration, persistent nonredeemable gathering skills and supplies, and bounded rendering polish. Schema 8 preserves legacy data; focused concurrency, migration, privacy, progression and HTTP tests pass. Final validation passed 216 backend/unit tests, production build, six repeated regional travel scenarios, and 59 desktop/mobile browser tests with one intentional skip. Final source hashes matched isolated staging. Production-copy rehearsal and separate private-content activation remain required before release. No publication, production migration or deployment occurred. Existing wallets and reward rates remain unchanged. See EXPEDITION_REVIEW.md for scope, deliberate content limits and validation gates.

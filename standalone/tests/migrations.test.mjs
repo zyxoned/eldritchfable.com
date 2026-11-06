@@ -81,3 +81,20 @@ test('game schema preserves a funded XP and coin wallet on repeated migration', 
   for (const table of tables) assert.deepEqual(db.prepare('SELECT * FROM ' + table).all(), before[table]);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
+
+test('commerce migration from populated schema 8 preserves every pre-existing table and starts with no sellable stock', t => {
+  const db=openDatabase(':memory:'); t.after(()=>db.close());
+  migrateDatabase(db);
+  // Removing only the additive commerce tables reconstructs the schema-8 boundary.
+  db.exec('DROP TABLE commerce_fulfillment; DROP TABLE commerce_webhook_events; DROP TABLE commerce_payment_reviews; DROP TABLE commerce_orders; DROP TABLE commerce_stock; DELETE FROM schema_migrations WHERE version=9;');
+  db.prepare("INSERT INTO account_users(id,email,password_hash,role,email_verified_at) VALUES('retained-commerce','retained-commerce@example.test','retained-hash','admin','2026-01-01')").run();
+  db.prepare("INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES('retained-commerce-session','retained-commerce','2099-01-01')").run();
+  db.prepare("INSERT INTO game_wallets(user_id,balance_xp,lifetime_xp,balance_copper) VALUES('retained-commerce',1250,2500,1000)").run();
+  const tables=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name!='schema_migrations' ORDER BY name").all().map(row=>row.name);
+  const before=Object.fromEntries(tables.map(name=>[name,db.prepare('SELECT * FROM "'+name+'"').all()]));
+  assert.equal(migrateDatabase(db),SCHEMA_VERSION);
+  assert.equal(migrateDatabase(db),SCHEMA_VERSION);
+  for(const name of tables) assert.deepEqual(db.prepare('SELECT * FROM "'+name+'"').all(),before[name],name);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM commerce_stock').get().n,0);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
+});

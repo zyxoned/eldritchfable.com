@@ -32,11 +32,13 @@ Preserve existing work. Do not reset, clean, force-push, overwrite files, delete
 
 - standalone/src/main.jsx: React Router entry point; storefront, accounts, newsletter, /play, /stash and /admin.
 - standalone/src/pages/Storefront.jsx and src/styles/storefront.css: Tavern storefront, catalog browsing, product details, preview bag and wishlist.
+- standalone/src/pages/Checkout.jsx and src/styles/checkout.css: order review and owned payment-status pages using Stripe-hosted Checkout; keep launch gating and server-confirmed status authoritative.
 - standalone/src/api/: browser account/catalog access. TanStack Query handles account data.
 - standalone/src/game/ and src/components/AdventureWelcome.jsx: realm UI, shared canvas/game presentation, dialogs, prologue and invitations.
 - standalone/shared/class-catalog.mjs: shared class/ability/equipment/lore definitions.
 - standalone/server/index.mjs: native Node HTTP API; delegates account, newsletter and game routes.
-- standalone/server/database.mjs and migrations/: SQLite persistence using node:sqlite. The current source schema is version 6; API startup requires migration to have been performed separately.
+- standalone/server/database.mjs and migrations/: SQLite persistence using node:sqlite. The current source schema is version 9; API startup requires migration to have been performed separately.
+- standalone/server/commerce.mjs, commerce-routes.mjs and stripe-client.mjs: disabled-by-default administrator-only Stripe sandbox foundation. Read standalone/STRIPE.md before commerce work; do not enable live payments or sell preview inventory.
 - standalone/server/auth.mjs, account-mail.mjs, mail-queue.mjs and mail-worker.mjs: accounts, verification/reset, sessions and durable email processing.
 - standalone/server/game.mjs and game-rules.mjs: server-authoritative realm, permissions, cooldowns, XP and private coin ledger.
 - standalone/deploy/: Linux production inspection, staging and rollout tools. Reading these files does not authorize running a rollout.
@@ -79,7 +81,7 @@ Deployment requires explicit authorization for that operation. This baseline tas
 
 Production documentation describes Linux/systemd, Caddy and Cloudflare Tunnel under /srv/eldritch-production, with API port 3102 and a live customer database named data/staging.db. The name staging.db does not make it disposable. Verify actual service paths, symlinks, database and identities before any future authorized deployment; do not rely solely on historical prose or .env.example comments.
 
-Read standalone/DEPLOYMENT.md, ADVENTURE.md, EXPANSION.md and the current deployment code together. Some older prose names schema 2 or 3; the current source uses schema 6. Never migrate or restore a live database based on stale instructions. Preserve accounts, sessions, mail records and game/economy state; backups and rollback must preserve subsequent writes.
+Read standalone/DEPLOYMENT.md, ADVENTURE.md, EXPANSION.md and the current deployment code together. Some older prose names schema 2 or 3; the current source uses schema 9. Never migrate or restore a live database based on stale instructions. Preserve accounts, sessions, mail records and game/economy state; backups and rollback must preserve subsequent writes.
 
 The public /frontend-release.json identifies frontendCommit, releaseId, backendRelease and builtAssets. /api/health establishes service health, not a Git commit. Frontend and backend can be from different releases. Match manifest, headers/assets and server release records when access permits, and label missing evidence. A GitHub push or successful CI is not proof of deployment.
 

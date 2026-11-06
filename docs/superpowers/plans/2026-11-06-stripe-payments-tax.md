@@ -69,9 +69,9 @@ Files: `standalone/server/stripe-client.mjs`, `.env.example`, `package.json`,
 - [x] Document secure key provisioning, reviewed catalog/stock setup, webhook
   event subscriptions, reconciliation and remaining live-launch requirements.
 - [x] Review intended diff/secrets and run backend/build checks.
-- [ ] Publish the isolated draft review branch, verify its SHA and release the
-  session lease; publication is blocked by automatic approval review pending
-  explicit owner confirmation of the destination. See the shared handoff.
+- [x] Publish the reviewed source through the connected GitHub app as draft PR
+  #20 after owner confirmation; verify exact blob/tree equality and retain local
+  preparation history. Release only this session's lease after the handoff.
 
 ## Task 4: Checkout and payment-status pages
 
@@ -91,4 +91,4 @@ Files: `standalone/src/pages/Checkout.jsx`, `src/styles/checkout.css`,
 - [x] Match actual server catalog `price_cents`, preserving its browser mapping.
 - [x] Verify the complete backend/helper suite (245 passed), build and syntax.
 - [ ] Execute browser coverage: 74 tests discovered; browser launch is blocked
-  locally by a workspace socket restriction and CI requires publication first.
+  locally by a workspace socket restriction; remote CI is now running for PR #20.

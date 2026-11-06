@@ -2,13 +2,17 @@
 
 ## Stripe checkout candidate — November 6, 2026
 
-Prepared in an isolated cloud checkout at 11:08 EST (America/New_York), based on
-verified main `1023c62c23d89645fbfe7e06ee813ee59fba5b3f`. Code commit before this
-handoff: `ae1e920878932836596c741f88abe668a9804de4`, on
-`feature/stripe-payments-tax-sandbox-20261106`. The branch is **local and
-unpublished**. Automatic approval review rejected the GitHub push, citing missing
-explicit authorization to publish source. A read-only GitHub ref check returned
-404, confirming that this branch was not published. No draft PR or CI run exists.
+Published as [draft PR #20](https://github.com/zyxoned/eldritchfable.com/pull/20)
+on November 6, 2026 after the owner confirmed publication. Accepted main remains
+`1023c62c23d89645fbfe7e06ee813ee59fba5b3f`. Published code commit before this
+handoff: `94cc0ac96250ebfa9475e72d69becc0da3d8277b`, on
+`feature/stripe-payments-tax-sandbox-20261106`. Its tree
+`c2c9927ead8c6fdc19412c4c7d921bb3e428caed` exactly matches the reviewed local
+preparation at `91353c7592a20ce6294ff36a126c00ec866c8b1e`.
+The connected GitHub app published the source because the checkout had no Git
+push credentials. The separate local preparation history is retained for recovery.
+The initial source-publication approval blocker is resolved; no merge or rollout
+is part of this draft publication.
 
 The Stripe app was already installed and connected to Eldritch Fable LLC's
 sandbox. Its implementation planner selected hosted one-time web Checkout.
@@ -30,7 +34,8 @@ Browser discovery finds 74 desktop/mobile tests. Local Chromium execution is
 blocked by the workspace: the earlier 60-test attempt failed at browser launch
 with `socket() failed: Operation not permitted`, before application assertions.
 The managed browser download also returned a truncated ZIP. No browser pass is
-claimed; remote CI requires publication first. Real Stripe payment and Tax
+claimed. [CI 42251184710](https://github.com/zyxoned/eldritchfable.com/actions/runs/42251184710)
+started on the published code; its result remains to be checked. Real Stripe payment and Tax
 calculation remain unverified: no application key/signing secret is available in
 this workspace, Tax settings are pending a head-office address, and the connected
 sandbox has no registrations. Real merchandise/stock and shipping inputs are also

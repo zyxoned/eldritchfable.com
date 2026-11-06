@@ -1,5 +1,92 @@
 # Eldritch Fable shared workspace handoff
 
+## Stripe checkout draft published — November 6, 2026 (America/New_York)
+
+Task: add Payments and Tax to Eldritch Fable, including the requested prebuilt
+Checkout Sessions payment flow and payment-status page. This entry supersedes
+older current-task and next-action notes for this work, not their historical
+deployment evidence.
+
+| Field | Observed state |
+| --- | --- |
+| Repository | `https://github.com/zyxoned/eldritchfable.com.git` |
+| Local checkout | `/workspace/scratch/8622ebec2fa6/eldritchfable.com` |
+| Accepted source baseline | `1023c62c23d89645fbfe7e06ee813ee59fba5b3f` on `main` |
+| Task branch | `feature/stripe-payments-tax-sandbox-20261106` |
+| Published code commit before this handoff | `94cc0ac96250ebfa9475e72d69becc0da3d8277b` |
+| Reviewed source tree | `c2c9927ead8c6fdc19412c4c7d921bb3e428caed`, matching local preparation `91353c7592a20ce6294ff36a126c00ec866c8b1e` |
+| Earlier foundation commit | `7c8daa922d98c74b046b1ec8f07934396fa3fbca` |
+| Publication | [Draft PR #20](https://github.com/zyxoned/eldritchfable.com/pull/20), open, not merged |
+| Remote source verification | GitHub blob/tree hashes and fetched Git tree match the reviewed local source exactly |
+| Local preparation | Clean local preparation was committed; its separate original history is retained as recovery when adopting the GitHub-published branch |
+| Other checkouts/production | Not inspected or modified in this task; unpublished work elsewhere remains UNKNOWN |
+
+**Implementation:** authoritative source remains `standalone/`. New commerce
+server modules and schema 9 add an empty reviewed stock mapping, atomic
+reservations, immutable Checkout parameters, server Price/Product/Tax/shipping
+validation, signed webhook fulfillment, failure/expiry restocking and refund/
+dispute holds. New React pages `/checkout` and `/checkout/return` provide a styled
+review, a Stripe-hosted full-page redirect, retained retry identity, strict local
+sign-in return paths and owned server-confirmed status. Explicit new-order actions
+retire only the matching server-confirmed terminal attempt; pending, uncertain or
+review attempts keep their identity. The preview bag is preserved. No real order,
+shipment or mail is sent. Read [STRIPE.md](../../standalone/STRIPE.md), the
+[design](../superpowers/specs/2026-11-06-stripe-design.md) and
+[plan](../superpowers/plans/2026-11-06-stripe-payments-tax.md).
+
+**Verified now:** locked dependency installation; 245 backend/helper tests; Vite
+production build; syntax checks for changed server/client modules; whitespace and
+credential-literal checks. Independent read-only review findings were corrected
+and checked. The additive migration test preserves all pre-existing schema-8
+tables and funded account state. Preview JSON uses `price_cents`; the browser's
+`priceCents` projection is not the server catalog field.
+
+**Browser limitation:** Playwright discovers 74 tests, including 14 new checkout
+scenarios across desktop/mobile. The earlier local full run had 60 browser-launch
+failures: Chromium could not create its singleton socket (`Operation not
+permitted`), before application assertions. Browser download also failed with a
+truncated ZIP. Do not describe these as passing or as proven app regressions.
+No new local browser retry is useful without a changed execution environment.
+[CI 42251184710](https://github.com/zyxoned/eldritchfable.com/actions/runs/42251184710)
+started on published code `94cc0ac96250ebfa9475e72d69becc0da3d8277b`; its result
+was in progress at this publication update. Later documentation-only commits
+may trigger another run; inspect the exact PR head before reporting results.
+
+**Stripe state:** the app is installed and connected to
+`acct_1UYYVs3C66EEHuy8`, Eldritch Fable LLC sandbox, `livemode=false`. Planner
+guide `iguide_61ViCzY6QokLHNEf2413C66EEHuy8` accepted hosted one-time web Checkout.
+Tax settings are pending, missing `head_office`, with no default tax code/behavior
+or tax registrations. Monitoring returned no locations and no computation
+timestamp; it establishes no legal obligation. No key/signing secret is available
+to the application in this workspace. No Stripe account data was changed and no
+real Stripe charge or tax calculation was performed. Do not copy connection
+credentials into app source or chat. Use protected server configuration for a
+restricted sandbox key and environment-specific webhook secret.
+
+**Publication:** the owner explicitly approved drafting the PR. The connected
+GitHub app published the exact reviewed tree after ordinary Git push found no
+credentials. GitHub commit identity differs from local preparation identity;
+file/tree equality was verified before creating the branch. Retain the original
+local commits on `recovery/stripe-checkout-local-20261106` and adopt the fetched
+published task branch without resetting or deleting that history. The original
+source-publication approval blocker is resolved.
+
+**Immediate next action:** inspect the draft PR's latest CI/browser results and
+correct any demonstrated regression on this branch. Then configure the confirmed
+sandbox inputs below for real Stripe verification. Preserve `main` and production;
+the existing GitHub workflow only builds/tests and has no deployment step.
+Identify the later documentation commit through Git history or the PR rather
+than a self-referential SHA in this file.
+
+**Before a real Stripe sandbox exercise:** configure the actual business address,
+confirm existing legal registrations and product tax classifications, provide
+reviewed real SKU/stock and exclusive-USD shipping-rate inputs, and provision the
+restricted key/signing secret privately. Verify `taxability_reason` using actual
+confirmed inputs and exercise Checkout plus webhook replay. No tax registration
+may be invented from this general integration request. Live payments, customer
+activation, fulfillment operations and any production migration/deployment remain
+separate release work. The candidate is disabled by default and rejects live keys.
+
 ## Private administrator tools live — November 5, 2026
 
 The owner-authorized feature merged in [PR #13](https://github.com/zyxoned/eldritchfable.com/pull/13)

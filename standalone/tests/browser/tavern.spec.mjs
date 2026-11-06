@@ -85,7 +85,7 @@ test('Tavern search, product art, wishlist and chosen-variant bag work together'
   await expect(page.locator('.ef-cart-line')).toContainText('$22.99');
   await page.reload();
   await expect(page.locator('.ef-cart-line')).toContainText('Painted');
-  await expect(page.getByRole('button', { name: 'Checkout unavailable in preview' })).toBeDisabled();
+  await expect(page.getByRole('link', { name: 'Review checkout' })).toHaveAttribute('href','/checkout');
 });
 
 test('Tavern navigation remains usable at narrow and intermediate mobile widths', async ({ page }, testInfo) => {

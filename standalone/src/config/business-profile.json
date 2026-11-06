@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "brandName": "Eldritch Fable",
+  "documentedBusinessName": "ELDRITCH FABLE LLC",
+  "documentedEntityType": "limited_liability_company",
+  "documentedJurisdiction": {
+    "country": "US",
+    "state": "KY"
+  },
+  "documentsReviewedOn": "2026-11-06",
+  "formationEvidence": "draft_articles_only",
+  "acceptedFormationStatus": "not_verified",
+  "corporateTaxElection": "not_established_by_supplied_documents",
+  "salesTaxRegistrations": "not_established_by_supplied_documents",
+  "privateOnboardingDetails": "owner_supplied_private_business_packet"
+}

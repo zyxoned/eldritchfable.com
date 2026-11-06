@@ -1,5 +1,31 @@
 # Eldritch Fable project state
 
+## Business records shared context - November 6, 2026
+
+Owner-supplied business PDFs were read and visually reviewed at November 06, 2026, 11:43 EST.
+The LLC-named file is visibly marked DRAFT, so accepted Kentucky formation is
+unverified. The supplied IRS notice provides private onboarding details; neither
+file establishes corporate elections or sales-tax registrations. No government
+registry or provider account was checked or changed by this task.
+
+Task branch `docs/business-identity-20261106` is based on verified main
+`1023c62c23d89645fbfe7e06ee813ee59fba5b3f`. Source-context commit before this
+handoff: `b6399659c1cbd968c2ccc44970943e473a278ef4`. Shared instructions in
+`AGENTS.md` and `.github/copilot-instructions.md` point to
+`docs/BUSINESS_IDENTITY.md` and `standalone/src/config/business-profile.json`.
+The original PDFs, full private profile and source hashes were delivered to a
+protected directory on the connected project host and retained in an owner-held
+packet. Host hashes match, directories are 0700 and files are 0600. No private
+identifiers, address or original files enter Git.
+
+JSON parsing, source-identity consistency, relative links, private-literal scanning,
+ignore patterns and `git diff --check` passed. The profile has no runtime imports;
+application/build/browser tests were not run for this metadata/documentation change.
+No production application, database, Stripe settings or deployment was changed.
+Other Codex/Copilot workspaces must fetch this source update and obtain authorized
+private access when needed; existing conversations were not directly updated.
+See [the handoff](docs/workspace/HANDOFF.md) for continuation.
+
 ## Expedition and gathering candidate — November 5, 2026
 
 An isolated candidate based on verified main `3fe124541bf90a5fb83308b72cc57c8a6348a407` adds server-owned expeditions, private runtime content integration, persistent nonredeemable gathering skills and supplies, and bounded rendering polish. Schema 8 preserves legacy data; focused concurrency, migration, privacy, progression and HTTP tests pass. Final validation passed 216 backend/unit tests, production build, six repeated regional travel scenarios, and 59 desktop/mobile browser tests with one intentional skip. Final source hashes matched isolated staging. Production-copy rehearsal and separate private-content activation remain required before release. No publication, production migration or deployment occurred. Existing wallets and reward rates remain unchanged. See EXPEDITION_REVIEW.md for scope, deliberate content limits and validation gates.

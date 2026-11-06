@@ -55,6 +55,22 @@ Keep storefront styles scoped; preserve keyboard operation, dialog focus/restora
 
 Never commit credentials, .env files, customer data, database files/backups, node_modules or build output. Never print secret environment values or source production credential files. Keep transactional email disabled in local tests.
 
+## Business records and payment setup
+
+For business identity, onboarding, legal copy or payment work, read
+`docs/BUSINESS_IDENTITY.md` and `standalone/src/config/business-profile.json`.
+These record facts from owner-supplied documents reviewed on November 6, 2026.
+The supplied Articles of Organization are visibly marked DRAFT; do not describe
+them as proof of an accepted Kentucky filing. Neither document proves an S/C
+corporation election or sales-tax registration.
+
+Original PDFs, EIN, personal names and full address belong in the private business
+records packet outside Git and frontend/public directories. Request or use its
+authorized private mount when a task needs those values; do not invent missing
+registrations or assume the documented address is still the current head office.
+Never copy those private values into source, logs, issues, PRs or client bundles.
+Reading these records does not itself authorize changing Stripe or tax accounts.
+
 ## Development and verification
 
 Run package commands inside standalone/ with Node >=24:

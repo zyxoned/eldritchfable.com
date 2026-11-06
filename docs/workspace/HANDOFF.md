@@ -1,5 +1,64 @@
 # Eldritch Fable shared workspace handoff
 
+## Business records handoff - November 06, 2026, 11:43 EST
+
+The owner supplied two PDFs for Codex, Copilot and source work. This entry records
+the business-records task; older deployment observations and separate unpublished
+feature work retain their own scope.
+
+| Field | Observed evidence |
+| --- | --- |
+| Repository | `https://github.com/zyxoned/eldritchfable.com.git` |
+| Observed checkout | Isolated cloud clone at `/workspace/scratch/9fd3939069d1/projects/eldritchfable.com` |
+| Accepted main | `1023c62c23d89645fbfe7e06ee813ee59fba5b3f`, freshly fetched before edits |
+| Task branch | `docs/business-identity-20261106` |
+| Source-context commit before this handoff | `b6399659c1cbd968c2ccc44970943e473a278ef4` |
+| State before handoff edits | Clean, one local task commit; task branch had no upstream yet |
+| Other workspaces | Existing Codex/Copilot checkouts and unpublished work remain UNKNOWN |
+| Production | No production application, database or provider-account changes; release not inspected |
+
+**Shared source:** [Business evidence](../BUSINESS_IDENTITY.md) and the
+[source-safe profile](../../standalone/src/config/business-profile.json). Root
+`AGENTS.md` and `.github/copilot-instructions.md` direct both agents to those files.
+Ignore patterns cover private packet/profile/original names. This is reference
+data only, with no runtime import or checkout activation.
+
+**Private delivery:** unchanged original PDFs, `business-profile.private.json`,
+README and SHA-256 manifest are in an owner-held packet and a separate protected
+directory on the connected project host. The packet's private README records the
+exact host location. All manifest hashes match the delivered bytes; directory
+modes are 0700 and file modes 0600. No EIN, full address, personal names or
+original PDFs are committed here. Private access must be authorized in the target
+session; source publication does not grant it.
+
+**Evidence limits:** the LLC-named PDF is Articles of Organization with a large
+DRAFT watermark, not an accepted-filing certificate. The IRS CP575G notice supplies
+a documented business identity/EIN; it does not prove an S/C corporate election,
+sales-tax registration, current ownership or provider approval. Matching address
+text is documented input, not confirmation of its current head-office role.
+No issuing agency or current provider account was independently queried.
+
+**Checks performed:** text extraction and visual inspection of both originals;
+byte-for-byte source-copy and host SHA-256 verification; ZIP integrity; JSON parse
+and identity consistency; relative-link checks; private-literal scan;
+`git check-ignore --quiet` for original/profile/packet examples; no runtime import
+confirmed with `rg`; `git diff --check`. Git hooks and the current CI workflow were
+inspected: no active local hooks and no deployment step in that workflow. No fresh
+application/build/browser test pass is claimed for this documentation/metadata work.
+
+The local Git push could not authenticate. Publication therefore uses the
+connected GitHub account with the identical reviewed source tree; local work
+and its original commit history are preserved. The source-context SHA above
+identifies that GitHub history.
+
+**Publication and next action:** publish/verify this task branch through the normal
+GitHub review workflow, then fetch the accepted source update in the intended
+Codex/Copilot workspace. Read the shared evidence/profile and, for an authorized
+onboarding task that actually needs private values, use the owner-held packet or
+existing private host connection. Do not enable live checkout, create tax
+registrations or treat draft formation as accepted as part of this handoff.
+Identify the later documentation commit through Git history and the remote ref.
+
 ## Private administrator tools live — November 5, 2026
 
 The owner-authorized feature merged in [PR #13](https://github.com/zyxoned/eldritchfable.com/pull/13)

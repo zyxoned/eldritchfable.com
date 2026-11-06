@@ -5,6 +5,9 @@ import { createGameService } from './game.mjs';
 import { createServer } from 'node:http';
 import { openDatabase, requireSchema } from './database.mjs';
 import { validateOrigin } from './request-security.mjs';
+import { createCommerceService } from './commerce.mjs';
+import { commerceRoute } from './commerce-routes.mjs';
+import { stripeConfiguration, stripeClient } from './stripe-client.mjs';
 
 const port = Number(process.env.PORT || 3000);
 const databasePath = process.env.ELDRITCH_DB;
@@ -14,6 +17,8 @@ requireSchema(db);
 validateOrigin(process.env.ELDRITCH_ORIGIN);
 const game = createGameService(db);
 const admin = createAdminService(db);
+const commerceConfig = stripeConfiguration();
+const commerce = createCommerceService(db, {config:commerceConfig,stripe:stripeClient(commerceConfig)});
 
 function reply(res, status, body) {
   const payload = JSON.stringify(body);
@@ -34,7 +39,8 @@ function catalog() {
 }
 const server = createServer(async (req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
-  try { if (await authRoute(db, req, res, path)) return;
+  try { if (await commerceRoute(db, commerce, req, res, path)) return;
+    if (await authRoute(db, req, res, path)) return;
     if (await newsletterRoute(db, req, res, path)) return;
     if (await admin.route(req, res, path)) return;
     if (await game.route(req, res, path)) return; }

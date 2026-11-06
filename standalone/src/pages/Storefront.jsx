@@ -229,7 +229,7 @@ function Bag() {
       if (!product || !variant) return null;
       const key = lineKey(line);
       return <div className="ef-cart-line" key={key}><Package aria-hidden="true" /><div><Link to={`${ROOT}/products/${product.slug}`}>{product.name}</Link><span>{variant.label} · {money(variant.priceCents)} each</span></div><Quantity value={line.quantity} onChange={q => cart.setQuantity(key, q)} label={`quantity for ${product.name}, ${variant.label}`} /><strong>{money(variant.priceCents * line.quantity)}</strong><button className="icon-button" onClick={() => cart.remove(key)} aria-label={`Remove ${product.name}, ${variant.label}`}><Trash2 /></button></div>;
-    })}</div><div className="ef-cart-total"><span>Subtotal</span><strong>{money(cart.subtotal)}</strong></div><button className="ef-button" disabled>Checkout unavailable in preview</button><p className="ef-notice">Verified products, fulfillment, payment and shipping will be connected before sales open.</p></>}
+    })}</div><div className="ef-cart-total"><span>Subtotal</span><strong>{money(cart.subtotal)}</strong></div><Link className="ef-button" to="/checkout">Review checkout</Link><p className="ef-notice">Verified products, fulfillment, payment and shipping will be connected before sales open.</p></>}
   </div>;
 }
 function Missing() { return <div className="ef-state"><h1>This artifact could not be found.</h1><p>Explore the collection to find your next piece.</p><Link className="ef-button" to={`${ROOT}/shop`}>Browse all products</Link></div>; }

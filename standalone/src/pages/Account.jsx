@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authRequest } from '../api/auth.js';
+import { safeCheckoutNext } from '../lib/checkout-core.js';
 import AdventureWelcome from '../components/AdventureWelcome.jsx';
 
 export function AuthShell({ title, children }) {
@@ -42,7 +43,7 @@ export function Account({ mode = 'login' }) {
   const [unverified, setUnverified] = useState(false);
   const register = mode === 'register';
   const requestedNext = new URLSearchParams(location.search).get('next');
-  const next = ['/play', '/stash'].includes(requestedNext) ? requestedNext : '/account';
+  const next = ['/play', '/stash'].includes(requestedNext) ? requestedNext : safeCheckoutNext(requestedNext) || '/account';
   const nextQuery = next === '/account' ? '' : '?next=' + encodeURIComponent(next);
   async function submit(event) {
     event.preventDefault();

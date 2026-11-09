@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell, Compass, Heart, Sword } from 'lucide-react';
 import * as THREE from 'three';
 import { CLASS_CATALOG } from '../../../shared/class-catalog.mjs';
+import { regionWalkable } from '../../../shared/world-catalog.mjs';
+import { cameraRelative, createFreeWalk, movementAxes, START_PITCH, START_YAW, steerView } from './free-controls.mjs';
 import { createActors, createCombatFx, worldPosition } from './actors';
 import { disposeScene } from './materials';
 import { BELL_LANDING, createWorld, UNIT } from './world';
@@ -28,14 +30,16 @@ function toll() {
   void audio.resume().catch(() => {});
 }
 
-export default function BellhouseStage({ realm, player, enabled, onGo, onHunt, fallback }) {
+export default function BellhouseStage({
+  realm, player, enabled, onGo, onHunt, input, readCell, crossCell, onControlsReady, fallback,
+}) {
   const viewport = useRef(null);
-  const latest = useRef({ realm, player, enabled, onGo });
+  const latest = useRef(null);
   const ringTime = useRef(-Infinity);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [rung, setRung] = useState(false);
-  latest.current = { realm, player, enabled, onGo };
+  latest.current = { realm, player, enabled, onGo, input, readCell, crossCell, onControlsReady };
 
   useEffect(() => {
     const host = viewport.current;
@@ -66,16 +70,19 @@ export default function BellhouseStage({ realm, player, enabled, onGo, onHunt, f
       setFailed(true);
       return;
     }
-    const camera = new THREE.PerspectiveCamera(46, 1, .15, 190);
+    const camera = new THREE.PerspectiveCamera(54, 1, .13, 190);
     const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
     const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const hit = new THREE.Vector3(), aim = new THREE.Vector3(), eye = new THREE.Vector3(), focus = new THREE.Vector3();
-    const fallbackPosition = new THREE.Vector3();
-    let frame, started = false, down, previousTime = performance.now(), renderedAt = 0;
+    const hit = new THREE.Vector3(), aim = new THREE.Vector3(), eye = new THREE.Vector3(), pivot = new THREE.Vector3();
+    const follow = new THREE.Vector3(), fallbackPosition = new THREE.Vector3();
+    const walk = createFreeWalk((x, y) => regionWalkable('glade', x, y), (from, to) => latest.current.crossCell(from, to));
+    let view = { yaw: START_YAW, pitch: START_PITCH };
+    let frame, started = false, down, drag, dragX = 0, dragY = 0;
+    let previousTime = performance.now(), renderedAt = 0;
     const originTime = previousTime;
     let lastServerTime, serverOffset = 0;
 
-    canvas.setAttribute('aria-label', '3D map of Bellhouse Ravine. Tap the path to walk or tap a thornling to approach.');
+    canvas.setAttribute('aria-label', 'Third-person view of Bellhouse Ravine. Move with the left stick or WASD. Look with the right stick or right-drag.');
     canvas.dataset.renderer = 'webgl2';
     host.append(canvas);
 
@@ -97,28 +104,56 @@ export default function BellhouseStage({ realm, player, enabled, onGo, onHunt, f
         serverOffset = (lastServerTime || Date.now()) - Date.now();
       }
       const clock = Date.now() + serverOffset;
+      if (snapshot.enabled) view = steerView(view, snapshot.input.look, step, dragX, dragY);
+      dragX = dragY = 0;
+      const accepted = snapshot.readCell();
+      const direction = cameraRelative(movementAxes(snapshot.input), view.yaw);
+      const displayed = actors.player(snapshot.player.id)?.root.position;
+      const position = walk(accepted, direction, step, now, snapshot.enabled && accepted?.canWalk,
+        displayed && { x: displayed.x / UNIT, y: displayed.z / UNIT });
+      actors.update(snapshot.realm, snapshot.player.id, time, step, motion.matches, clock, position, view.yaw);
       const actor = actors.player(snapshot.player.id);
       const at = actor?.root.position ?? worldPosition(snapshot.player.x, snapshot.player.y, fallbackPosition);
-      const zoom = camera.aspect < 1 ? 1 + (1 - camera.aspect) * .52 : 1;
-      eye.set(at.x + 5.2 * zoom, at.y + 7.7 * zoom, at.z + 10.25 * zoom);
-      aim.set(at.x - 1.68, at.y + 2.34, at.z - 2.4);
-      const shift = !started || motion.matches ? 1 : 1 - Math.exp(-step * 9);
-      camera.position.lerp(eye, shift);
-      focus.lerp(aim, shift);
-      camera.lookAt(focus);
+      const smoothing = !started || motion.matches || follow.distanceToSquared(at) > 16 ? 1 : 1 - Math.exp(-step * 15);
+      follow.lerp(at, smoothing);
+      const sine = Math.sin(view.yaw), cosine = Math.cos(view.yaw);
+      const distance = camera.aspect < 1 ? 6.9 : 6.25;
+      const behind = distance * Math.cos(view.pitch);
+      pivot.set(follow.x, follow.y + 1.45, follow.z);
+      eye.set(pivot.x - sine * behind - cosine * .32, pivot.y + distance * Math.sin(view.pitch), pivot.z - cosine * behind + sine * .32);
+      aim.set(pivot.x + sine * 1.0, pivot.y - .18, pivot.z + cosine * 1.0);
+      world.clipCamera(pivot, eye);
+      camera.position.copy(eye);
+      camera.lookAt(aim);
       camera.updateMatrixWorld();
-      actors.update(snapshot.realm, snapshot.player.id, camera, time, step, motion.matches, clock);
+      actors.faceHealthBars(camera.quaternion);
       world.update(motion.matches ? 0 : time, (now - ringTime.current) / 1000, motion.matches);
       fx(snapshot.realm?.effects, clock, motion.matches);
       renderer.render(scene, camera);
-      if (!started) { started = true; setReady(true); }
+      if (!started) { started = true; setReady(true); snapshot.onControlsReady(true); }
     }
 
     function startPointer(event) {
-      if (event.isPrimary && event.button === 0) down = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      if (!latest.current.enabled) return;
+      if (event.pointerType === 'mouse' && event.button === 2) {
+        drag = { x: event.clientX, y: event.clientY, id: event.pointerId };
+        canvas.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      } else if (event.isPrimary && event.button === 0) {
+        down = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      }
+    }
+
+    function dragView(event) {
+      if (drag?.id !== event.pointerId || !latest.current.enabled) return;
+      dragX += event.clientX - drag.x;
+      dragY += event.clientY - drag.y;
+      drag.x = event.clientX;
+      drag.y = event.clientY;
     }
 
     function select(event) {
+      if (drag?.id === event.pointerId) { drag = null; return; }
       const { player: active, onGo: move, enabled: canMove } = latest.current;
       const tap = down;
       down = null;
@@ -131,11 +166,21 @@ export default function BellhouseStage({ realm, player, enabled, onGo, onHunt, f
       if (raycaster.ray.intersectPlane(ground, hit)) move(Math.round(hit.x / UNIT), Math.round(hit.z / UNIT));
     }
 
-    const cancelPointer = () => { down = null; };
+    const cancelPointer = () => { down = drag = null; dragX = dragY = 0; };
+    const lostPointer = event => {
+      if (drag?.id === event.pointerId) drag = null;
+      if (down?.id === event.pointerId) down = null;
+    };
+    const preventMenu = event => { if (latest.current.enabled) event.preventDefault(); };
     const contextLost = event => { event.preventDefault(); setFailed(true); };
     canvas.addEventListener('pointerdown', startPointer);
     canvas.addEventListener('pointerup', select);
+    canvas.addEventListener('pointermove', dragView);
     canvas.addEventListener('pointercancel', cancelPointer);
+    canvas.addEventListener('lostpointercapture', lostPointer);
+    canvas.addEventListener('contextmenu', preventMenu);
+    window.addEventListener('blur', cancelPointer);
+    document.addEventListener('visibilitychange', cancelPointer);
     canvas.addEventListener('webglcontextlost', contextLost);
     const observer = new ResizeObserver(resize);
     observer.observe(host);
@@ -146,11 +191,17 @@ export default function BellhouseStage({ realm, player, enabled, onGo, onHunt, f
       observer.disconnect();
       canvas.removeEventListener('pointerdown', startPointer);
       canvas.removeEventListener('pointerup', select);
+      canvas.removeEventListener('pointermove', dragView);
       canvas.removeEventListener('pointercancel', cancelPointer);
+      canvas.removeEventListener('lostpointercapture', lostPointer);
+      canvas.removeEventListener('contextmenu', preventMenu);
+      window.removeEventListener('blur', cancelPointer);
+      document.removeEventListener('visibilitychange', cancelPointer);
       canvas.removeEventListener('webglcontextlost', contextLost);
       canvas.remove();
       disposeScene(scene, true);
       renderer.dispose();
+      latest.current.onControlsReady(false);
     };
   }, [failed]);
 

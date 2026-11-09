@@ -13,6 +13,7 @@ import {
   type HeroClass, type Realm, type Appearance, type GatheringProfile,
 } from './shared/game';
 import GameCanvas from './GameCanvas';
+import AnalogStick from './bellhouse/AnalogStick.jsx';
 import AppearanceEditor from './AppearanceEditor';
 import FieldNotes from './FieldNotes';
 import SkillsPanel from './SkillsPanel';
@@ -176,6 +177,10 @@ export default function Mossvale({ user, onSessionExpired }: {
   const moveAllowed = useRef(false);
   const movementGate = useRef(createMovementGate());
   const [directionButtons, setDirectionButtons] = useState(!wantsBellhouse);
+  const [bellhouseReady, setBellhouseReady] = useState(false);
+  const freeInput = useRef({
+    move: { x: 0, y: 0 }, look: { x: 0, y: 0 }, keys: new Map<string, [number, number]>(),
+  }).current;
   const resumed = useRef(false);
   const visitorAttempted = useRef(false);
   const messages = useRef<HTMLDivElement>(null);
@@ -189,6 +194,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   const adminActive = !!profile?.adminActive;
   const sceneActive = !!realm?.authored?.encounter || !!realm?.journey?.active;
   const bellhouseMode = wantsBellhouse && regionId === 'glade' && !!me && !introOpen && !sceneActive;
+  const freeControls = bellhouseMode && bellhouseReady;
   const wantsVisitor = query.get('visitor') === '1' || query.get('seventh') === '1';
   const invitedParty = query.get('party');
   const partyFeatures = !!realm && Array.isArray(realm.visitors) && realm.maxPlayers === 8 && realm.maxVisitors === 2 && 'partyId' in realm;
@@ -205,16 +211,22 @@ export default function Mossvale({ user, onSessionExpired }: {
     if (thumbRef.current) thumbRef.current.style.transform = 'translate(0px, 0px)';
   }
 
+  function resetFreeInput() {
+    freeInput.move.x = freeInput.move.y = freeInput.look.x = freeInput.look.y = 0;
+    freeInput.keys.clear();
+  }
+
   useEffect(() => {
-    if (!movementEnabled) cancelMovement();
+    if (!movementEnabled) { cancelMovement(); resetFreeInput(); }
   }, [movementEnabled]);
 
   useEffect(() => {
     cancelMovement();
-  }, [realm?.partyId, realm?.regionId, playerId, adminActive]);
+    resetFreeInput();
+  }, [realm?.partyId, realm?.regionId, realm?.scopeId, playerId, adminActive]);
 
   useEffect(() => {
-    const stop = () => cancelMovement();
+    const stop = () => { cancelMovement(); resetFreeInput(); };
     const focus = (event: FocusEvent) => {
       if ((event.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]')) stop();
     };
@@ -272,7 +284,10 @@ export default function Mossvale({ user, onSessionExpired }: {
     const nextHero = [...(next.players || []), ...(next.visitors || [])].find(p => p.id === playerRef.current);
     // Recovery, party changes and actor replacement invalidate held intent.
     if (switched || current?.regionId !== next.regionId || current?.scopeId !== next.scopeId || (previousHero && (!nextHero || nextHero.hp <= 0 ||
-      Math.abs(nextHero.x - previousHero.x) + Math.abs(nextHero.y - previousHero.y) > 1))) cancelMovement();
+      Math.abs(nextHero.x - previousHero.x) + Math.abs(nextHero.y - previousHero.y) > 1))) {
+      cancelMovement();
+      resetFreeInput();
+    }
     realmRef.current = next;
     setRealm(next);
     return true;
@@ -619,6 +634,23 @@ export default function Mossvale({ user, onSessionExpired }: {
     }
   }
 
+  function readFreeCell() {
+    const current = realmRef.current;
+    if (!current || (current.regionId || DEFAULT_REGION_ID) !== 'glade') return null;
+    const id = playerRef.current;
+    const hero = current.players.find(p => p.id === id) || current.visitors?.find(p => p.id === id);
+    return hero ? {
+      x: hero.x, y: hero.y, scope: JSON.stringify([current.partyId, current.scopeId, id]),
+      canWalk: hero.hp > 0 && moveAllowed.current && !destination.current,
+    } : null;
+  }
+
+  async function crossFreeCell(from: { x: number; y: number; scope: string }, to: { x: number; y: number }) {
+    const current = readFreeCell();
+    if (!current?.canWalk || current.scope !== from.scope || current.x !== from.x || current.y !== from.y) return false;
+    return actRef.current('move', to);
+  }
+
   function steerThumb(event: ReactPointerEvent<HTMLElement>) {
     if (event.pointerId !== heldPointer.current) return;
     const rect = event.currentTarget.getBoundingClientRect();
@@ -663,10 +695,18 @@ export default function Mossvale({ user, onSessionExpired }: {
         ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1],
         ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0],
       };
-      if (directions[event.key]) {
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      if (directions[key]) {
         event.preventDefault();
-        cancelMovement();
-        move(...directions[event.key]);
+        if (freeControls) {
+          if (moveAllowed.current && !document.hidden && !freeInput.keys.has(key)) {
+            cancelMovement();
+            freeInput.keys.set(key, directions[key]);
+          }
+        } else {
+          cancelMovement();
+          move(...directions[key]);
+        }
       } else if ((event.key === '1' || event.key === '2') && me) {
         const skill = CLASSES[me.heroClass].skills[Number(event.key) - 1];
         if (skill && skill.type !== 'passive') { event.preventDefault(); void actRef.current('skill', { skillId: skill.id }); }
@@ -678,9 +718,17 @@ export default function Mossvale({ user, onSessionExpired }: {
         void actRef.current('interact');
       }
     };
+    const keyup = (event: KeyboardEvent) => {
+      freeInput.keys.delete(event.key.length === 1 ? event.key.toLowerCase() : event.key);
+    };
     window.addEventListener('keydown', keydown);
-    return () => window.removeEventListener('keydown', keydown);
-  }, [guide, leaving, appearanceOpen, adminToolsOpen, introOpen, me?.heroClass]);
+    window.addEventListener('keyup', keyup);
+    return () => {
+      window.removeEventListener('keydown', keydown);
+      window.removeEventListener('keyup', keyup);
+      freeInput.keys.clear();
+    };
+  }, [guide, leaving, appearanceOpen, adminToolsOpen, introOpen, me?.heroClass, freeControls]);
 
   async function leaveRealm() {
     destination.current = null;
@@ -860,6 +908,7 @@ export default function Mossvale({ user, onSessionExpired }: {
               <div className="canvas-container">
                 {bellhouseMode ? <Suspense fallback={<div className="bellhouse-stage bellhouse-loading" role="status">Loading Bellhouse Ravine…</div>}>
                   <BellhouseStage key={playerId} realm={realm} player={me} enabled={movementEnabled} onGo={go} onHunt={trackEnemy}
+                    input={freeInput} readCell={readFreeCell} crossCell={crossFreeCell} onControlsReady={setBellhouseReady}
                     fallback={<GameCanvas realm={realm} playerId={playerId} onTile={go} />} />
                 </Suspense> : <GameCanvas realm={realm} playerId={playerId} onTile={go} />}
                 {!me && <div className="world-invitation"><span className="invite-icon"><Leaf size={15} /></span><div>The glade is waiting.<small>Choose your adventurer to step inside.</small></div><span>✧</span></div>}
@@ -868,7 +917,8 @@ export default function Mossvale({ user, onSessionExpired }: {
               </div>
               <div className="map-caption"><span><span className="sun-dot" /> {region.description}</span><span>{me ? me.x + ', ' + me.y : '30 × 22'} <Compass size={12} /></span></div>
             </div>
-            <div className="controls-card">
+            <div className={'controls-card' + (freeControls ? ' bellhouse-dual' : '')}>
+              {freeControls ? <AnalogStick label="MOVE" name="Movement joystick" axes={freeInput.move} enabled={movementEnabled} onStart={cancelMovement} /> :
               <div className="mobile-controls" aria-label="Touch movement controls">
                 {directionButtons ? <div className="touch-direction-pad">
                   {([[-1, 0, 'west', ArrowLeft], [0, -1, 'north', ArrowUp], [0, 1, 'south', ArrowDown], [1, 0, 'east', ArrowRight]] as const).map(([x, y, label, Icon]) =>
@@ -880,13 +930,14 @@ export default function Mossvale({ user, onSessionExpired }: {
                   <span className="thumb-compass" aria-hidden="true">✧</span><span className="thumb-grip" ref={thumbRef} aria-hidden="true" />
                 </div>}
                 <button type="button" className="touch-mode-toggle" onClick={() => { cancelMovement(); setDirectionButtons(value => !value); }}>{directionButtons ? 'Use joystick' : 'Use buttons'}</button>
-              </div>
-              <div className="keyboard-hint"><span className="key-group"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></span><span>Wander<small>or click the ground</small></span></div>
+              </div>}
+              {!freeControls && <div className="keyboard-hint"><span className="key-group"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></span><span>Wander<small>or click the ground</small></span></div>}
               <div className="action-buttons">
                 <button aria-label="Attack" className="attack-button" disabled={!canAct} title={'Attack · ' + attackLabel} onClick={() => void act('attack')}><Sword size={17} /><span>{attackLabel}</span><kbd>SPACE</kbd></button>
                 <button aria-label="Interact" className="interact-button" disabled={!canAct || adminActive} onClick={() => void act('interact')}><Sparkles size={17} /><span>{interactLabel}</span><kbd>E</kbd></button>
               </div>
-              <button className="help-button" onClick={() => setGuide(true)} aria-label="Open field guide"><BookOpen size={18} /></button>
+              {freeControls ? <AnalogStick label="LOOK" name="Camera joystick" axes={freeInput.look} enabled={movementEnabled} /> :
+                <button className="help-button" onClick={() => setGuide(true)} aria-label="Open field guide"><BookOpen size={18} /></button>}
             </div>
             {me && <SkillBar heroClass={me.heroClass} cooldowns={profile?.cooldowns} serverTime={realm?.serverTime || Date.now()} enabled={canAct} onUse={skillId => void act('skill', { skillId })} />}
             {me && !adminActive && <SkillsPanel player={me} realm={realm} gathering={profile?.gathering} enabled={canAct && me.hp > 0} supplyEnabled={sceneCanAct && !realm?.authored?.encounter && me.hp > 0 && me.hp < (me.maxHp || 100)} onUseSupply={materialId => act('consumeSupply', { materialId })} onWalk={go} onGather={nodeId => act('gatherResource', { nodeId })} />}

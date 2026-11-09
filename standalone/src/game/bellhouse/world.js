@@ -426,12 +426,13 @@ export function createWorld(scene, smallScreen) {
   terrain(scene, mats);
   const mist = makeRavineMist(scene);
   landscape(scene, mats);
-  const architecture = new THREE.Group();
-  scene.add(architecture);
-  bridge(architecture, mats);
-  const bell = bellhouse(architecture, mats);
-  cottage(architecture, mats, 5.5 * UNIT, 15.5 * UNIT);
-  batchArchitecture(architecture);
+  const crossing = new THREE.Group(), tower = new THREE.Group(), hut = new THREE.Group();
+  scene.add(crossing, tower, hut);
+  bridge(crossing, mats);
+  const bell = bellhouse(tower, mats);
+  cottage(hut, mats, 5.5 * UNIT, 15.5 * UNIT);
+  const cameraWalls = [tower, hut].map(group => new THREE.Box3().setFromObject(group).expandByScalar(.12));
+  [crossing, tower, hut].forEach(batchArchitecture);
   const lights = [
     lantern(scene, mats, glow, 7.1 * UNIT, 10.25 * UNIT),
     lantern(scene, mats, glow, 7.12 * UNIT, 13.72 * UNIT),
@@ -451,8 +452,19 @@ export function createWorld(scene, smallScreen) {
   pulse.castShadow = false;
   pulse.visible = false;
   const ringOrigin = new THREE.Vector3(bell.position.x, .16, bell.position.z);
+  const cameraRay = new THREE.Ray(), cameraHit = new THREE.Vector3();
   return {
     glow,
+    clipCamera(pivot, eye) {
+      cameraRay.origin.copy(pivot);
+      const length = cameraRay.direction.subVectors(eye, pivot).length();
+      cameraRay.direction.divideScalar(length);
+      let clear = length;
+      for (const wall of cameraWalls) {
+        if (cameraRay.intersectBox(wall, cameraHit)) clear = Math.min(clear, cameraHit.distanceTo(pivot) - .2);
+      }
+      if (clear < length) cameraRay.at(Math.max(.6, clear), eye);
+    },
     update(time, sinceRing, reducedMotion) {
       mist.value = time;
       mats.water.bumpMap.offset.set(.016 * time, .009 * time);

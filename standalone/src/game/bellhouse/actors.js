@@ -225,7 +225,7 @@ function appearanceKey(player) {
 export function createActors(scene) {
   const actors = new Map();
   const updateSet = new Set();
-  const yAxis = new THREE.Vector3(0, 1, 0), yaw = new THREE.Quaternion();
+  const yAxis = new THREE.Vector3(0, 1, 0), yaw = new THREE.Quaternion(), manual = new THREE.Vector3();
   let previous;
   function remove(id, actor) {
     actor.root.removeFromParent();
@@ -272,7 +272,7 @@ export function createActors(scene) {
     for (const enemy of realm?.enemies || []) if (enemy.hp > 0) update(enemy, true);
     for (const [id, actor] of actors) if (!updateSet.has(id)) remove(id, actor);
   }
-  function update(realm, playerId, camera, time, dt, reducedMotion, serverNow) {
+  function update(realm, playerId, time, dt, reducedMotion, serverNow, position, viewYaw) {
     sync(realm, playerId);
     for (const effect of realm?.effects || []) {
       const actor = actors.get(effect.actorId);
@@ -284,25 +284,30 @@ export function createActors(scene) {
       if (Math.hypot(dx, dz) > .2) actor.heading = Math.atan2(dx, dz);
     }
     for (const actor of actors.values()) {
-      const remaining = actor.root.position.distanceTo(actor.target);
-      actor.moving = remaining > .024 && remaining < UNIT * 4;
-      if (reducedMotion || remaining > UNIT * 4 || remaining < .013) actor.root.position.copy(actor.target);
-      else actor.root.position.lerp(actor.target, 1 - Math.exp(-dt * 15));
+      const local = actor.data.id === playerId;
+      const free = local && position;
+      const target = free ? worldPosition(position.x, position.y, manual) : actor.target;
+      const remaining = actor.root.position.distanceTo(target);
+      actor.moving = remaining > .009 && remaining < UNIT * 4;
+      if (free || reducedMotion || remaining > UNIT * 4 || remaining < .013) actor.root.position.copy(target);
+      else actor.root.position.lerp(target, 1 - Math.exp(-dt * 15));
+      const phase = reducedMotion ? 1 : THREE.MathUtils.clamp((time - actor.startedAttack) / .44, 0, 1);
       if (actor.data.hp <= 0) {
         actor.body.rotation.z = -Math.PI / 2;
         actor.body.position.y = .28;
       } else {
-        const phase = reducedMotion ? 1 : THREE.MathUtils.clamp((time - actor.startedAttack) / .44, 0, 1);
         actor.pose(reducedMotion ? 0 : time, actor.moving && !reducedMotion, phase);
       }
-      yaw.setFromAxisAngle(yAxis, actor.heading);
+      yaw.setFromAxisAngle(yAxis, local && phase >= 1 ? viewYaw : actor.heading);
       if (reducedMotion) actor.root.quaternion.copy(yaw);
       else actor.root.quaternion.slerp(yaw, 1 - Math.exp(-dt * 19));
-      actor.health?.marker.quaternion.copy(actor.root.quaternion).invert().multiply(camera.quaternion);
     }
   }
   return {
     update,
+    faceHealthBars(orientation) {
+      for (const actor of actors.values()) actor.health?.marker.quaternion.copy(actor.root.quaternion).invert().multiply(orientation);
+    },
     player: id => actors.get(id),
     enemyAt(ray) {
       const center = new THREE.Vector3(), sphere = new THREE.Sphere(center, .49), hit = new THREE.Vector3();

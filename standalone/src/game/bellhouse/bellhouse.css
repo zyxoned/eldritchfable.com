@@ -125,3 +125,64 @@
   .ef-rpg.bellhouse-preview .controls-card .action-buttons { flex-direction: row; gap: 4px; }
   .ef-rpg.bellhouse-preview .controls-card .action-buttons button { min-height: 46px; padding: 5px; }
 }
+
+.ef-rpg .controls-card.bellhouse-dual {
+  display: grid;
+  grid-template-columns: minmax(58px, 83px) minmax(0, 1fr) minmax(58px, 83px);
+  gap: clamp(5px, 2vw, 14px);
+}
+.ef-rpg .bellhouse-stick-slot {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: #d9c39a;
+  font: 700 9px/1.1 system-ui, sans-serif;
+  letter-spacing: .13em;
+}
+.ef-rpg .bellhouse-stick {
+  box-sizing: border-box;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 74px);
+  aspect-ratio: 1;
+  border: 1px solid #9a806b;
+  border-radius: 50%;
+  background: radial-gradient(circle, #332f3c 2%, #1c1e2b 74%);
+  box-shadow: inset 0 0 0 5px #11141c88;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+.ef-rpg .bellhouse-stick::before {
+  content: "";
+  position: absolute;
+  inset: 13%;
+  border: 1px dashed #c7ad7966;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.ef-rpg .bellhouse-stick[aria-disabled="true"] { opacity: .55; cursor: default; }
+.ef-rpg .bellhouse-stick-grip {
+  display: block;
+  width: 40%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid #c5aa79;
+  background: linear-gradient(#514459, #2a2435);
+  box-shadow: 0 2px 6px #0a0b13aa;
+  pointer-events: none;
+}
+.ef-rpg .controls-card.bellhouse-dual .action-buttons {
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: center;
+}
+@media (max-width: 460px) {
+  .ef-rpg .controls-card.bellhouse-dual .action-buttons {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .ef-rpg .controls-card.bellhouse-dual .action-buttons button { min-height: 44px; }
+}

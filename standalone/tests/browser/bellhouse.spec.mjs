@@ -3,7 +3,7 @@ import { randomUUID, randomBytes, scryptSync } from 'node:crypto';
 import { openDatabase } from '../../server/database.mjs';
 
 test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure API', async ({ page }, info) => {
-  test.setTimeout(90000);
+  test.setTimeout(115000);
   const id = randomUUID(), salt = randomBytes(16);
   const email = 'bellhouse-' + id + '@example.test';
   const password = 'synthetic-bellhouse-passphrase';
@@ -34,14 +34,47 @@ test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure
 
   const stage = page.locator('.bellhouse-stage[data-ready="true"]');
   await expect(stage).toBeVisible({ timeout: 18000 });
-  await expect(stage.locator('canvas[data-renderer="webgl2"]')).toBeVisible();
+  const canvas = stage.locator('canvas[data-renderer="webgl2"]');
+  await expect(canvas).toBeVisible();
   await stage.screenshot({ path: info.outputPath('bellhouse-arrival.png'), timeout: 20000 });
+  const coords = page.locator('.map-caption');
+  const move = page.getByRole('group', { name: 'Movement joystick' });
+  const look = page.getByRole('group', { name: 'Camera joystick' });
+  await expect(move).toBeVisible();
+  await expect(look).toBeVisible();
+  const initial = await coords.textContent();
   if (info.project.name === 'mobile') {
-    const thumb = page.locator('.thumb-stick');
-    await thumb.scrollIntoViewIfNeeded();
-    const rect = await thumb.boundingBox();
-    await page.touchscreen.tap(rect.x + rect.width - 8, rect.y + rect.height / 2);
-    await expect(page.locator('.map-caption')).toContainText('11, 13');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const before = await canvas.screenshot();
+    const input = await page.context().newCDPSession(page);
+    const touch = async (type, touchPoints) => input.send('Input.dispatchTouchEvent', { type, touchPoints });
+    async function stickPoint(stick, id, x, y) {
+      const box = await stick.boundingBox();
+      return { x: box.x + x * box.width, y: box.y + y * box.height, id };
+    }
+    await look.scrollIntoViewIfNeeded();
+    await touch('touchStart', [await stickPoint(look, 1, .84, .16)]);
+    // Hold for rendered frames so this exercises an analog gesture instead of a tap.
+    await page.waitForTimeout(350);
+    await touch('touchEnd', []);
+    await expect(coords).toHaveText(initial);
+    const after = await canvas.screenshot();
+    expect(after.equals(before)).toBe(false);
+    await move.scrollIntoViewIfNeeded();
+    const right = await stickPoint(look, 1, .84, .45), left = await stickPoint(move, 2, .74, .16);
+    await touch('touchStart', [right, left]);
+    await expect(move.locator('.bellhouse-stick-grip')).toHaveAttribute('style', /translate/);
+    await expect(look.locator('.bellhouse-stick-grip')).toHaveAttribute('style', /translate/);
+    await expect(coords).not.toHaveText(initial, { timeout: 10000 });
+    await touch('touchEnd', []);
+    await expect(move.locator('.bellhouse-stick-grip')).not.toHaveAttribute('style', /translate/);
+    await expect(look.locator('.bellhouse-stick-grip')).not.toHaveAttribute('style', /translate/);
+    await input.detach();
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+  } else {
+    await page.keyboard.down('w');
+    await expect(coords).not.toHaveText(initial, { timeout: 10000 });
+    await page.keyboard.up('w');
   }
   await stage.getByRole('button', { name: 'Walk to bellhouse' }).click();
   const ring = stage.getByRole('button', { name: 'Ring the bell' });
@@ -66,6 +99,7 @@ test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure
   });
   await page.reload();
   await expect(page.getByText('This browser could not start WebGL 2.')).toBeVisible({ timeout: 12000 });
+  await expect(look).toHaveCount(0);
   await expect(page.locator('.map-caption')).toContainText(/17, 8|21, 13|13, 5|26, 10/);
   expect(errors).toEqual([]);
 });

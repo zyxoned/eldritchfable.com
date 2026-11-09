@@ -1,0 +1,127 @@
+.ef-rpg .bellhouse-stage {
+  position: relative;
+  height: clamp(380px, 63dvh, 680px);
+  isolation: isolate;
+  line-height: 1.35;
+  color: #f2e9da;
+  background: #101827;
+}
+.ef-rpg .bellhouse-viewport,
+.ef-rpg .bellhouse-loading { position: absolute; inset: 0; }
+.ef-rpg .bellhouse-stage .bellhouse-viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  touch-action: pan-y;
+}
+.ef-rpg .bellhouse-loading {
+  display: grid;
+  place-items: center;
+  color: #d5b788;
+  font-family: Georgia, serif;
+  background: radial-gradient(ellipse at center, #233147, #111722 73%);
+}
+.ef-rpg .bellhouse-hud {
+  position: absolute;
+  top: 13px;
+  left: 13px;
+  min-width: 155px;
+  max-width: 61%;
+  padding: 9px 11px 8px;
+  border: 1px solid #a686555e;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #121723f5, #141825d6);
+  box-shadow: 0 4px 14px #0b0d18aa;
+  pointer-events: none;
+}
+.ef-rpg .bellhouse-identity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.ef-rpg .bellhouse-identity strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ef-rpg .bellhouse-identity svg { color: #d38a86; flex-shrink: 0; }
+.ef-rpg .bellhouse-identity span { color: #cbb599; font-size: 10px; }
+.ef-rpg .bellhouse-hud meter { display: block; width: 100%; height: 8px; margin: 5px 0 1px; accent-color: #b8536d; }
+.ef-rpg .bellhouse-hud meter::-webkit-meter-bar { background: #271a27; border: 0; border-radius: 2px; }
+.ef-rpg .bellhouse-hud meter::-webkit-meter-optimum-value { background: linear-gradient(90deg, #aa4b69, #e48c91); border-radius: 2px; }
+.ef-rpg .bellhouse-hud small { font: 600 10px/1.2 system-ui, sans-serif; color: #d7c4ad; }
+.ef-rpg .bellhouse-title {
+  position: absolute;
+  right: 13px;
+  top: 13px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 9px;
+  font: 700 9px/1.1 system-ui, sans-serif;
+  letter-spacing: .095em;
+  color: #e4d1ad;
+  background: #111827e6;
+  border: 1px solid #a686555e;
+  border-radius: 3px;
+  pointer-events: none;
+}
+.ef-rpg .bellhouse-objective {
+  position: absolute;
+  right: 13px;
+  bottom: 13px;
+  left: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #a6865575;
+  border-radius: 5px;
+  background: linear-gradient(105deg, #111823f7, #242027ef);
+  box-shadow: 0 5px 20px #060810a8;
+}
+.ef-rpg .bellhouse-objective small { display: block; color: #cdb182; font: 700 9px/1.2 system-ui, sans-serif; letter-spacing: .11em; }
+.ef-rpg .bellhouse-objective strong { display: block; margin-top: 3px; font: 400 20px/1.12 Georgia, serif; color: #fff1d6; }
+.ef-rpg .bellhouse-objective p { margin: 4px 0 0; font-size: 11px; color: #d7c8b8; }
+.ef-rpg .bellhouse-objective button {
+  min-height: 44px;
+  padding: 7px 10px;
+  display: inline-flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  color: #fff0d3;
+  background: linear-gradient(#483641, #312631);
+  border: 1px solid #a98655;
+  border-radius: 4px;
+  font: 650 12px/1.15 system-ui, sans-serif;
+  flex: 0 0 auto;
+}
+.ef-rpg .bellhouse-objective button svg { color: #e1bd80; }
+.ef-rpg .bellhouse-objective button:focus-visible { outline: 2px solid #f0d3a0; outline-offset: 2px; }
+.ef-rpg .bellhouse-objective button:disabled { opacity: .56; }
+.ef-rpg .bellhouse-unavailable p { padding: 9px 12px; margin: 0; line-height: 1.4; background: #171821; }
+.ef-rpg.bellhouse-preview .intro,
+.ef-rpg.bellhouse-preview .story-banner,
+.ef-rpg.bellhouse-preview .map-corner { display: none; }
+.ef-rpg.bellhouse-preview .game-layout { margin-top: 14px; }
+.ef-rpg.bellhouse-preview .game-notice { top: 76px; z-index: 2; }
+.ef-rpg.bellhouse-preview .world-heading { padding-top: 11px; padding-bottom: 11px; }
+.ef-rpg.bellhouse-preview .world-card { border-color: #99806771; background: #131923; }
+.ef-rpg.bellhouse-preview .map-caption { padding-block: 7px; }
+.ef-rpg.bellhouse-preview .controls-card { margin-top: 7px; border-color: #99806768; }
+@media (max-width: 760px) {
+  .ef-rpg.bellhouse-preview main { padding-inline: 8px; }
+  .ef-rpg.bellhouse-preview .world-column { order: 0; }
+  .ef-rpg.bellhouse-preview .game-layout { margin-top: 6px; }
+  .ef-rpg.bellhouse-preview .site-header { height: 53px; padding-inline: 12px; }
+  .ef-rpg .bellhouse-stage { height: clamp(300px, 54dvh, 550px); }
+  .ef-rpg .bellhouse-hud { top: 8px; left: 8px; padding: 6px 8px; min-width: 125px; }
+  .ef-rpg .bellhouse-title { right: 8px; top: 8px; font-size: 7px; padding: 5px 6px; }
+  .ef-rpg .bellhouse-title svg { width: 10px; height: 10px; }
+  .ef-rpg .bellhouse-objective { bottom: 7px; left: 7px; right: 7px; padding: 7px; gap: 6px; }
+  .ef-rpg .bellhouse-objective strong { font-size: 16px; }
+  .ef-rpg .bellhouse-objective p { font-size: 10px; }
+  .ef-rpg .bellhouse-objective button { max-width: 112px; padding-inline: 6px; font-size: 11px; }
+  .ef-rpg.bellhouse-preview .controls-card .action-buttons { flex-direction: row; gap: 4px; }
+  .ef-rpg.bellhouse-preview .controls-card .action-buttons button { min-height: 46px; padding: 5px; }
+}

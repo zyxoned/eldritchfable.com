@@ -42,7 +42,8 @@ export default function Adventure({ stash = false }) {
       : <Mossvale user={state.user} onSessionExpired={expired} />;
   }
 
-  const next = encodeURIComponent(stash ? '/stash' : '/play');
+  const playPath = new URLSearchParams(location.search).get('scene') === 'bellhouse' ? '/play?scene=bellhouse' : '/play';
+  const next = encodeURIComponent(stash ? '/stash' : playPath);
   return (
     <div className="ef-rpg">
       <main className="account-gate">

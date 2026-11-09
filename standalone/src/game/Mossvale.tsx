@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { MOVE_INTERVAL_MS, createMovementGate, thumbDirection } from './mobile-input.js';
 import {
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, BookOpen, Check,
@@ -24,6 +24,8 @@ import { CallingPreview, CharacterCalling, SkillBar } from './ClassDetails';
 import { useDialogFocus } from './useDialogFocus';
 import './game.css';
 import './expansion.css';
+
+const BellhouseStage = lazy(() => import('./bellhouse/BellhouseStage.jsx'));
 
 type Identity = {
   name: string;
@@ -133,6 +135,8 @@ export default function Mossvale({ user, onSessionExpired }: {
   onSessionExpired: () => void;
 }) {
   const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  const wantsBellhouse = query.get('scene') === 'bellhouse';
   const [identity] = useState(() => readIdentity(user.id));
   const [introOpen, setIntroOpen] = useState(() => {
     try { return localStorage.getItem('eldritch-intro-v1:' + user.id) !== 'seen'; }
@@ -171,7 +175,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   const thumbRef = useRef<HTMLSpanElement>(null);
   const moveAllowed = useRef(false);
   const movementGate = useRef(createMovementGate());
-  const [directionButtons, setDirectionButtons] = useState(true);
+  const [directionButtons, setDirectionButtons] = useState(!wantsBellhouse);
   const resumed = useRef(false);
   const visitorAttempted = useRef(false);
   const messages = useRef<HTMLDivElement>(null);
@@ -184,7 +188,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   const count = realm?.players.length || 0;
   const adminActive = !!profile?.adminActive;
   const sceneActive = !!realm?.authored?.encounter || !!realm?.journey?.active;
-  const query = new URLSearchParams(location.search);
+  const bellhouseMode = wantsBellhouse && regionId === 'glade' && !!me && !introOpen && !sceneActive;
   const wantsVisitor = query.get('visitor') === '1' || query.get('seventh') === '1';
   const invitedParty = query.get('party');
   const partyFeatures = !!realm && Array.isArray(realm.visitors) && realm.maxPlayers === 8 && realm.maxVisitors === 2 && 'partyId' in realm;
@@ -717,6 +721,12 @@ export default function Mossvale({ user, onSessionExpired }: {
   const sceneCanAct = partyFeatures && !!me && connected && !introOpen && !guide && !leaving && !appearanceOpen && !adminToolsOpen && !actionPending;
   const canAct = sceneCanAct && !sceneActive;
   const questDone = me ? questReady(me) : false;
+  const bellhouseExit = wantsBellhouse && me && regionId !== 'glade' && !sceneActive
+    ? region.exits.find(exit => exit.to === (regionId === 'mistHarbor' ? 'amberReach' : 'glade')) : null;
+  const useCrossing = (exit: { id: string; x: number; y: number }) => {
+    if (near(exit, 1.6)) { cancelMovement(); void act('travel', { exitId: exit.id, regionId }); }
+    else go(exit.x, exit.y, 1.6);
+  };
   const trackEnemy = () => {
     if (regionId !== 'glade') { setNotice('Quest thornlings live in Whispering Glade. Follow the crossings west to return.'); return; }
     const enemy = realm?.enemies.find(e => e.hp > 0) || ENEMIES[0];
@@ -728,7 +738,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   };
 
   return (
-    <div className="ef-rpg"><div className="site-shell">
+    <div className={bellhouseMode ? "ef-rpg bellhouse-preview" : "ef-rpg"}><div className="site-shell">
       <header className="site-header">
         <Link className="brand eldritch-brand" to="/" aria-label="Eldritch Fable home">
           <span className="brand-icon"><Sparkles size={21} strokeWidth={1.6} /></span>
@@ -754,6 +764,13 @@ export default function Mossvale({ user, onSessionExpired }: {
         </section>
 
         <div className="story-banner"><span><Sparkles size={14} /> The Hollow King is waking. A new company must answer.</span><button type="button" onClick={replayIntro}><BookOpen size={14} /> Watch the prologue</button></div>
+
+        {bellhouseExit && <div className="story-banner">
+          <span><Compass size={14} /> Bellhouse Ravine is in Whispering Glade.</span>
+          <button type="button" disabled={!canAct} onClick={() => useCrossing(bellhouseExit)}>
+            {near(bellhouseExit, 1.6) ? 'Travel to ' : 'Walk toward '}{regionById(bellhouseExit.to).name}
+          </button>
+        </div>}
 
         {profile?.adminAccess && <section className="visitor-access" aria-label="Visiting guardian connection">
           <div><span className="section-kicker">SUPPORT A COMPANY · ADMINISTRATOR</span><h2>Visit a random party</h2><p>A separate Draconian guardian with level ???, ceremonial equipment and invulnerability. Your strikes match the party and Guardian Boon heals nearby adventurers. Players keep their normal rewards. Your regular character stays saved.</p></div>
@@ -841,7 +858,10 @@ export default function Mossvale({ user, onSessionExpired }: {
                 <div className={'live-pill ' + (connected ? '' : 'offline')}><span /> {connected ? 'LIVE' : loading ? 'CONNECTING' : 'OFFLINE'}<i />{count}/{partyFeatures ? realm.maxPlayers : '—'} <Users size={13} /></div>
               </div>
               <div className="canvas-container">
-                <GameCanvas realm={realm} playerId={playerId} onTile={go} />
+                {bellhouseMode ? <Suspense fallback={<div className="bellhouse-stage bellhouse-loading" role="status">Loading Bellhouse Ravine…</div>}>
+                  <BellhouseStage key={playerId} realm={realm} player={me} enabled={movementEnabled} onGo={go} onHunt={trackEnemy}
+                    fallback={<GameCanvas realm={realm} playerId={playerId} onTile={go} />} />
+                </Suspense> : <GameCanvas realm={realm} playerId={playerId} onTile={go} />}
                 {!me && <div className="world-invitation"><span className="invite-icon"><Leaf size={15} /></span><div>The glade is waiting.<small>Choose your adventurer to step inside.</small></div><span>✧</span></div>}
                 {notice && <div className="game-notice" role="status">{notice}</div>}
                 <span className="map-corner">{region.subtitle || region.name}</span>
@@ -879,7 +899,7 @@ export default function Mossvale({ user, onSessionExpired }: {
               <div className="region-exits">{region.exits.map((exit: any) => {
                 const nearby = near(exit, 1.6);
                 return <div className="region-exit" key={exit.id}><div><strong>{exit.name}</strong><small>To {regionById(exit.to).name}</small></div>
-                  <button type="button" className="secondary-button" disabled={!canAct} onClick={() => nearby ? (cancelMovement(), void act('travel', { exitId: exit.id, regionId })) : go(exit.x, exit.y, 1.6)}>{nearby ? 'Travel' : 'Walk to crossing'} <ArrowUpRight size={14} /></button>
+                  <button type="button" className="secondary-button" disabled={!canAct} onClick={() => useCrossing(exit)}>{nearby ? 'Travel' : 'Walk to crossing'} <ArrowUpRight size={14} /></button>
                 </div>;
               })}</div>
               <p>Travel when you reach a crossing. Your hero, party and progress stay with you.</p>

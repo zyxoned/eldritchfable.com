@@ -42,7 +42,7 @@ export function Account({ mode = 'login' }) {
   const [unverified, setUnverified] = useState(false);
   const register = mode === 'register';
   const requestedNext = new URLSearchParams(location.search).get('next');
-  const next = ['/play', '/stash'].includes(requestedNext) ? requestedNext : '/account';
+  const next = ['/play', '/play?scene=bellhouse', '/stash'].includes(requestedNext) ? requestedNext : '/account';
   const nextQuery = next === '/account' ? '' : '?next=' + encodeURIComponent(next);
   async function submit(event) {
     event.preventDefault();

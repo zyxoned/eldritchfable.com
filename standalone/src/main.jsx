@@ -11,7 +11,7 @@ import NewsletterAction from './pages/NewsletterAction.jsx';
 import './styles/accounts.css';
 const client = new QueryClient();
 createRoot(document.getElementById('root')).render(
-  <React.StrictMode><QueryClientProvider client={client}><BrowserRouter><Routes>
+  <React.StrictMode><QueryClientProvider client={client}><BrowserRouter basename={import.meta.env.BASE_URL}><Routes>
     <Route path="/login" element={<Account key="login" mode="login" />} />
     <Route path="/register" element={<Account key="register" mode="register" />} />
     <Route path="/account" element={<AccountHome />} />

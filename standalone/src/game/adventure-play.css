@@ -1,0 +1,124 @@
+.ef-rpg.adventure-play .game-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.ef-rpg.adventure-play .intro,
+.ef-rpg.adventure-play .story-banner:not(.region-return),
+.ef-rpg.adventure-play .controls-card[hidden] {
+  display: none;
+}
+.ef-rpg .world-tools,
+.ef-rpg .scene-toolbar,
+.ef-rpg .journal-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ef-rpg .scene-toolbar { justify-content: flex-end; margin-bottom: 8px; }
+.ef-rpg .journal-links { flex-wrap: wrap; }
+.ef-rpg .journal-inventory {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: start;
+  gap: 10px;
+}
+.ef-rpg .journal-inventory .gathering-card { margin-top: 0; }
+.ef-rpg .journal-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #b2935e;
+  border-radius: 5px;
+  background: linear-gradient(145deg, #4d3927, #29202a);
+  color: #f6e1b9;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+.ef-rpg .journal-trigger:hover { background: #59402d; }
+.ef-rpg.adventure-play .quick-actions { grid-area: 1 / 2; min-width: 0; }
+.ef-rpg.adventure-play .quick-actions .action-buttons { justify-content: center; }
+.ef-rpg.adventure-play .quick-actions .skill-panel { margin-top: 6px; }
+.ef-rpg.adventure-play .world-column > .controls-card:not(.bellhouse-dual) .quick-actions { flex: 1; }
+
+@media (pointer: coarse) and (hover: none) and (orientation: landscape) and (max-height: 600px) {
+  .ef-rpg.adventure-play .site-header,
+  .ef-rpg.adventure-play footer,
+  .ef-rpg.adventure-play .world-heading .section-kicker,
+  .ef-rpg.adventure-play .map-caption > span:first-child {
+    display: none;
+  }
+  .ef-rpg.adventure-play main {
+    padding: env(safe-area-inset-top, 0px) max(6px, env(safe-area-inset-right, 0px))
+      env(safe-area-inset-bottom, 0px) max(6px, env(safe-area-inset-left, 0px));
+  }
+  .ef-rpg.adventure-play main > .game-layout { margin-top: 0; }
+  .ef-rpg.adventure-play .world-card > .world-heading { padding: 2px 8px; }
+  .ef-rpg.adventure-play .world-heading h2 { margin: 0; font-size: clamp(17px, 3vw, 22px); }
+  .ef-rpg.adventure-play .map-caption { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; padding: 0; }
+  .ef-rpg.adventure-play .bellhouse-stage {
+    height: max(142px, calc(100dvh - 145px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
+  }
+  .ef-rpg.adventure-play .bellhouse-stage .bellhouse-objective { padding: 6px 8px; }
+  .ef-rpg.adventure-play .bellhouse-stage .bellhouse-objective strong { font-size: 16px; }
+  .ef-rpg.adventure-play .bellhouse-stage .bellhouse-objective p { font-size: 10px; }
+  .ef-rpg.adventure-play .canvas-container > canvas,
+  .ef-rpg.adventure-play .bellhouse-unavailable > canvas {
+    height: max(115px, calc(100dvh - 245px));
+    width: auto;
+    margin-inline: auto;
+  }
+  .ef-rpg.adventure-play .bellhouse-stick { width: min(100%, 60px); }
+  .ef-rpg.adventure-play .world-column > .controls-card {
+    display: grid;
+    grid-template-columns: 66px minmax(0, 1fr) 66px;
+    gap: 5px;
+    margin-top: 4px;
+    padding: 4px 6px;
+  }
+  .ef-rpg.adventure-play .controls-card .help-button { grid-area: 1 / 3; }
+  .ef-rpg.adventure-play .world-column > .controls-card:not(.bellhouse-dual) {
+    grid-template-columns: 182px minmax(0, 1fr) 44px;
+  }
+  .ef-rpg.adventure-play .controls-card .mobile-controls {
+    grid-area: 1 / 1;
+    flex-direction: row;
+    justify-content: center;
+  }
+  .ef-rpg.adventure-play .controls-card .touch-mode-toggle {
+    min-width: 44px;
+    max-width: 44px;
+    padding: 3px;
+  }
+  .ef-rpg.adventure-play .controls-card .thumb-stick { width: 59px; height: 59px; }
+  .ef-rpg.adventure-play .quick-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  .ef-rpg.adventure-play .quick-actions .action-buttons { flex-direction: row; gap: 4px; }
+  .ef-rpg.adventure-play .quick-actions .action-buttons button { width: auto; min-height: 44px; padding: 4px 7px; }
+  .ef-rpg.adventure-play .quick-actions .action-buttons kbd,
+  .ef-rpg.adventure-play .quick-actions .skill-panel-heading,
+  .ef-rpg.adventure-play .quick-actions .skill-description,
+  .ef-rpg.adventure-play .quick-actions .skill-button kbd {
+    display: none;
+  }
+  .ef-rpg.adventure-play .quick-actions .skill-panel { margin: 0; border: 0; padding: 0; background: none; }
+  .ef-rpg.adventure-play .quick-actions .skill-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  .ef-rpg.adventure-play .quick-actions .skill-button {
+    min-height: 44px;
+    grid-template-columns: 19px minmax(0, 1fr);
+    gap: 0 4px;
+    padding: 3px 6px;
+  }
+  .ef-rpg.adventure-play .quick-actions .skill-symbol { width: 19px; height: 24px; }
+  .ef-rpg.adventure-play .quick-actions .skill-symbol svg { width: 13px; }
+}
+
+@media (max-width: 550px) {
+  .ef-rpg .journal-inventory { grid-template-columns: minmax(0, 1fr); }
+}

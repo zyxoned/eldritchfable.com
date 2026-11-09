@@ -1,0 +1,151 @@
+.ef-rpg .adventure-journal {
+  position: fixed;
+  inset: 0;
+  width: min(52rem, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  color: #f3eee4;
+  border: 1px solid #967749;
+  border-radius: 10px;
+  background: #18141d;
+  box-shadow: 0 20px 70px #050308d9, 0 0 0 3px #211a23;
+}
+
+.ef-rpg .adventure-journal[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.ef-rpg .adventure-journal::backdrop {
+  background: #080611bf;
+}
+
+.ef-rpg .adventure-journal-heading {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 12px;
+  padding: 11px 16px;
+  background: linear-gradient(112deg, #382733, #211a28 58%, #18141d);
+  border-bottom: 1px solid #4f3b4b;
+}
+
+.ef-rpg .adventure-journal-emblem {
+  display: grid;
+  flex: 0 0 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid #9a784a;
+  border-radius: 7px;
+  color: #e6c68e;
+  background: #251c26;
+}
+
+.ef-rpg .adventure-journal-kicker {
+  display: block;
+  margin-bottom: 2px;
+  color: #d5b784;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.ef-rpg .adventure-journal-heading h2 {
+  margin: 0;
+  color: #fff0d5;
+  font: 400 clamp(20px, 3vw, 28px)/1.1 Georgia, 'Times New Roman', serif;
+}
+
+.ef-rpg .adventure-journal-close {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  flex: 0 0 44px;
+  margin-left: auto;
+  padding: 0;
+  color: #f0d4a6;
+  border: 1px solid #765d47;
+  border-radius: 6px;
+  background: #251c26;
+}
+
+.ef-rpg .adventure-journal-tabs {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  padding: 4px 12px 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  background: #17121b;
+  border-bottom: 1px solid #61495a;
+}
+
+.ef-rpg .adventure-journal-tab {
+  min-height: 44px;
+  padding: 0 14px;
+  color: #ddcce0;
+  border: 1px solid transparent;
+  border-radius: 5px 5px 0 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.ef-rpg .adventure-journal-close:hover,
+.ef-rpg .adventure-journal-tab:hover {
+  background: #3a2a3a;
+}
+
+.ef-rpg .adventure-journal-tab[aria-selected='true'] {
+  color: #ffebc7;
+  border-color: #6d5162;
+  background: #352837;
+  box-shadow: inset 0 -2px #d3ad73;
+}
+
+.ef-rpg .adventure-journal :is(.adventure-journal-tab, .adventure-journal-close, .adventure-journal-page):focus-visible {
+  outline-offset: -3px;
+}
+
+.ef-rpg .adventure-journal-content {
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  color-scheme: dark;
+  background: radial-gradient(ellipse at top, #25202d, #18141d 75%);
+}
+
+.ef-rpg .adventure-journal-page {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ef-rpg .adventure-journal-page[hidden] {
+  display: none;
+}
+
+@media (max-height: 500px) {
+  .ef-rpg .adventure-journal-heading { padding: 5px 12px; }
+  .ef-rpg .adventure-journal-content { padding: 10px 12px; }
+}
+
+@media (max-width: 620px) {
+  .ef-rpg .adventure-journal-tab { padding-inline: 10px; }
+}
+
+.ef-rpg .journal-feedback {
+  margin: 0;
+  padding: 7px 16px;
+  color: #f0d4a6;
+  background: #352837;
+  font-size: 13px;
+}

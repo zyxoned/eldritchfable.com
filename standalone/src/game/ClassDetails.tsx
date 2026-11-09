@@ -24,13 +24,13 @@ export function EquipmentList({ items }: { items: EquippedItem[] }) {
   </li>)}</ul>;
 }
 
-export function CharacterCalling({ heroClass, equipment }: { heroClass: HeroClass; equipment?: EquippedItem[] }) {
+export function CharacterCalling({ heroClass, equipment, showEquipment = true }: { heroClass: HeroClass; equipment?: EquippedItem[]; showEquipment?: boolean }) {
   const calling = CLASSES[heroClass];
-  return <section className="card calling-card" aria-label="Character lore and equipment">
+  return <section className="card calling-card" aria-label={showEquipment ? 'Character lore and equipment' : 'Character lore'}>
     <div className="section-kicker"><BookOpen size={13} /> YOUR CALLING</div>
     <h2>Your calling</h2><div className="calling-title"><strong>{calling.name}</strong><span>{calling.role}</span></div>
     <p className="calling-lore">{calling.lore}</p>
-    <h3>Equipped for the journey</h3><EquipmentList items={equipment || calling.equipment} />
+    {showEquipment && <><h3>Equipped for the journey</h3><EquipmentList items={equipment || calling.equipment} /></>}
   </section>;
 }
 

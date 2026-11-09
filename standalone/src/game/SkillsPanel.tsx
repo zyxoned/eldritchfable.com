@@ -7,8 +7,8 @@ const ICONS = { foraging: Leaf, mining: Pickaxe, fishing: Fish };
 const VERBS = { foraging: 'Forage', mining: 'Mine', fishing: 'Fish' };
 const seconds = (until: number, now: number) => Math.max(0, Math.ceil((until - now) / 1000));
 
-export default function SkillsPanel({ player, realm, gathering, enabled, supplyEnabled = enabled, onWalk, onGather, onUseSupply }: {
-  player: Player; realm: Realm | null; gathering?: GatheringProfile | null; enabled: boolean; supplyEnabled?: boolean;
+export default function SkillsPanel({ player, realm, gathering, enabled, supplyEnabled = enabled, inventoryFirst = false, onWalk, onGather, onUseSupply }: {
+  player: Player; realm: Realm | null; gathering?: GatheringProfile | null; enabled: boolean; supplyEnabled?: boolean; inventoryFirst?: boolean;
   onUseSupply?: (materialId: string) => Promise<boolean>;
   onWalk: (x: number, y: number) => void; onGather: (nodeId: string) => Promise<boolean>;
 }) {
@@ -58,8 +58,24 @@ export default function SkillsPanel({ player, realm, gathering, enabled, supplyE
     finally { setPending(null); }
   }
 
+  const materialsPouch = (
+    <details className="gathering-pack" open={inventoryFirst || undefined}><summary>Materials pouch <span>{totalMaterials} collected</span></summary>
+      {totalMaterials ? <ul>{gathering.inventory.filter(item => item.quantity > 0).map(item => <li key={item.id} className="supply-row">
+        <span>{item.name}{!!item.healHp && <small>Restores up to {item.healHp} health</small>}</span><strong aria-label={item.quantity + ' in pouch'}>{item.quantity}</strong>
+        {!!item.healHp && <button type="button" className="supply-use" aria-label={'Use ' + item.name + ' to restore up to ' + item.healHp + ' health'}
+          disabled={!supplyEnabled || !onUseSupply || busy || cooldown > 0 || player.hp <= 0 || player.hp >= (player.maxHp || 100)}
+          onClick={() => void useSupply(item.id)}>
+          {pending === 'supply:' + item.id ? 'Using…' : player.hp >= (player.maxHp || 100) ? 'Full health' : cooldown ? `Ready in ${cooldown}s` : `Use (+${item.healHp} HP)`}
+        </button>}
+      </li>)}</ul> : <p>Your first gathering action will add materials here.</p>}
+      <p>Herbs and fish restore health when you use them. Mining supplies are saved for future crafting; crafting is not available yet.</p>
+      <small>Up to {gathering.maxInventory} of each material. A full stack still allows skill practice.</small>
+    </details>
+  );
+
   return <section className="card gathering-card" aria-labelledby={titleId}>
     <div className="gathering-heading"><div><span className="section-kicker">PRACTICE. EXPLORE. GROW.</span><h2 id={titleId}>Wilderness skills</h2></div><Sprout size={22} aria-hidden="true" /></div>
+    {inventoryFirst && materialsPouch}
     <p className="gathering-intro">Build a craft between battles. Higher skill levels open richer gathering grounds.</p>
     <div className="gathering-skills">{gathering.skills.map(skill => {
       const Icon = ICONS[skill.id];
@@ -94,18 +110,7 @@ export default function SkillsPanel({ player, realm, gathering, enabled, supplyE
       </li>;
     })}</ul>
     <div className="gathering-feedback" role="status" aria-live="polite">{pending ? 'Waiting for the realm to confirm your action…' : feedback}</div>
-    <details className="gathering-pack"><summary>Materials pouch <span>{totalMaterials} collected</span></summary>
-      {totalMaterials ? <ul>{gathering.inventory.filter(item => item.quantity > 0).map(item => <li key={item.id} className="supply-row">
-        <span>{item.name}{!!item.healHp && <small>Restores up to {item.healHp} health</small>}</span><strong aria-label={item.quantity + ' in pouch'}>{item.quantity}</strong>
-        {!!item.healHp && <button type="button" className="supply-use" aria-label={'Use ' + item.name + ' to restore up to ' + item.healHp + ' health'}
-          disabled={!supplyEnabled || !onUseSupply || busy || cooldown > 0 || player.hp <= 0 || player.hp >= (player.maxHp || 100)}
-          onClick={() => void useSupply(item.id)}>
-          {pending === 'supply:' + item.id ? 'Using…' : player.hp >= (player.maxHp || 100) ? 'Full health' : cooldown ? `Ready in ${cooldown}s` : `Use (+${item.healHp} HP)`}
-        </button>}
-      </li>)}</ul> : <p>Your first gathering action will add materials here.</p>}
-      <p>Herbs and fish restore health when you use them. Mining supplies are saved for future crafting; crafting is not available yet.</p>
-      <small>Up to {gathering.maxInventory} of each material. A full stack still allows skill practice.</small>
-    </details>
+    {!inventoryFirst && materialsPouch}
     <p className="gathering-footnote">Saved to your character. Skill XP and materials are separate from reward XP and cannot be exchanged for coins or shop rewards. Each gather is a manual action.</p>
   </section>;
 }

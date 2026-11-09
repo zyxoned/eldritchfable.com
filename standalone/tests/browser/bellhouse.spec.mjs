@@ -32,6 +32,44 @@ test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure
   await page.getByLabel('Solo adventure', { exact: true }).check();
   await page.getByRole('button', { name: 'Enter the glade', exact: true }).click();
 
+  const mobile = info.project.name === 'mobile';
+  const rotation = page.getByRole('dialog', { name: 'Rotate your phone' });
+  if (mobile) {
+    await expect(rotation).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(rotation).toBeVisible();
+    await page.setViewportSize({ width: 844, height: 390 });
+  }
+  await expect(rotation).toBeHidden();
+
+  const journalTrigger = page.getByRole('button', { name: 'Journal', exact: true });
+  const journal = page.getByRole('dialog', { name: 'Adventure journal' });
+  await journalTrigger.click();
+  await expect(journal.getByRole('tab', { name: 'Character' })).toBeFocused();
+  await expect(journal.getByRole('heading', { name: 'Ravine' + id.slice(0, 8) })).toBeVisible();
+  await journal.getByRole('tab', { name: 'Inventory' }).click();
+  await expect(journal.getByRole('heading', { name: 'Equipped gear' })).toBeVisible();
+  await expect(journal.getByText('Materials pouch')).toBeVisible();
+  await expect(journal.locator('.gathering-pack')).toHaveAttribute('open', '');
+  await journal.getByRole('tab', { name: 'Quests' }).click();
+  await expect(journal.getByRole('heading', { name: 'Guardian of the Glade' })).toBeVisible();
+  await journal.getByRole('tab', { name: 'World' }).click();
+  await expect(journal.getByRole('region', { name: 'World routes' })).toBeVisible();
+  await journal.getByRole('tab', { name: 'Party' }).click();
+  await expect(journal.getByRole('heading', { name: 'Your party' })).toBeVisible();
+  if (mobile) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(rotation).toBeVisible();
+    await expect(journal).toBeHidden();
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(rotation).toBeHidden();
+    await journalTrigger.click();
+    await expect(journal.getByRole('tab', { name: 'Party' })).toBeFocused();
+  }
+  await journal.getByRole('button', { name: 'Close journal' }).click();
+  await expect(journal).toBeHidden();
+  await expect(journalTrigger).toBeFocused();
+
   const stage = page.locator('.bellhouse-stage[data-ready="true"]');
   await expect(stage).toBeVisible({ timeout: 18000 });
   const canvas = stage.locator('canvas[data-renderer="webgl2"]');
@@ -43,7 +81,11 @@ test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure
   await expect(move).toBeVisible();
   await expect(look).toBeVisible();
   const initial = await coords.textContent();
-  if (info.project.name === 'mobile') {
+  if (mobile) {
+    await expect(journalTrigger).toBeInViewport();
+    await expect(move).toBeInViewport({ ratio: 1 });
+    await expect(look).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: info.outputPath('landscape-play.png') });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const before = await canvas.screenshot();
     const input = await page.context().newCDPSession(page);
@@ -100,6 +142,7 @@ test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure
   await page.reload();
   await expect(page.getByText('This browser could not start WebGL 2.')).toBeVisible({ timeout: 12000 });
   await expect(look).toHaveCount(0);
+  if (mobile) await expect(page.getByRole('button', { name: 'Use buttons' })).toBeInViewport({ ratio: 1 });
   await expect(page.locator('.map-caption')).toContainText(/17, 8|21, 13|13, 5|26, 10/);
   expect(errors).toEqual([]);
 });

@@ -1,5 +1,15 @@
 # Eldritch Fable shared workspace handoff
 
+## Bellhouse Ravine private 3D preview — November 9, 2026
+
+Observed 2026-11-09 13:37 EST from the isolated Linux worktree and the existing private Ubuntu preview host. The maintained repository is zyxoned/eldritchfable.com. The clean application candidate before this handoff was local commit 34a74705bc11fa18918419f7dbba7259d3a8492e and published application commit bfed4a8ea843bbf0e3d5da41e5ab4a48e83460d7. Both trees were verified as a53a8c3c56f0d75cdf54c125473e524e9536535f. The accepted base was main 1023c62c23d89645fbfe7e06ee813ee59fba5b3f. The task branch is feature/ef3d-bellhouse-preview.
+
+The 3D implementation is under standalone/src/game/bellhouse and is lazy-loaded by Mossvale.tsx for the opt-in Bellhouse Ravine view. Geometry, materials, and character models are generated from original source. The view uses existing movement, combat, classes, and party snapshots. Sign-in preserves the selected view and the WebGL 2 fallback uses the classic renderer.
+
+Verification covered npm test with 216 passing, the root and /bellhouse/ builds, and seven targeted Chromium tests with one intentional desktop skip in adventure.spec.mjs, bellhouse.spec.mjs, and mobile-controls.spec.mjs. The Bellhouse tests exercised sign-in, WebGL startup, phone-sized touch movement, ringing the bell, combat feedback, and classic fallback with disposable accounts. The private release ef-bellhouse-bfed4a8ea843 returned HTTP 200 for its play and login pages and the existing auth endpoint. Four hosted asset hashes matched the local prefixed build.
+
+The private route is /bellhouse/play/?scene=bellhouse on the established Tailscale preview origin. Use the preview account and enter Whispering Glade. Walk to the bellhouse, ring the bell, then find and attack a thornling. Expect the bell response and visible changes to combat health. A physical Android playtest and further character and environment detail are the next review steps.
+
 ## Private administrator tools live — November 5, 2026
 
 The owner-authorized feature merged in [PR #13](https://github.com/zyxoned/eldritchfable.com/pull/13)

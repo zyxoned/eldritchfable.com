@@ -1,5 +1,13 @@
 # Eldritch Fable project state
 
+## Bellhouse Ravine private 3D preview — November 9, 2026
+
+The opt-in Adventure view renders Whispering Glade as a moonlit 3D ravine with a stone bellhouse, an angled follow camera, an animated hero and thornlings, and touch controls. The bell leads into a short exploration and combat route. Party state, positions, combat, and saved progress use the Adventure API. The bell response is local to the current visit.
+
+Application commit bfed4a8ea843bbf0e3d5da41e5ab4a48e83460d7 on feature/ef3d-bellhouse-preview builds on main 1023c62c23d89645fbfe7e06ee813ee59fba5b3f. The private Tailscale release ef-bellhouse-bfed4a8ea843 serves /bellhouse/play/?scene=bellhouse. The root and prefixed builds passed, 216 backend and unit tests passed, and seven targeted desktop and mobile-browser tests passed with one intentional desktop skip. The hosted HTML and sign-in routes returned 200 and all four hosted asset hashes match the verified local prefixed build.
+
+This is one playable area with procedural models and materials. The next visual review is on a physical phone. The scene needs a device performance pass and more detailed character and environment assets before wider rollout.
+
 ## Expedition and gathering candidate — November 5, 2026
 
 An isolated candidate based on verified main `3fe124541bf90a5fb83308b72cc57c8a6348a407` adds server-owned expeditions, private runtime content integration, persistent nonredeemable gathering skills and supplies, and bounded rendering polish. Schema 8 preserves legacy data; focused concurrency, migration, privacy, progression and HTTP tests pass. Final validation passed 216 backend/unit tests, production build, six repeated regional travel scenarios, and 59 desktop/mobile browser tests with one intentional skip. Final source hashes matched isolated staging. Production-copy rehearsal and separate private-content activation remain required before release. No publication, production migration or deployment occurred. Existing wallets and reward rates remain unchanged. See EXPEDITION_REVIEW.md for scope, deliberate content limits and validation gates.

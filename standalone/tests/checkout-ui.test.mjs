@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { commerceRequest } from '../src/api/commerce.js';
 import { CHECKOUT_ATTEMPT_KEY, checkoutAttempt, retireCheckoutAttempt, orderPresentation, stripeHostedUrl, safeCheckoutNext } from '../src/lib/checkout-core.js';
 
 const items=[{productId:'bag',variantId:'natural',quantity:1}];
@@ -16,6 +17,40 @@ test('checkout retry keys survive reload and cannot be reused for a different ac
 test('blocked attempt storage stops checkout instead of silently losing retry identity',()=>{
   const blocked={getItem:()=>null,setItem:()=>{throw Error('blocked');}};
   assert.throws(()=>checkoutAttempt(blocked,'owner',items,()=> 'synthetic-key'));
+});
+
+test('checkout errors expose valid order IDs only on terminal and reconciliation conflicts',async t=>{
+  const id='12345678-1234-1234-1234-123456789abc';
+  const cases=[
+    [409,'ORDER_ALREADY_FINAL',id,id],
+    [409,'ORDER_REQUIRES_RECONCILIATION',id,id],
+    [409,'ORDER_ALREADY_FINAL','invalid',undefined],
+    [409,'IDEMPOTENCY_CONFLICT',id,undefined],
+    [403,'ORDER_ALREADY_FINAL',id,undefined]
+  ];
+  const fetch=t.mock.method(globalThis,'fetch');
+  for(const [status,code,orderId,expected] of cases) {
+    fetch.mock.mockImplementation(async()=>Response.json({code,orderId},{status}));
+    await assert.rejects(commerceRequest('checkout',{body:{items},key:'fixture-key'}),error=>{
+      assert.equal(error.status,status);
+      assert.equal(error.code,code);
+      assert.equal(error.orderId,expected);
+      return true;
+    });
+  }
+});
+
+test('a recovered order keeps the same attempt for its owner even if the bag changes',()=>{
+  const store=storage(), id='12345678-1234-1234-1234-123456789abc';
+  const key='00000000-0000-4000-8000-000000000001';
+  const newKey='00000000-0000-4000-8000-000000000002';
+  const attempt=checkoutAttempt(store,'owner',items,()=>key);
+  const recovered={...attempt,orderId:id,requiresOrderStatus:true};
+  store.setItem(CHECKOUT_ATTEMPT_KEY,JSON.stringify(recovered));
+  const changed=[{...items[0],quantity:2}];
+  assert.deepEqual(checkoutAttempt(store,'owner',changed,()=>newKey),recovered);
+  assert.equal(retireCheckoutAttempt(store,{id,status:'pending'}),false);
+  assert.equal(checkoutAttempt(store,'other',changed,()=>newKey).orderId,undefined);
 });
 
 test('an explicit new checkout retires only the matching server-confirmed terminal attempt',()=>{

@@ -45,6 +45,13 @@ export async function commerceRoute(db,service,req,res,path,options={}) {
     const result=await service.checkout(user,input,req.headers['idempotency-key'],()=>sessionUser(db,req));
     return send(200,result);
   } catch(error) {
-    return send([400,403,409,503].includes(error.status)?error.status:503,{error:'Checkout could not be started',code:error.code||'CHECKOUT_UNAVAILABLE'});
+    const {status,code,orderId}=error;
+    const recovery=status===409 && typeof orderId==='string' &&
+      (code==='ORDER_ALREADY_FINAL' || code==='ORDER_REQUIRES_RECONCILIATION');
+    return send([400,403,409,503].includes(status)?status:503,{
+      error:'Checkout could not be started',
+      code:code||'CHECKOUT_UNAVAILABLE',
+      ...(recovery?{orderId}:{})
+    });
   }
 }

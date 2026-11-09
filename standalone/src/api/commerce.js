@@ -1,3 +1,5 @@
+import { validOrderId } from '../lib/checkout-core.js';
+
 const messages={
   CHECKOUT_DISABLED:'Checkout is not open yet. Your bag is saved.',
   CHECKOUT_RETRY:'We could not connect to the payment page. Try again to resume the same checkout.',
@@ -23,6 +25,15 @@ export async function commerceRequest(path,{body,key,signal}={}) {
   }
   let data;
   try { data=await response.json(); } catch { throw Error('The payment service is temporarily unavailable. Please try again.'); }
-  if (!response.ok) throw Object.assign(Error(response.status===401?'Sign in to view your checkout.':messages[data.code]||'Checkout is temporarily unavailable. Your bag is saved.'),{status:response.status,code:data.code});
+  if (!response.ok) {
+    const {status}=response, code=data?.code;
+    const message=status===401?'Sign in to view your checkout.':messages[code]||'Checkout is temporarily unavailable. Your bag is saved.';
+    const error=Object.assign(Error(message),{status,code});
+    if (path==='checkout' && status===409 && validOrderId(data?.orderId) &&
+        (code==='ORDER_ALREADY_FINAL' || code==='ORDER_REQUIRES_RECONCILIATION')) {
+      error.orderId=data.orderId;
+    }
+    throw error;
+  }
   return data;
 }

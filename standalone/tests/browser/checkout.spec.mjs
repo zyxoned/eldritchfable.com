@@ -65,6 +65,55 @@ test('an uncertain connection retains the bag and retries the same checkout iden
   expect(bag.lines).toHaveLength(1);
 });
 
+for(const [code,initialStatus] of [['ORDER_ALREADY_FINAL','expired'],['ORDER_REQUIRES_RECONCILIATION','pending']]) {
+  test(`a lost response can be recovered through ${code} before starting a new checkout`,async({page})=>{
+    await setup(page,{canCheckout:true});
+    const keys=[];
+    let orderStatus=initialStatus;
+    await page.route('**/api/commerce/checkout',route=>{
+      const key=route.request().headers()['idempotency-key'];
+      keys.push(key);
+      if (keys.length===1) return route.abort('connectionreset');
+      if (key===keys[0]) return route.fulfill({status:409,json:{code,orderId:id}});
+      return route.fulfill({status:503,json:{code:'CHECKOUT_RETRY'}});
+    });
+    await page.route('**/api/commerce/orders/'+id,route=>route.fulfill({json:{order:{id,status:orderStatus,amount_total:null,amount_tax:null,review_reason:null}}}));
+
+    const pay=page.getByRole('button',{name:'Continue to secure payment'});
+    const statusLink=page.getByRole('link',{name:'Check this order’s status'});
+    const restart=page.getByRole('button',{name:'Try checkout again'});
+    await page.goto('/checkout');
+    await pay.click();
+    await expect(page.getByRole('alert')).toContainText('payment service could not be reached');
+    await expect(statusLink).toHaveCount(0);
+    await page.reload();
+    await pay.click();
+    await expect(statusLink).toHaveAttribute('href','/checkout/return?order='+id);
+    expect(keys[0]).toMatch(/^[a-f0-9-]{36}$/);
+    expect(keys).toEqual([keys[0],keys[0]]);
+
+    await page.reload();
+    await expect(pay).toBeDisabled();
+    await statusLink.click();
+    if (initialStatus==='pending') {
+      await expect(page.getByRole('heading',{name:'Confirming your payment'})).toBeVisible();
+      await expect(restart).toHaveCount(0);
+      await page.getByRole('link',{name:'Return to checkout'}).click();
+      await expect(pay).toBeDisabled();
+      orderStatus='expired';
+      await statusLink.click();
+    }
+    await expect(page.getByRole('heading',{name:'Checkout expired'})).toBeVisible();
+    expect(keys).toHaveLength(2);
+    await restart.click();
+    await expect(page).toHaveURL(/\/checkout$/);
+    expect(keys).toHaveLength(2);
+    await pay.click();
+    await expect.poll(()=>keys.length).toBe(3);
+    expect(keys[2]).not.toBe(keys[0]);
+  });
+}
+
 test('a return URL cannot confirm payment; the owned server order must become paid',async({page},testInfo)=>{
   let paid=false;
   await page.route('**/api/commerce/orders/*',route=>route.fulfill({json:{order:{id,status:paid?'paid':'pending',amount_total:paid?2650:null,amount_tax:paid?150:null,review_reason:null}}}));

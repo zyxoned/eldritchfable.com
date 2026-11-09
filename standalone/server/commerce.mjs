@@ -3,7 +3,11 @@ import { digest, transaction } from './database.mjs';
 
 const sessionEvents = new Set(['checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.async_payment_failed','checkout.session.expired']);
 const riskEvents = new Set(['charge.refunded','charge.dispute.created']);
-const fail = (status,code) => { throw Object.assign(Error(code),{status,code}); };
+const fail = (status,code,orderId) => {
+  const error=Object.assign(Error(code),{status,code});
+  if (orderId) error.orderId=orderId;
+  throw error;
+};
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const identifier = value => typeof value === 'string' && value.length > 0 && value.length <= 120;
 function canonicalItems(input) {
@@ -93,22 +97,29 @@ export function createCommerceService(db,{stripe,config,now=Date.now}) {
     }
     stillAuthorized();
     if (order.stripe_account!==config.expectedAccount) fail(503,'ACCOUNT_MISMATCH');
-    if (order.status!=='pending') fail(409,'ORDER_ALREADY_FINAL');
     const params=JSON.parse(order.params_json);
-    if (params.expires_at*1000<=now() || now()-order.created_at>=23*3600000) fail(409,'ORDER_REQUIRES_RECONCILIATION');
+    const checkOpen = current => {
+      if (current.status!=='pending') fail(409,'ORDER_ALREADY_FINAL',current.id);
+      const time=now();
+      if (params.expires_at*1000<=time || time-current.created_at>=23*3600000) {
+        fail(409,'ORDER_REQUIRES_RECONCILIATION',current.id);
+      }
+    };
+    checkOpen(order);
     if (order.stripe_session_url) return {orderId:order.id,url:order.stripe_session_url};
     let session;
     try { session=await stripe.checkout.sessions.create(params,{idempotencyKey:'eldritch-order-'+order.id}); }
     catch { fail(503,'CHECKOUT_RETRY'); }
     if (session.livemode!==false || !session.id?.startsWith('cs_test_') || !checkoutUrl(session.url)) fail(503,'CHECKOUT_RETRY');
-    transaction(db,()=>{
+    const currentOrder=transaction(db,()=>{
       const current=get(order.id);
       if (current.stripe_session_id && current.stripe_session_id!==session.id) fail(409,'SESSION_MISMATCH');
       db.prepare('UPDATE commerce_orders SET stripe_session_id=?,stripe_session_url=?,updated_at=? WHERE id=?').run(session.id,session.url,now(),order.id);
+      return current;
     });
-    // Keep the accepted Session for reconciliation, but do not expose a payment
-    // URL after logout, disablement or role revocation during the Stripe call.
+    // The Session reference is saved for reconciliation even if redirect is now blocked.
     stillAuthorized();
+    checkOpen(currentOrder);
     return {orderId:order.id,url:session.url};
   }
   function review(order,reason) {

@@ -1,5 +1,17 @@
 # Eldritch Fable shared workspace handoff
 
+## Bellhouse mobile landscape and journal — November 9, 2026
+
+The feature/ef3d-bellhouse-preview application commit e377dcd35bd1a2e93607a5a26fbe89cc964c23cf and local build commit 4cb6ff703e6e21e11ddb80fc2f9d5e861707b9f6 share tree 3f0e4e4c613a0a55e88f7f9c85965a438319f644. The previous handoff parent is 2c3174b413b6e3113fe7561451a041d48683b71b. The accepted main baseline is 1023c62c23d89645fbfe7e06ee813ee59fba5b3f.
+
+LandscapeGate.jsx blocks portrait play after joining. AdventureJournal.jsx holds Character, Inventory, Quests, World, and Party. Mossvale.tsx retains existing account and game actions and cancels active movement on opening the journal. The game can still use its classic renderer when WebGL 2 is unavailable.
+
+The root and /bellhouse/ builds passed. The backend and unit suite passed 219 tests. The targeted desktop and mobile Chromium suite passed seven tests with one intentional desktop skip. The final mobile rerun covered both portrait transitions, all five journal tabs, movement and look together, the bell and combat, and fully visible 2D fallback controls at 844 × 390.
+
+Verified at 2026-11-09 19:40 UTC. The private Tailscale release ef-bellhouse-e377dcd35bd1 serves /bellhouse/play/?scene=bellhouse. Play, login, and the anonymous auth endpoint returned HTTP 200, and all four served asset hashes matched the prefixed build. The private /bellhouse handler points to the new release and its prior release remains available for rollback. The root preview proxy and production routes were outside the rollout.
+
+Open /bellhouse/play/?scene=bellhouse on the private preview, enter the Glade, and turn the phone sideways. Tap Journal, then Inventory to see equipped gear and the materials pouch. Physical Android Firefox is the next device check.
+
 ## Bellhouse dual-stick controls — November 9, 2026
 
 Observed 2026-11-09 14:01 EST from the isolated Linux checkout and the private Ubuntu preview. The task branch feature/ef3d-bellhouse-preview in zyxoned/eldritchfable.com used previous handoff commit 2b17758c1056a365787f9d12b1e04a65bd51e414 over accepted main 1023c62c23d89645fbfe7e06ee813ee59fba5b3f. Local application commit 6afee57eba928d908f281ccf1a8d5ed5ec0c894a and published application commit ae707b7f45ed43e525e244eca66a079a0ee6151a match tree e35a06cda1cd47b23149e5a7a574566db25e3ca6.

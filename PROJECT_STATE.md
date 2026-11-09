@@ -1,5 +1,13 @@
 # Eldritch Fable project state
 
+## Bellhouse mobile landscape and journal — November 9, 2026
+
+The Bellhouse play view requires landscape on phones. It uses native fullscreen and orientation lock when available and shows a manual rotation prompt otherwise. Character, equipped gear, supplies, quests, routes, field notes, and party chat now share the Adventure Journal. The landscape HUD keeps the twin sticks and combat controls within the viewport.
+
+Application commit e377dcd35bd1a2e93607a5a26fbe89cc964c23cf on feature/ef3d-bellhouse-preview has tree 3f0e4e4c613a0a55e88f7f9c85965a438319f644. The root and prefixed builds passed, along with 219 unit and backend tests and seven targeted Chromium checks with one intentional skip. A final mobile Chromium rerun verified that both joysticks and the classic fallback control toggle fit in the viewport. Physical Android Firefox rotation remains to be checked.
+
+Verified at 2026-11-09 19:40 UTC. The private Tailscale release ef-bellhouse-e377dcd35bd1 serves /bellhouse/play/?scene=bellhouse. Play, login, and the anonymous auth endpoint returned HTTP 200, and all four served asset hashes matched the prefixed build. The private /bellhouse handler points to the new release and its prior release remains available for rollback. The root preview proxy and production routes were outside the rollout.
+
 ## Bellhouse dual-stick controls — November 9, 2026
 
 The left MOVE stick gives camera-relative analog movement and diagonals in Bellhouse Ravine. The right LOOK stick turns and tilts the third-person camera. The camera starts behind the hero, follows position, and shortens near the bellhouse walls. Adventure authorizes grid crossings and provides combat and saved positions.

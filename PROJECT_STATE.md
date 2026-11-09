@@ -1,5 +1,13 @@
 # Eldritch Fable project state
 
+## Bellhouse immersive fullscreen — November 9, 2026
+
+The phone Bellhouse 3D scene fills the available landscape viewport. A control beside Journal enters or exits native fullscreen. Health, objective text, and controls overlay the world, with compact combat buttons beside the right camera stick. Mobile exposure was raised for visibility. Verified administrators use Journal → Character → Admin tools during compact landscape play.
+
+Application commit bcdb67621923434e8d385f386dc1d52106f0201d on feature/ef3d-bellhouse-preview has tree f758511e8d90e2a6abab8b8c47191d44379c7e2f. The root and /bellhouse/ builds passed. The backend and unit suite passed 219 tests. Three focused mobile Chromium checks passed, covering native fullscreen entry and exit, edge-to-edge stage bounds, admin access through the journal, dual-stick movement, the bell objective, combat, and 2D fallback.
+
+At 16:34 EST, the private preview served ef-bellhouse-bcdb67621923 on /bellhouse/play/?scene=bellhouse. Play, login, and anonymous auth returned HTTP 200. All four hosted asset hashes matched the verified prefixed build. Tailscale Serve verified the private /bellhouse handler and the existing root proxy.
+
 ## Bellhouse mobile landscape and journal — November 9, 2026
 
 The Bellhouse play view requires landscape on phones. It uses native fullscreen and orientation lock when available and shows a manual rotation prompt otherwise. Character, equipped gear, supplies, quests, routes, field notes, and party chat now share the Adventure Journal. The landscape HUD keeps the twin sticks and combat controls within the viewport.

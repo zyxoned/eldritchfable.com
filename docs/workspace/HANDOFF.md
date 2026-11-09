@@ -1,5 +1,17 @@
 # Eldritch Fable shared workspace handoff
 
+## Bellhouse immersive fullscreen — November 9, 2026
+
+Published application commit bcdb67621923434e8d385f386dc1d52106f0201d and local build commit b3359c77a50ca920c838b6e33a2a921767b878e8 share tree f758511e8d90e2a6abab8b8c47191d44379c7e2f. The previous handoff is 260e61c14ced99b3922c771ce64338955a12c729, based on main 1023c62c23d89645fbfe7e06ee813ee59fba5b3f.
+
+LandscapeGate.jsx owns browser fullscreen across the play flow. Mossvale.tsx exposes its toggle beside Journal, while adventure-play.css lays the touch HUD over the full scene and hides the floating admin tab during compact landscape play. The private admin panel still opens from Character. BellhouseStage.jsx uses brighter exposure on mobile.
+
+The root and /bellhouse/ builds passed. The backend and unit suite passed 219 tests. Three focused mobile Chromium checks passed, covering native fullscreen entry and exit, edge-to-edge stage bounds, admin access through the journal, dual-stick movement, the bell objective, combat, and 2D fallback.
+
+At 16:34 EST, the private preview served ef-bellhouse-bcdb67621923 on /bellhouse/play/?scene=bellhouse. Play, login, and anonymous auth returned HTTP 200. All four hosted asset hashes matched the verified prefixed build. Tailscale Serve verified the private /bellhouse handler and the existing root proxy.
+
+Open /bellhouse/play/?scene=bellhouse in Android Firefox with Tailscale connected. Enter the Glade in landscape and tap the fullscreen icon beside Journal. The expected result is browser chrome hidden and the world filling the screen. The physical Android Firefox fullscreen check remains open.
+
 ## Bellhouse mobile landscape and journal — November 9, 2026
 
 The feature/ef3d-bellhouse-preview application commit e377dcd35bd1a2e93607a5a26fbe89cc964c23cf and local build commit 4cb6ff703e6e21e11ddb80fc2f9d5e861707b9f6 share tree 3f0e4e4c613a0a55e88f7f9c85965a438319f644. The previous handoff parent is 2c3174b413b6e3113fe7561451a041d48683b71b. The accepted main baseline is 1023c62c23d89645fbfe7e06ee813ee59fba5b3f.

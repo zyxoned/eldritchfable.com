@@ -11,7 +11,7 @@ import { stripeConfiguration } from '../server/stripe-client.mjs';
 
 const origin = 'https://store.example.test';
 const input = { items: [{ productId: 'bag', variantId: 'natural', quantity: 1 }] };
-function shop(t, stock = 2) {
+function shop(t, stock = 2, now = Date.now) {
   const f = fixture(t);
   const { db } = f;
   const user = { id: randomUUID(), email: 'operator@example.test', role: 'admin' };
@@ -43,7 +43,7 @@ function shop(t, stock = 2) {
     webhooks: Stripe.webhooks
   };
   const config = {mode:'sandbox',origin,expectedAccount:'acct_fixture',shippingRate:'shr_fixture',webhookSecret:'whsec_synthetic_fixture'};
-  const service = createCommerceService(db,{stripe,config});
+  const service = createCommerceService(db,{stripe,config,now});
   const stockLeft = () => db.prepare('SELECT available FROM commerce_stock').get().available;
   const order = id => db.prepare('SELECT * FROM commerce_orders WHERE id=?').get(id);
   const event = (session,type='checkout.session.completed',id='evt_'+randomUUID()) => ({id,type,livemode:false,data:{object:session}});
@@ -288,6 +288,84 @@ test('HTTP checkout rejects cross-origin, unauthenticated, revoked-admin and ove
   assert.equal((await http(f,'/api/commerce/checkout',{body:'x'.repeat(20000),headers})).status,413);
   f.db.prepare("UPDATE account_users SET role='customer' WHERE id=?").run(f.user.id);
   assert.equal((await http(f,'/api/commerce/checkout',{body:input,headers})).status,403);
+  assert.equal(f.stockLeft(),2);
+});
+
+test('a lost checkout response can recover its owned order before and after confirmed expiry', async t => {
+  let time=Date.UTC(2026,0,1);
+  const f=shop(t,1,()=>time), path='/api/commerce/checkout';
+  const headers={'idempotency-key':randomUUID()};
+  const retry=()=>http(f,path,{body:input,headers});
+  // Ignore the initial response body, as a browser would after a connection loss.
+  assert.equal((await retry()).status,200);
+  const [{params}]=f.requests;
+  const id=params.client_reference_id, orderPath='/api/commerce/orders/'+id;
+  const session=f.sessions.get(f.order(id).stripe_session_id);
+  Object.assign(session,{status:'expired',url:null});
+  time=params.expires_at*1000;
+
+  const reconcile=await retry();
+  assert.equal(reconcile.status,409);
+  assert.equal(reconcile.body.code,'ORDER_REQUIRES_RECONCILIATION');
+  assert.equal(reconcile.body.orderId,id);
+  assert.equal(Object.hasOwn(reconcile.body,'url'),false);
+  assert.equal((await http(f,orderPath,{method:'GET'})).body.order.status,'pending');
+  assert.equal(f.stockLeft(),0);
+
+  const otherId=randomUUID(), otherToken='c'.repeat(64);
+  f.db.prepare("INSERT INTO account_users(id,email,password_hash,role,email_verified_at) VALUES(?,?,?,'admin',CURRENT_TIMESTAMP)").run(otherId,'other@example.test','synthetic');
+  f.db.prepare('INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').run(digest(otherToken),otherId,'2099-01-01T00:00:00Z');
+  const foreign=await http(f,path,{body:input,headers,cookie:otherToken});
+  assert.equal(foreign.body.code,'OUT_OF_STOCK');
+  assert.equal(Object.hasOwn(foreign.body,'orderId'),false);
+
+  await f.service.handleEvent(f.event(session,'checkout.session.expired'));
+  const terminal=await retry();
+  assert.equal(terminal.status,409);
+  assert.equal(terminal.body.code,'ORDER_ALREADY_FINAL');
+  assert.equal(terminal.body.orderId,id);
+  assert.equal(Object.hasOwn(terminal.body,'url'),false);
+  const owned=await http(f,orderPath,{method:'GET'});
+  assert.equal(owned.status,200);
+  assert.equal(owned.body.order.id,id);
+  assert.equal(owned.body.order.status,'expired');
+  assert.equal((await http(f,orderPath,{method:'GET',cookie:otherToken})).status,404);
+  assert.equal(f.stockLeft(),1);
+  assert.equal(f.requests.length,1);
+
+  const conflict=await http(f,path,{body:{items:[{...input.items[0],quantity:2}]},headers});
+  assert.equal(conflict.body.code,'IDEMPOTENCY_CONFLICT');
+  assert.equal(Object.hasOwn(conflict.body,'orderId'),false);
+  const freshHeaders={'idempotency-key':randomUUID()};
+  const replacement=await http(f,path,{body:input,headers:freshHeaders});
+  assert.equal(replacement.status,200);
+  assert.notEqual(replacement.body.orderId,id);
+  assert.equal((await http(f,path,{body:input,headers:freshHeaders})).body.orderId,replacement.body.orderId);
+  assert.equal(f.requests.length,2);
+  assert.equal(f.stockLeft(),0);
+
+  f.stripe.accounts.retrieve=async()=>{
+    f.db.prepare('DELETE FROM account_sessions WHERE user_id=?').run(f.user.id);
+    return {id:f.config.expectedAccount};
+  };
+  const revoked=await retry();
+  assert.equal(revoked.status,403);
+  assert.equal(Object.hasOwn(revoked.body,'orderId'),false);
+});
+
+test('checkout recovers an order finalized while Stripe Session creation is in flight', async t => {
+  const f=shop(t), create=f.stripe.checkout.sessions.create;
+  f.stripe.checkout.sessions.create=async(...args)=>{
+    const session=await create(...args);
+    f.sessions.set(session.id,{...session,status:'expired',url:null});
+    await f.service.handleEvent(f.event(session,'checkout.session.expired'));
+    return session;
+  };
+  const reply=await http(f,'/api/commerce/checkout',{body:input,headers:{'idempotency-key':randomUUID()}});
+  assert.equal(reply.status,409);
+  assert.equal(reply.body.code,'ORDER_ALREADY_FINAL');
+  assert.equal(reply.body.orderId,f.requests[0].params.client_reference_id);
+  assert.equal(Object.hasOwn(reply.body,'url'),false);
   assert.equal(f.stockLeft(),2);
 });
 

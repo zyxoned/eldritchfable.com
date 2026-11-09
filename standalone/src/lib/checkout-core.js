@@ -1,10 +1,17 @@
 export const CHECKOUT_ATTEMPT_KEY = 'eldritch-fable:checkout-attempt:v1';
 export const validOrderId = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+export function readCheckoutAttempt(storage,owner) {
+  if (!owner) return null;
+  try {
+    const saved=JSON.parse(storage.getItem(CHECKOUT_ATTEMPT_KEY));
+    if (saved?.owner===owner && validOrderId(saved.key)) return saved;
+  } catch { /* Ignore malformed local state. */ }
+  return null;
+}
 export function checkoutAttempt(storage,owner,items,makeKey=()=>crypto.randomUUID()) {
   const signature=JSON.stringify(items.map(({productId,variantId,quantity})=>({productId,variantId,quantity})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
-  let saved;
-  try { saved=JSON.parse(storage.getItem(CHECKOUT_ATTEMPT_KEY)); } catch { /* Replace malformed local state. */ }
-  if (saved?.owner===owner && saved.signature===signature && validOrderId(saved.key)) return saved;
+  const saved=readCheckoutAttempt(storage,owner);
+  if (saved && (saved.signature===signature || (saved.requiresOrderStatus===true && validOrderId(saved.orderId)))) return saved;
   const attempt={owner,signature,key:makeKey()};
   storage.setItem(CHECKOUT_ATTEMPT_KEY,JSON.stringify(attempt));
   return attempt;

@@ -6,7 +6,6 @@ import { makeGlow, makeMaterials, randomFrom } from './materials';
 export const UNIT = 1.8;
 export const BELL_LANDING = { x: 7, y: 11 };
 const glade = REGIONS.glade;
-const up = new THREE.Vector3(0, 1, 0);
 
 export function floorHeight(x, z) {
   return .09 * Math.sin(x * .31) * Math.cos(z * .32);
@@ -62,7 +61,7 @@ function terrain(scene, mats) {
     }
   }
   for (const [tile, cells] of Object.entries(layers)) {
-    const pos = [], uv = [];
+    const pos = [], uv = [], colors = [];
     for (const [x, y] of cells) {
       for (const [dx, dz] of [[-.5, -.5], [-.5, .5], [.5, -.5], [.5, -.5], [-.5, .5], [.5, .5]]) {
         const wx = (x + dx) * UNIT, wz = (y + dz) * UNIT;
@@ -70,13 +69,17 @@ function terrain(scene, mats) {
         pos.push(wx, elevation, wz);
         const repeat = tile === 'water' ? 5.4 : tile === 'grass' ? 3.3 : 2.7;
         uv.push(wx / repeat, wz / repeat);
+        const tint = tile === 'grass' ? .86 + .08 * Math.sin(wx * .31 + Math.cos(wz * .24)) + .055 * Math.sin(wz * .81) : 1;
+        colors.push(tint, tint, tint);
       }
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     geometry.computeVertexNormals();
     const material = tile === 'water' ? mats.water : tile === 'grass' ? mats.soil : mats.path;
+    material.vertexColors = true;
     const ground = mesh(scene, geometry, material, 0, 0, 0);
     ground.castShadow = false;
   }
@@ -147,14 +150,17 @@ function bellhouse(scene, mats) {
   for (let n = 0; n < 3; n++) box(scene, mats.path, x, -.02 + n * .105, front + .53 - n * .13, 2.63, .16 + n * .1, .86 - n * .2);
   gabledRoof(scene, mats, [x, z], 4.79, 4.83, 6.06, 1.77);
   const bell = new THREE.Group();
-  bell.position.set(x, 5.34, z + 1.35);
+  bell.position.set(x, 5.36, z + 1.59);
   scene.add(bell);
   const outline = [[0, .02], [.2, .02], [.4, -.2], [.47, -.51], [.61, -.78], [.73, -.86], [.73, -.94], [.61, -.95]]
-    .map(([r, y]) => new THREE.Vector2(r, y));
+    .reverse().map(([r, y]) => new THREE.Vector2(r, y));
   mesh(bell, new THREE.LatheGeometry(outline, 32), mats.brass, 0, 0, 0);
   mesh(bell, new THREE.SphereGeometry(.115, 10, 8), mats.iron, 0, -.95, 0);
   mesh(bell, new THREE.TorusGeometry(.62, .042, 8, 28), mats.iron, 0, -.8, 0).rotation.x = Math.PI / 2;
-  box(scene, mats.timber, x, 5.53, z + 1.34, 3.48, .17, .24);
+  box(scene, mats.timber, x, 5.53, z + 1.59, 3.48, .17, .24);
+  const bellLight = new THREE.PointLight(0xb9cee8, 9, 5, 2);
+  bellLight.position.set(x - .5, 4.81, front + 1.2);
+  scene.add(bellLight);
   return bell;
 }
 
@@ -195,6 +201,33 @@ function lantern(scene, mats, glow, x, z, height = 1.13) {
   return sprite.position;
 }
 
+function roughStone() {
+  const geometry = new THREE.IcosahedronGeometry(1, 2);
+  const position = geometry.attributes.position;
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+    const strata = 1 + .12 * Math.sin(8 * y + 4 * x) * Math.sin(3 * z + 6 * x)
+      + .087 * Math.cos(9 * z - 5 * y);
+    position.setXYZ(i, x * strata, y * strata, z * strata);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function grassClump() {
+  const random = randomFrom(384), vertices = [];
+  for (let blade = 0; blade < 7; blade++) {
+    const angle = random() * Math.PI * 2;
+    const x = .34 * Math.cos(angle), z = .34 * Math.sin(angle), y = .54 + random() * .45;
+    vertices.push(-z * .24, -.5, x * .24, z * .24, -.5, -x * .24, x, y - .5, z);
+    vertices.push(-z * .24, -.5, x * .24, x, y - .5, z, z * .24, -.5, -x * .24);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function firShape() {
   const vertices = [], random = randomFrom(108);
   for (let tier = 0; tier < 9; tier++) {
@@ -209,6 +242,15 @@ function firShape() {
       const left = [fx * reach * .43 - fz * side, y - .07, fz * reach * .43 + fx * side];
       const right = [fx * reach * .43 + fz * side, y - .04, fz * reach * .43 - fx * side];
       vertices.push(...stem, ...left, ...tip, ...stem, ...tip, ...right);
+      for (let k = 0; k < 4; k++) {
+        const t = .25 + k * .135, branch = reach * (.36 - k * .044);
+        const bx = fx * reach * t, bz = fz * reach * t, by = y + .1 - t * .29;
+        for (const sign of [-1, 1]) {
+          vertices.push(bx, by, bz,
+            bx - sign * fz * branch + fx * branch * .49, by - .14, bz + sign * fx * branch + fz * branch * .49,
+            bx + fx * branch * .64, by - .073, bz + fz * branch * .64);
+        }
+      }
     }
   }
   const geometry = new THREE.BufferGeometry();
@@ -219,7 +261,7 @@ function firShape() {
 
 function landscape(scene, mats) {
   const random = randomFrom(6132);
-  const firs = [], trunks = [], stones = [], weeds = [];
+  const firs = [], trunks = [], stones = [], pebbles = [], weeds = [];
   for (let i = 0; i < 184; i++) {
     const x = -7 + random() * 70;
     const z = -18 + random() * 50;
@@ -237,7 +279,7 @@ function landscape(scene, mats) {
     const x = -6 + random() * 70;
     const z = -18 + random() * 43;
     if (x > 2 && x < 55 && z > -1) continue;
-    const height = 1 + random() * (z < 0 ? 8 : 3.7);
+    const height = 1 + random() * (z < 0 ? 6.7 : 3.1);
     stones.push({ at: [x, height * .29 - .4, z], size: [1.3 + random() * 4, height, 1.1 + random() * 3],
       yaw: random() * 6.28, pitch: (random() - .5) * .45,
       color: new THREE.Color().setScalar(.63 + random() * .37) });
@@ -246,14 +288,21 @@ function landscape(scene, mats) {
     const x = -2 + random() * 60, z = -4 + random() * 44;
     const type = regionTile('glade', Math.round(x / UNIT), Math.round(z / UNIT));
     if (type !== 'grass') continue;
-    const height = .11 + random() * .29;
-    weeds.push({ at: [x, floorHeight(x, z) + height / 2, z], size: [.15 + random() * .23, height, .2],
-      yaw: random() * 6.28, pitch: .23, color: new THREE.Color().setScalar(.51 + random() * .49) });
+    const height = .09 + random() * .26;
+    const tint = new THREE.Color().setHSL(.18 + random() * .13, .27, .28 + random() * .25);
+    weeds.push({ at: [x, floorHeight(x, z) + height / 2, z], size: [.18 + random() * .37, height, .28],
+      yaw: random() * 6.28, pitch: .15, color: tint });
+    if (i % 4 === 0) {
+      pebbles.push({ at: [x + .14, floorHeight(x, z) + .04, z + .09],
+        size: [.1 + random() * .32, .07 + random() * .14, .12 + random() * .32],
+        yaw: random() * 6.28, color: new THREE.Color().setScalar(.72 + random() * .28) });
+    }
   }
-  instance(scene, new THREE.DodecahedronGeometry(1, 0), mats.stone, stones);
+  instance(scene, roughStone(), mats.stone, stones);
+  instance(scene, new THREE.DodecahedronGeometry(1, 0), mats.stone, pebbles);
   instance(scene, new THREE.CylinderGeometry(.038, .13, 3.7, 6), mats.bark, trunks);
   instance(scene, firShape(), mats.foliage, firs);
-  instance(scene, new THREE.ConeGeometry(.54, 1, 3), mats.moss, weeds).castShadow = false;
+  instance(scene, grassClump(), mats.foliage, weeds).castShadow = false;
 }
 
 function shrineAndCamp(scene, mats, glow) {
@@ -303,6 +352,33 @@ function sky(scene) {
   scene.add(dome);
 }
 
+function makeRavineMist(scene) {
+  const material = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { flow: { value: 0 } },
+    vertexShader: 'varying vec2 v; void main(){ v=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+    fragmentShader: [
+      'varying vec2 v; uniform float flow;',
+      'float fog(vec2 p){',
+      'return .48 + .21*sin(p.x*8.+cos(p.y*13.))+ .17*sin(p.y*26.-cos(p.x*17.)) + .09*cos(p.y*55.+p.x*19.);',
+      '}',
+      'void main(){',
+      'float edge=smoothstep(0.,.2,v.x)*(1.-smoothstep(.8,1.,v.x))*smoothstep(0.,.13,v.y)*(1.-smoothstep(.85,1.,v.y));',
+      'float w=fog(vec2(v.x+flow*.018,v.y-flow*.032));',
+      'gl_FragColor=vec4(.34,.45,.56,edge*smoothstep(.32,.94,w)*.31);',
+      '#include <colorspace_fragment>',
+      '}',
+    ].join('\n'),
+  });
+  for (const [x, y, z, width, length] of [[7.3, -.42, 3.8, 10.6, 31], [10.3, -.18, 29.3, 8.7, 22]]) {
+    const layer = new THREE.Mesh(new THREE.PlaneGeometry(width, length), material);
+    layer.rotation.x = -Math.PI / 2;
+    layer.position.set(x, y, z);
+    scene.add(layer);
+  }
+  return material.uniforms.flow;
+}
+
 function batchArchitecture(group) {
   group.updateMatrixWorld(true);
   const byMaterial = new Map();
@@ -332,9 +408,9 @@ function batchArchitecture(group) {
 export function createWorld(scene, smallScreen) {
   const mats = makeMaterials(), glow = makeGlow();
   scene.background = new THREE.Color(0x1c2938);
-  scene.fog = new THREE.FogExp2(0x1b2837, .025);
+  scene.fog = new THREE.FogExp2(0x1b2837, .032);
   sky(scene);
-  const ambient = new THREE.HemisphereLight(0x9ab6dd, 0x535048, 1.45);
+  const ambient = new THREE.HemisphereLight(0xa2b9dd, 0x665c50, 1.58);
   scene.add(ambient);
   const moon = new THREE.DirectionalLight(0xbecff3, 2.45);
   moon.position.set(-8, 26, -14);
@@ -343,10 +419,12 @@ export function createWorld(scene, smallScreen) {
   const extent = 37;
   Object.assign(moon.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, near: 1, far: 85 });
   moon.shadow.mapSize.setScalar(smallScreen ? 1024 : 2048);
+  moon.shadow.radius = 2.6;
   moon.shadow.normalBias = .075;
   moon.shadow.bias = -.00015;
   scene.add(moon, moon.target);
   terrain(scene, mats);
+  const mist = makeRavineMist(scene);
   landscape(scene, mats);
   const architecture = new THREE.Group();
   scene.add(architecture);
@@ -376,6 +454,7 @@ export function createWorld(scene, smallScreen) {
   return {
     glow,
     update(time, sinceRing, reducedMotion) {
+      mist.value = time;
       mats.water.bumpMap.offset.set(.016 * time, .009 * time);
       lights.forEach((light, i) => { light.intensity = 12 + .8 * Math.sin(time * 3.9 + i * 1.73); });
       const ringing = sinceRing >= 0 && sinceRing < 3;

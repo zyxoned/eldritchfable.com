@@ -46,14 +46,15 @@ function surface(seed, kind, rgb) {
     if (kind === 'stone' || kind === 'pavers' || kind === 'slate') {
       const rows = kind === 'pavers' ? 10 : kind === 'slate' ? 12 : 6;
       const cols = kind === 'pavers' ? 8 : kind === 'slate' ? 8 : 4;
-      const row = v * rows + (g - .5) * .11;
-      const column = u * cols + (Math.floor(row) % 2) * .5 + (n - .5) * .16;
+      const row = v * rows + (g - .5) * .16 + .021 * Math.sin(u * 87);
+      const offset = Math.sin(Math.floor(row) * 13.9) * .29;
+      const column = u * cols + (Math.floor(row) % 2) * .5 + offset + (n - .5) * .19;
       const edge = Math.min(Math.abs(row - Math.round(row)), Math.abs(column - Math.round(column)));
       const block = THREE.MathUtils.smoothstep(edge, .027, .105);
       const variation = .9 + .13 * Math.sin((Math.floor(column) * 129 + Math.floor(row) * 97 + seed));
       height = .29 * height + .56 * block;
       tone *= (.37 + .63 * block) * variation;
-      green += (1 - block) * Math.max(0, n - .33) * .52;
+      green += (1 - block) * Math.max(0, n - .26) * .52;
     } else if (kind === 'wood') {
       const stripe = .5 + .5 * Math.sin((u + .017 * (g - .5)) * 168 + v * 3);
       height = .21 * stripe + .37 * height;
@@ -64,7 +65,7 @@ function surface(seed, kind, rgb) {
       green = 0;
     }
     const offset = (y * size + x) * 4;
-    const moss = [56, 74, 38];
+    const moss = [65, 75, 43];
     for (let channel = 0; channel < 3; channel++) {
       diffuse[offset + channel] = Math.min(255, Math.round(THREE.MathUtils.lerp(rgb[channel] * tone, moss[channel], green)));
       relief[offset + channel] = Math.round(height * 255);
@@ -80,17 +81,15 @@ export function makeMaterials() {
     soil: standard(0xffffff, { ...surface(31, 'earth', [91, 102, 76]), bumpScale: .14, roughness: .95 }),
     path: standard(0xffffff, { ...surface(76, 'pavers', [129, 129, 119]), bumpScale: .075, roughness: .68 }),
     masonry: standard(0xffffff, { ...surface(51, 'stone', [135, 137, 128]), bumpScale: .11, roughness: .87 }),
-    stone: standard(0x6e7372, { ...surface(27, 'earth', [180, 184, 181]), bumpScale: .16 }),
+    stone: standard(0x879091, { ...surface(27, 'earth', [160, 167, 163]), bumpScale: .19 }),
     slate: standard(0xffffff, { ...surface(60, 'slate', [92, 111, 136]), bumpScale: .09, roughness: .71 }),
     timber: standard(0xffffff, { ...surface(90, 'wood', [113, 89, 63]), bumpScale: .07 }),
     water: standard(0x57788a, { ...surface(21, 'water', [109, 163, 188]), bumpScale: .16, roughness: .27, metalness: .59 }),
-    moss: standard(0x535a2c),
     foliage: standard(0x4b603f, { side: THREE.DoubleSide }),
     bark: standard(0x48382d),
-    brass: standard(0x9d7843, { roughness: .39, metalness: .47 }),
+    brass: standard(0xb79258, { roughness: .36, metalness: .39, emissive: 0x3e3024, emissiveIntensity: .24 }),
     iron: standard(0x292e38, { metalness: .41, roughness: .49 }),
     hollow: standard(0x151821),
-    cloth: standard(0x592e3c, { side: THREE.DoubleSide }),
     flame: standard(0xffc77b, { emissive: 0xff974b, emissiveIntensity: 2.9 }),
     crystal: standard(0x8bcbdc, { emissive: 0x41bbd7, emissiveIntensity: 1.1, roughness: .3 }),
   };

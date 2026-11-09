@@ -68,7 +68,9 @@ function hero(parent, player) {
   const appearance = resolveAppearance(player.appearance, def.color);
   const heavy = player.heroClass === 'knight' || player.heroClass === 'death-knight' || player.heroClass === 'cleric';
   const armored = player.heroClass === 'death-knight';
-  const skin = lit(appearance.skin), hair = lit(appearance.hair), cloth = lit(appearance.outfit, { side: THREE.DoubleSide });
+  const skin = lit(appearance.skin), hair = lit(appearance.hair);
+  const fabric = new THREE.Color(appearance.outfit).lerp(new THREE.Color(0x504d46), .43);
+  const cloth = lit(fabric, { side: THREE.DoubleSide });
   const dark = lit(0x302c31), accent = lit(appearance.accent, { metalness: .33, roughness: .48 });
   const metal = lit(armored ? 0x394553 : heavy ? 0x929fa5 : 0x6a6256, { metalness: .42, roughness: .48 });
   const light = lit(def.color, { emissive: def.color, emissiveIntensity: .9 });

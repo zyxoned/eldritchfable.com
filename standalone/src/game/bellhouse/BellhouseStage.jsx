@@ -56,7 +56,7 @@ export default function BellhouseStage({
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.3 : 1.65));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.11;
+      renderer.toneMappingExposure = small ? 1.28 : 1.11;
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFShadowMap;
       renderer.shadowMap.autoUpdate = false;

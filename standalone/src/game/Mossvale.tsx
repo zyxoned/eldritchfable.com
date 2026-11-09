@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState, type PointerE
 import { MOVE_INTERVAL_MS, createMovementGate, thumbDirection } from './mobile-input.js';
 import {
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, BookOpen, Check,
-  ChevronRight, Compass, Flame, Gem, Leaf, LogOut, MessageCircle, Radio,
+  ChevronRight, Compass, Flame, Gem, Hand, Leaf, LogOut, MessageCircle, Radio,
   RotateCw, Send, Shield, Sparkles, Sword, Users, X,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -15,7 +15,7 @@ import {
 import GameCanvas from './GameCanvas';
 import AnalogStick from './bellhouse/AnalogStick.jsx';
 import AdventureJournal from './AdventureJournal.jsx';
-import LandscapeGate, { useMobileLandscapeBlocked } from './LandscapeGate.jsx';
+import LandscapeGate, { PlayFullscreenButton, useMobileLandscapeBlocked, usePlayFullscreen } from './LandscapeGate.jsx';
 import AppearanceEditor from './AppearanceEditor';
 import FieldNotes from './FieldNotes';
 import SkillsPanel from './SkillsPanel';
@@ -199,6 +199,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   const sceneActive = !!realm?.authored?.encounter || !!realm?.journey?.active;
   const journalMode = wantsBellhouse && !!me && !introOpen;
   const landscapeBlocked = useMobileLandscapeBlocked(journalMode);
+  const fullscreen = usePlayFullscreen(journalMode);
   const bellhouseMode = wantsBellhouse && regionId === 'glade' && !!me && !introOpen && !sceneActive;
   const freeControls = bellhouseMode && bellhouseReady;
   const wantsVisitor = query.get('visitor') === '1' || query.get('seventh') === '1';
@@ -949,8 +950,17 @@ export default function Mossvale({ user, onSessionExpired }: {
     </section>
   </>;
   const journalButton = <button type="button" className="journal-trigger" aria-haspopup="dialog" onClick={openJournal}><BookOpen size={16} /> Journal</button>;
+  const fullscreenButton = journalMode && <PlayFullscreenButton fullscreen={fullscreen} />;
   const journalPages = [
-    { id: 'character', label: 'Character', content: <>{characterPanel}{characterDetails}{visitorPanel}</> },
+    { id: 'character', label: 'Character', content: <>
+      {profile?.adminAccess && <div className="journal-links">
+        <button type="button" className="journal-trigger" aria-haspopup="dialog" onClick={() => {
+          setJournalOpen(false);
+          window.dispatchEvent(new Event('eldritch:open-admin-tools'));
+        }}><Shield size={16} /> Admin tools</button>
+      </div>}
+      {characterPanel}{characterDetails}{visitorPanel}
+    </> },
     { id: 'inventory', label: 'Inventory', content: <div className="journal-inventory">
       {me && <section className="card calling-card" aria-label="Equipped gear">
         <h2>Equipped gear</h2><EquipmentList items={me.equipment || CLASSES[me.heroClass].equipment} />
@@ -971,14 +981,14 @@ export default function Mossvale({ user, onSessionExpired }: {
   const actionButtons = (
     <div className="action-buttons">
       <button aria-label="Attack" className="attack-button" disabled={!canAct} title={'Attack · ' + attackLabel} onClick={() => void act('attack')}><Sword size={17} /><span>{attackLabel}</span><kbd>SPACE</kbd></button>
-      <button aria-label="Interact" className="interact-button" disabled={!canAct || adminActive} onClick={() => void act('interact')}><Sparkles size={17} /><span>{interactLabel}</span><kbd>E</kbd></button>
+      <button aria-label="Interact" className="interact-button" title={interactLabel} disabled={!canAct || adminActive} onClick={() => void act('interact')}><Hand size={17} /><span>{interactLabel}</span><kbd>E</kbd></button>
     </div>
   );
   const skillBar = me && <SkillBar heroClass={me.heroClass} cooldowns={profile?.cooldowns} serverTime={realm?.serverTime || Date.now()} enabled={canAct && !journalOpen} onUse={skillId => void act('skill', { skillId })} />;
   const playControlsEnabled = movementEnabled && !journalOpen;
 
   return (
-    <div className={'ef-rpg' + (bellhouseMode ? ' bellhouse-preview' : '') + (journalMode ? ' adventure-play' : '')}><div className="site-shell">
+    <div className={'ef-rpg' + (bellhouseMode ? ' bellhouse-preview' : '') + (journalMode ? ' adventure-play' : '') + (freeControls ? ' immersive-play' : '')}><div className="site-shell">
       <header className="site-header">
         <Link className="brand eldritch-brand" to="/" aria-label="Eldritch Fable home">
           <span className="brand-icon"><Sparkles size={21} strokeWidth={1.6} /></span>
@@ -1033,7 +1043,7 @@ export default function Mossvale({ user, onSessionExpired }: {
           </aside>}
 
           <section className="world-column" aria-label="Game world">
-            {journalMode && sceneActive && <div className="scene-toolbar">{journalButton}</div>}
+            {journalMode && sceneActive && <div className="scene-toolbar">{journalButton}{fullscreenButton}</div>}
             {me && !adminActive && sceneActive && <JourneyPanel journey={realm?.journey} authored={realm?.authored} player={me} enabled={sceneCanAct} serverTime={realm?.serverTime} onAction={(kind, extra) => void act(kind, extra)} />}
             <div hidden={sceneActive} className={"world-card region-" + regionId}>
               <div className="world-heading">
@@ -1041,6 +1051,7 @@ export default function Mossvale({ user, onSessionExpired }: {
                 <div className="world-tools">
                   <div className={'live-pill ' + (connected ? '' : 'offline')}><span /> {connected ? 'LIVE' : loading ? 'CONNECTING' : 'OFFLINE'}<i />{count}/{partyFeatures ? realm.maxPlayers : '—'} <Users size={13} /></div>
                   {journalMode && journalButton}
+                  {fullscreenButton}
                 </div>
               </div>
               <div className="canvas-container">
@@ -1089,7 +1100,7 @@ export default function Mossvale({ user, onSessionExpired }: {
       {journalMode && <AdventureJournal open={journalOpen && !landscapeBlocked} onClose={() => setJournalOpen(false)} pages={journalPages}
         onPageChange={scrollPartyChat} feedback={error ? <p className="journal-feedback" role="alert">{error}</p>
           : notice ? <p className="journal-feedback" role="status">{notice}</p> : null} />}
-      <LandscapeGate active={journalMode} />
+      <LandscapeGate active={journalMode} fullscreen={fullscreen} />
       <IntroCutscene open={introOpen} onComplete={completeIntro} />
 
       {appearanceOpen && me && !adminActive && <AppearanceEditor player={me} onSave={saveAppearance} onClose={() => setAppearanceOpen(false)} />}

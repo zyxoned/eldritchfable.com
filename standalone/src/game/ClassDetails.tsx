@@ -52,8 +52,9 @@ export function SkillBar({ heroClass, cooldowns = {}, serverTime, enabled, onUse
       const seconds = Math.max(0, Math.ceil(((cooldowns[skill.id] || 0) - serverNow) / 1000));
       const passive = skill.type === 'passive';
       return passive ? <div className="skill-button skill-passive" key={skill.id}><span className="skill-symbol"><Shield size={19} /></span><strong>{skill.name}</strong><small>Passive · always active</small><span className="skill-description">{skill.description}</span></div>
-        : <button type="button" key={skill.id} className={'skill-button ' + (seconds ? 'cooling-down' : '')} aria-label={skill.name} aria-describedby={'skill-description-' + skill.id} disabled={!enabled || seconds > 0} onClick={() => onUse(skill.id)}>
+        : <button type="button" key={skill.id} className={'skill-button ' + (seconds ? 'cooling-down' : '')} aria-label={skill.name} aria-describedby={'skill-description-' + skill.id} title={skill.name} disabled={!enabled || seconds > 0} onClick={() => onUse(skill.id)}>
           <span className="skill-symbol">{skill.type === 'ward' || skill.type === 'heal' ? <Shield size={19} /> : <Sparkles size={19} />}</span><strong>{skill.name}</strong><small>{seconds ? seconds + 's · recovering' : 'Ready'} <kbd>{index + 1}</kbd></small><span className="skill-description" id={'skill-description-' + skill.id}>{skill.description}</span>
+          {seconds > 0 && <span className="skill-cooldown" aria-hidden="true">{seconds}s</span>}
         </button>;
     })}</div>
   </section>;

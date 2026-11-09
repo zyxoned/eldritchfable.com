@@ -58,3 +58,35 @@ html:has(.landscape-gate[open]) {
 .landscape-gate-panel button:focus-visible { outline: 2px solid #f3e6ce; outline-offset: 4px; }
 .landscape-gate-panel button:disabled { opacity: .72; }
 .landscape-gate-panel .landscape-gate-status:not(:empty) { margin-top: 12px; }
+
+.play-fullscreen-control { position: relative; flex: none; }
+
+.ef-rpg .play-fullscreen-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #907950;
+  border-radius: 6px;
+  color: #f6e1b9;
+  background: #1b1724e6;
+  touch-action: manipulation;
+}
+
+.play-fullscreen-status:empty { display: none; }
+
+.play-fullscreen-status {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 5px);
+  right: 0;
+  width: 170px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid #907950;
+  border-radius: 6px;
+  color: #f6e1b9;
+  background: #1b1724;
+  font: 600 12px/1.4 system-ui, sans-serif;
+}

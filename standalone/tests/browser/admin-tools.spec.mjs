@@ -209,6 +209,41 @@ test('the admin drawer isolates game controls and restores movement on close', a
   page.off('request', record);
 });
 
+test('landscape Bellhouse keeps admin access in the journal and off the playfield', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Phone landscape layout');
+  await page.setViewportSize({ width: 844, height: 390 });
+  const user = await account(page, testInfo, 'bellhouse', true);
+  await signIn(page, user);
+  const floatingLauncher = page.getByRole('button', { name: 'Open admin tools', exact: true });
+  await expect(floatingLauncher).toBeVisible();
+
+  await page.goto('/play?scene=bellhouse');
+  await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
+  await page.getByLabel('Adventurer name', { exact: true }).fill('RavineKeeper');
+  await page.getByLabel('Solo adventure', { exact: true }).check();
+  await page.getByRole('button', { name: 'Enter the glade', exact: true }).click();
+
+  const journalTrigger = page.getByRole('button', { name: 'Journal', exact: true });
+  await expect(journalTrigger).toBeVisible();
+  await expect(floatingLauncher).toBeHidden();
+  const bellObjective = page.getByRole('button', { name: 'Walk to bellhouse', exact: true });
+  await bellObjective.click({ trial: true });
+
+  await journalTrigger.click();
+  const journal = page.getByRole('dialog', { name: 'Adventure journal' });
+  await journal.getByRole('tabpanel', { name: 'Character', exact: true })
+    .getByRole('button', { name: 'Admin tools', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: 'Admin tools', exact: true });
+  await expect(journal).toBeHidden();
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByLabel('Visitor name', { exact: true })).toHaveValue('TestKeeperM');
+  await expect(page.locator('.attack-button')).toBeDisabled();
+  await drawer.getByRole('button', { name: 'Close admin tools', exact: true }).click();
+  await expect(drawer).toBeHidden();
+  await expect(page.locator('.attack-button')).toBeEnabled();
+  await expect(floatingLauncher).toBeHidden();
+});
+
 test('cross-tab logout and current-role revocation close the private drawer', async ({ page }, testInfo) => {
   const user = await account(page, testInfo, 'authority', true);
   await signIn(page, user, '/play');

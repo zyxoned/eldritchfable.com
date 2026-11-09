@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test';
 import { randomUUID, randomBytes, scryptSync } from 'node:crypto';
 import { openDatabase } from '../../server/database.mjs';
 
-test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure API', async ({ page }, info) => {
-  test.setTimeout(115000);
+function createBellhousePlayer() {
   const id = randomUUID(), salt = randomBytes(16);
   const email = 'bellhouse-' + id + '@example.test';
   const password = 'synthetic-bellhouse-passphrase';
@@ -13,12 +12,10 @@ test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure
     db.prepare('INSERT INTO account_users(id,email,password_hash,role,email_verified_at) VALUES(?,?,?,?,?)')
       .run(id, email, hash, 'customer', new Date().toISOString());
   } finally { db.close(); }
+  return { email, password, heroName: 'Ravine' + id.slice(0, 8) };
+}
 
-  const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => {
-    if (message.type() === 'error' && /WebGL|THREE|Shader/i.test(message.text())) errors.push(message.text());
-  });
+async function enterBellhouse(page, { email, password, heroName }) {
   await page.goto('/play?scene=bellhouse');
   const signIn = page.getByRole('link', { name: 'Sign in to Eldritch Fable' });
   await expect(signIn).toHaveAttribute('href', '/login?next=%2Fplay%3Fscene%3Dbellhouse');
@@ -28,9 +25,20 @@ test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/play\?scene=bellhouse$/);
   await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
-  await page.getByLabel('Adventurer name', { exact: true }).fill('Ravine' + id.slice(0, 8));
+  await page.getByLabel('Adventurer name', { exact: true }).fill(heroName);
   await page.getByLabel('Solo adventure', { exact: true }).check();
   await page.getByRole('button', { name: 'Enter the glade', exact: true }).click();
+}
+
+test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure API', async ({ page }, info) => {
+  test.setTimeout(115000);
+  const player = createBellhousePlayer();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error' && /WebGL|THREE|Shader/i.test(message.text())) errors.push(message.text());
+  });
+  await enterBellhouse(page, player);
 
   const mobile = info.project.name === 'mobile';
   const rotation = page.getByRole('dialog', { name: 'Rotate your phone' });
@@ -46,7 +54,8 @@ test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure
   const journal = page.getByRole('dialog', { name: 'Adventure journal' });
   await journalTrigger.click();
   await expect(journal.getByRole('tab', { name: 'Character' })).toBeFocused();
-  await expect(journal.getByRole('heading', { name: 'Ravine' + id.slice(0, 8) })).toBeVisible();
+  await expect(journal.getByRole('heading', { name: player.heroName })).toBeVisible();
+  await expect(journal.getByRole('button', { name: 'Admin tools', exact: true })).toHaveCount(0);
   await journal.getByRole('tab', { name: 'Inventory' }).click();
   await expect(journal.getByRole('heading', { name: 'Equipped gear' })).toBeVisible();
   await expect(journal.getByText('Materials pouch')).toBeVisible();
@@ -145,4 +154,29 @@ test('Bellhouse Ravine renders in WebGL and plays through the existing Adventure
   if (mobile) await expect(page.getByRole('button', { name: 'Use buttons' })).toBeInViewport({ ratio: 1 });
   await expect(page.locator('.map-caption')).toContainText(/17, 8|21, 13|13, 5|26, 10/);
   expect(errors).toEqual([]);
+});
+
+test('Bellhouse enters and exits immersive browser fullscreen', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile', 'Phone landscape layout');
+  test.setTimeout(45000);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await enterBellhouse(page, createBellhousePlayer());
+
+  const stage = page.locator('.immersive-play .bellhouse-stage[data-ready="true"]');
+  const enter = page.getByRole('button', { name: 'Enter fullscreen', exact: true });
+  const exit = page.getByRole('button', { name: 'Exit fullscreen', exact: true });
+  await expect(stage).toBeVisible({ timeout: 18000 });
+  await enter.click();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === document.documentElement)).toBe(true);
+  await expect.poll(() => stage.evaluate(element => {
+    const { top, left, right, bottom } = element.getBoundingClientRect();
+    return Math.abs(top) <= 1 && Math.abs(left) <= 1 &&
+      Math.abs(right - innerWidth) <= 1 && Math.abs(bottom - innerHeight) <= 1;
+  })).toBe(true);
+  await expect(page.getByRole('group', { name: 'Movement joystick' })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole('group', { name: 'Camera joystick' })).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: info.outputPath('bellhouse-immersive.png'), timeout: 20000 });
+  await exit.click();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
+  await expect(enter).toBeVisible();
 });

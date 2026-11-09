@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Maximize, Smartphone } from 'lucide-react';
+import { Maximize, Minimize, Smartphone } from 'lucide-react';
 import './landscape-gate.css';
 
 const TOUCH = '(pointer: coarse) and (hover: none)';
@@ -33,23 +33,93 @@ export function useMobileLandscapeBlocked(active = true) {
   return useSyncExternalStore(active ? watchOrientation : noSubscription, active ? readPortraitPhone : unblocked, unblocked);
 }
 
-function releaseLandscape(session) {
-  if (session.fullscreen && document.fullscreenElement === document.documentElement) {
-    // Exiting our fullscreen session also releases its orientation lock.
+function releaseFullscreen(owner) {
+  if (owner.fullscreen && document.fullscreenElement === document.documentElement) {
+    // Exiting fullscreen also releases its orientation lock.
     void document.exitFullscreen().catch(() => {});
-  } else if (session.locked) {
-    try { window.screen.orientation?.unlock?.(); } catch { /* The document may be leaving. */ }
   }
-  session.fullscreen = session.locked = false;
+  owner.fullscreen = false;
 }
 
-export default function LandscapeGate({ active = true, onBlockedChange }) {
-  const blocked = useMobileLandscapeBlocked(active);
-  const [attempt, setAttempt] = useState('idle');
-  const dialog = useRef(null), session = useRef(null);
-  const title = useId(), instructions = useId();
+export function usePlayFullscreen(active) {
+  const session = useRef(null);
+  const [entered, setEntered] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [notice, setNotice] = useState('');
 
-  useLayoutEffect(() => { onBlockedChange?.(blocked); }, [blocked, onBlockedChange]);
+  useLayoutEffect(() => {
+    setPending(false);
+    setNotice('');
+    if (!active) { setEntered(false); return; }
+
+    const owner = { fullscreen: false, pending: false };
+    session.current = owner;
+    const changed = () => {
+      const fullscreen = document.fullscreenElement === document.documentElement;
+      if (!fullscreen) owner.fullscreen = false;
+      setEntered(fullscreen);
+    };
+    changed();
+    document.addEventListener('fullscreenchange', changed);
+    return () => {
+      session.current = null;
+      document.removeEventListener('fullscreenchange', changed);
+      releaseFullscreen(owner);
+    };
+  }, [active]);
+
+  async function toggle() {
+    const owner = session.current;
+    if (!owner || owner.pending) return;
+    owner.pending = true;
+    setPending(true);
+    setNotice('');
+
+    const root = document.documentElement;
+    const exiting = document.fullscreenElement === root;
+    try {
+      if (exiting) {
+        await document.exitFullscreen();
+        return;
+      }
+      await root.requestFullscreen({ navigationUI: 'hide' });
+      owner.fullscreen = document.fullscreenElement === root;
+      if (session.current !== owner) { releaseFullscreen(owner); return; }
+      if (owner.fullscreen && window.matchMedia(TOUCH).matches) {
+        try {
+          void window.screen.orientation?.lock?.('landscape').catch(() => {});
+        } catch { /* Fullscreen still works with manual rotation. */ }
+      }
+    } catch {
+      if (session.current === owner) setNotice(exiting
+        ? 'Your browser did not exit fullscreen.'
+        : 'Your browser did not allow fullscreen here.');
+    } finally {
+      owner.pending = false;
+      if (session.current === owner) setPending(false);
+    }
+  }
+
+  return { entered, pending, notice, toggle };
+}
+
+export function PlayFullscreenButton({ fullscreen }) {
+  const { entered, pending, notice, toggle } = fullscreen;
+  const label = entered ? 'Exit fullscreen' : 'Enter fullscreen';
+  const Icon = entered ? Minimize : Maximize;
+  return <div className="play-fullscreen-control">
+    <button type="button" className="play-fullscreen-button" aria-label={label} title={label}
+      disabled={pending} onClick={() => void toggle()}>
+      <Icon size={18} aria-hidden="true" />
+    </button>
+    <p className="play-fullscreen-status" role="status">{notice}</p>
+  </div>;
+}
+
+export default function LandscapeGate({ active = true, fullscreen }) {
+  const blocked = useMobileLandscapeBlocked(active);
+  const dialog = useRef(null);
+  const title = useId(), instructions = useId();
 
   useLayoutEffect(() => {
     if (!blocked) return;
@@ -58,40 +128,9 @@ export default function LandscapeGate({ active = true, onBlockedChange }) {
     return () => prompt.close();
   }, [blocked]);
 
-  useLayoutEffect(() => {
-    if (!active) { setAttempt('idle'); return; }
-    const owner = { fullscreen: false, locked: false };
-    session.current = owner;
-    return () => {
-      session.current = null;
-      releaseLandscape(owner);
-    };
-  }, [active]);
-
   if (!blocked) return null;
 
-  const canLock = typeof window.screen.orientation?.lock === 'function' &&
-    (document.fullscreenElement || (document.fullscreenEnabled && typeof document.documentElement.requestFullscreen === 'function'));
-
-  async function enterLandscape() {
-    const owner = session.current;
-    if (!owner || attempt === 'pending') return;
-    setAttempt('pending');
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-        owner.fullscreen = true;
-      }
-      if (session.current !== owner) { releaseLandscape(owner); return; }
-      await window.screen.orientation.lock('landscape');
-      owner.locked = true;
-      if (session.current !== owner) { releaseLandscape(owner); return; }
-      setAttempt('idle');
-    } catch {
-      releaseLandscape(owner);
-      if (session.current === owner) setAttempt('failed');
-    }
-  }
+  const Icon = fullscreen.entered ? Minimize : Maximize;
 
   return (
     <dialog ref={dialog} className="landscape-gate" aria-labelledby={title} aria-describedby={instructions}
@@ -100,12 +139,10 @@ export default function LandscapeGate({ active = true, onBlockedChange }) {
         <Smartphone className="landscape-gate-phone" size={44} aria-hidden="true" />
         <h2 id={title}>Rotate your phone</h2>
         <p id={instructions}>Turn your phone sideways to continue. If the screen stays upright, enable auto-rotate.</p>
-        {canLock && <button type="button" disabled={attempt === 'pending'} onClick={() => void enterLandscape()}>
-          <Maximize size={17} aria-hidden="true" /> {attempt === 'pending' ? 'Opening fullscreen…' : 'Play fullscreen'}
-        </button>}
-        <p className="landscape-gate-status" role="status">
-          {attempt === 'failed' ? 'Fullscreen rotation is unavailable. Turn your phone sideways to play.' : ''}
-        </p>
+        <button type="button" disabled={fullscreen.pending} onClick={() => void fullscreen.toggle()}>
+          <Icon size={17} aria-hidden="true" /> {fullscreen.entered ? 'Exit fullscreen' : 'Enter fullscreen'}
+        </button>
+        <p className="landscape-gate-status" role="status">{fullscreen.notice}</p>
       </div>
     </dialog>
   );

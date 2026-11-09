@@ -1,5 +1,15 @@
 # Eldritch Fable shared workspace handoff
 
+## Bellhouse dual-stick controls — November 9, 2026
+
+Observed 2026-11-09 14:01 EST from the isolated Linux checkout and the private Ubuntu preview. The task branch feature/ef3d-bellhouse-preview in zyxoned/eldritchfable.com used previous handoff commit 2b17758c1056a365787f9d12b1e04a65bd51e414 over accepted main 1023c62c23d89645fbfe7e06ee813ee59fba5b3f. Local application commit 6afee57eba928d908f281ccf1a8d5ed5ec0c894a and published application commit ae707b7f45ed43e525e244eca66a079a0ee6151a match tree e35a06cda1cd47b23149e5a7a574566db25e3ca6.
+
+AnalogStick.jsx and free-controls.mjs handle independent pointers, camera-relative movement, and validated cell crossings. BellhouseStage.jsx draws the third-person follow camera and shares the analog position with actors.js. World geometry limits the camera near the bellhouse and cottage. Mossvale.tsx uses the existing Adventure move action and handles controls after WebGL initializes.
+
+The root and prefixed builds passed. npm test passed 219 tests. The targeted adventure, Bellhouse, and mobile controls suites passed seven Chromium tests with one intentional desktop skip. The mobile test verified look without movement, simultaneous pointers, release, the bell route, and combat. The private release ef-bellhouse-ae707b7f45ed returned HTTP 200 on play, login, and the preview auth endpoint. All four served assets match the prefixed build.
+
+Open /bellhouse/play/?scene=bellhouse on the private Tailscale preview and enter Whispering Glade. Hold MOVE to walk and LOOK to turn and tilt the camera. A physical Android playtest is the next review.
+
 ## Bellhouse Ravine private 3D preview — November 9, 2026
 
 Observed 2026-11-09 13:37 EST from the isolated Linux worktree and the existing private Ubuntu preview host. The maintained repository is zyxoned/eldritchfable.com. The clean application candidate before this handoff was local commit 34a74705bc11fa18918419f7dbba7259d3a8492e and published application commit bfed4a8ea843bbf0e3d5da41e5ab4a48e83460d7. Both trees were verified as a53a8c3c56f0d75cdf54c125473e524e9536535f. The accepted base was main 1023c62c23d89645fbfe7e06ee813ee59fba5b3f. The task branch is feature/ef3d-bellhouse-preview.

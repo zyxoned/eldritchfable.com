@@ -1,5 +1,11 @@
 # Eldritch Fable project state
 
+## Bellhouse dual-stick controls — November 9, 2026
+
+The left MOVE stick gives camera-relative analog movement and diagonals in Bellhouse Ravine. The right LOOK stick turns and tilts the third-person camera. The camera starts behind the hero, follows position, and shortens near the bellhouse walls. Adventure authorizes grid crossings and provides combat and saved positions.
+
+The private release ef-bellhouse-ae707b7f45ed serves /bellhouse/play/?scene=bellhouse from application commit ae707b7f45ed43e525e244eca66a079a0ee6151a. The build, 219 backend and unit tests, and seven desktop and mobile Chromium tests passed with one intentional desktop skip. The mobile test covered the look stick alone and both sticks held together. The served play and sign-in pages returned HTTP 200 and all four hosted asset hashes matched the prefixed build.
+
 ## Bellhouse Ravine private 3D preview — November 9, 2026
 
 The opt-in Adventure view renders Whispering Glade as a moonlit 3D ravine with a stone bellhouse, an angled follow camera, an animated hero and thornlings, and touch controls. The bell leads into a short exploration and combat route. Party state, positions, combat, and saved progress use the Adventure API. The bell response is local to the current visit.

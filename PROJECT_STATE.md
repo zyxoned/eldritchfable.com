@@ -1,5 +1,60 @@
 # Eldritch Fable project state
 
+## Baseline observation — November 20, 2026
+
+Read-only audit from a clean shallow worktree on branch `literate-barnacle`,
+observed 2026-11-20 ~19:33–19:40 UTC. Accepted main is now
+`de54885e4f9d143787dc40c38f5532f20c30e392` (live `git ls-remote`, matching the
+fetched `origin/main`): the merge of
+[PR #22](https://github.com/zyxoned/eldritchfable.com/pull/22)
+"ci: add Copilot setup steps workflow" (merged 2026-11-20 19:06:34 UTC).
+
+Changes since the November 6 entry below, verified against GitHub PR/CI records
+and the fetched Git history:
+
+- The Stripe checkout candidate below was **merged** as
+  [PR #20](https://github.com/zyxoned/eldritchfable.com/pull/20) on
+  2026-11-11 03:30:45 UTC, merge commit
+  `bedc2dd08b7be835998b72ad68966fd512a31d4d` (verified ancestor of main). Main's
+  tree contains `standalone/STRIPE.md`, `server/commerce.mjs`,
+  `commerce-routes.mjs`, `server/stripe-client.mjs` and both
+  `.github/workflows/` files. The Nov 6 entry's "no merge" and "accepted main
+  remains 1023c62…" statements are superseded.
+- [CI run 42251184710](https://github.com/zyxoned/eldritchfable.com/actions/runs/42251184710)
+  (Stripe candidate head `94cc0ac96250ebfa9475e72d69becc0da3d8277b`), listed
+  below as "remains to be checked", concluded **success**.
+- The Nov 5 candidates below are also merged:
+  [PR #16](https://github.com/zyxoned/eldritchfable.com/pull/16) storefront
+  design (Nov 5), [PR #17](https://github.com/zyxoned/eldritchfable.com/pull/17)
+  Adventure polish (Nov 5),
+  [PR #18](https://github.com/zyxoned/eldritchfable.com/pull/18) regions and
+  character paths (Nov 5),
+  [PR #19](https://github.com/zyxoned/eldritchfable.com/pull/19) expeditions and
+  gathering (Nov 5), per repository PR records.
+- [PR #23](https://github.com/zyxoned/eldritchfable.com/pull/23) "Cache
+  Playwright browsers and bound Copilot setup timeout" was merged 2026-11-20
+  19:25:11 UTC **into the `shiny-winner` stack branch** (merge commit
+  `f7d8dcc2425516d64f70e6b0502dca8996596a17`), not into main. `shiny-winner`
+  is 2 commits ahead of main, touching only
+  `.github/workflows/copilot-setup-steps.yml` (12 insertions); no open PR from
+  it to main was observed. Its CI runs (e.g. 44801948130) passed.
+- Open PRs at observation time:
+  [#21](https://github.com/zyxoned/eldritchfable.com/pull/21)
+  docs/business-identity-20261106 and
+  [#10](https://github.com/zyxoned/eldritchfable.com/pull/10)
+  demo/ruined-mossvale-20261030.
+
+Production deployment evidence is **missing** from this workspace: DNS
+resolution for eldritchfable.com failed, so `/frontend-release.json` and
+`/api/health` could not be checked. The latest verified production record in
+this log remains the November 5 security-hardening release
+`69bfb8d883cd-20261105013809184` (schema 6). Whether the subsequently merged
+work (storefront design, Adventure polish, regions, expeditions, Stripe with
+schema 9, CI setup) is deployed is **unverified** — no evidence either way.
+Current source requires schema 9; do not migrate a live database based on
+stale entries below. No merge, rollout, migration or production inspection was
+performed by this observation.
+
 ## Stripe checkout candidate — November 6, 2026
 
 Published as [draft PR #20](https://github.com/zyxoned/eldritchfable.com/pull/20)

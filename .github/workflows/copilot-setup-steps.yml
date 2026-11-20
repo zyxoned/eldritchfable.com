@@ -19,6 +19,9 @@ jobs:
     permissions:
       contents: read
 
+    # Fail fast instead of consuming session time if a step hangs.
+    timeout-minutes: 20
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -29,6 +32,15 @@ jobs:
           node-version: "24"
           cache: "npm"
           cache-dependency-path: standalone/package-lock.json
+
+      # Browser binaries are the largest download; cache them across sessions.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('standalone/package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
 
       - name: Install dependencies
         working-directory: standalone

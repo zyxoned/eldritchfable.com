@@ -26,6 +26,11 @@ function fixture(t) {
     const method = { gameplay: 'runtime', art: 'visual', infrastructure: 'automated', documentation: 'inspection' }[kind];
     const evidence = proof(id + '-result.txt', 'Synthetic ' + method + ' observation for ' + revision);
     const assets = [];
+    const sources = kind === 'documentation' ? [] : [{
+      id: 'runtime-catalog', locator: 'standalone/shared/class-catalog.mjs',
+      version: 'c'.repeat(40), purpose: 'Confirm the approved equipment slot model.',
+      evidence: proof('catalog-source-receipt.txt', 'Reviewed the class catalog at ' + 'c'.repeat(40)),
+    }];
     if (kind === 'art') {
       const art = proof(id + '-warden.svg', '<svg>test art</svg>');
       assets.push({
@@ -37,7 +42,7 @@ function fixture(t) {
     }
     return {
       id, kind, design: 'D-01', outcome: 'The hero can identify their equipment.',
-      revision, assets, criteria: [{ id: 'visibility', expected: 'Equipment appears in the saved slot.', method }],
+      revision, assets, sources, criteria: [{ id: 'visibility', expected: 'Equipment appears in the saved slot.', method }],
       results: [{ id: 'visibility', observed: 'The slot shows the item on return.', passed: true, method, revision, evidence }],
     };
   }
@@ -227,6 +232,7 @@ test('acceptance mode admits exactly one append and enforces the independently a
   const handoff = {
     id: art.id, kind: art.kind, design: art.design, outcome: art.outcome,
     criteria: structuredClone(art.criteria), assetIds: art.assets.map((asset) => asset.id),
+    requiredSources: art.sources.map(({ evidence, ...source }) => source),
   };
   passes(f.run(next, previous, handoff));
   fails(f.run(previous, previous, handoff));
@@ -242,9 +248,49 @@ test('acceptance mode admits exactly one append and enforces the independently a
     (h) => { h.criteria[0].method = 'inspection'; },
     (h) => { h.assetIds = ['warden', 'required-portrait']; },
     (h) => { h.assetIds = []; },
+    (h) => { h.requiredSources = []; },
+    (h) => { h.requiredSources[0].locator = 'different/canonical-catalog.mjs'; },
+    (h) => { h.requiredSources[0].version = 'd'.repeat(40); },
   ]) {
     const approved = structuredClone(handoff);
     change(approved);
     fails(f.run(next, previous, approved));
   }
+});
+
+test('source receipts are required and a verified reference can be reused across slices', (t) => {
+  const f = fixture(t);
+  const a = f.slice(1);
+  const b = f.slice(2);
+  b.sources[0] = structuredClone(a.sources[0]);
+  passes(f.run(ledger(a, b)));
+  for (const change of [
+    (s) => { s.sources = []; },
+    (s) => { s.sources[0].version = ''; },
+    (s) => { s.sources[0].locator = ''; },
+    (s) => { delete s.sources[0].evidence; },
+    (s) => { s.sources[0].evidence.sha256 = 'd'.repeat(64); },
+  ]) {
+    const candidate = structuredClone(b);
+    change(candidate);
+    fails(f.run(ledger(a, candidate)));
+  }
+});
+
+test('one-slice acceptance reuses trusted history even when past evidence is archived', (t) => {
+  const f = fixture(t);
+  const previous = ledger(f.slice(1));
+  const added = f.slice(2);
+  const next = ledger(...structuredClone(previous.slices), added);
+  const handoff = {
+    id: added.id, kind: added.kind, design: added.design, outcome: added.outcome,
+    criteria: structuredClone(added.criteria), assetIds: [],
+    requiredSources: added.sources.map(({ evidence, ...source }) => source),
+  };
+  rmSync(join(f.dir, previous.slices[0].results[0].evidence.path));
+  fails(f.run(next));
+  passes(f.run(next, previous, handoff));
+  const altered = structuredClone(next);
+  altered.slices[0].outcome = 'Changed after acceptance';
+  fails(f.run(altered, previous, handoff));
 });

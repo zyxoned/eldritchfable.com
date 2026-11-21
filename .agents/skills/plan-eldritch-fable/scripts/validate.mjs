@@ -47,7 +47,7 @@ function inside(root, target) {
   return rel !== '' && rel !== '..' && !rel.startsWith('..' + path.sep) && !path.isAbsolute(rel);
 }
 
-function evidenceReader(root) {
+function evidenceReader(root, verifyBytes) {
   const cache = new Map();
   return async function checkEvidence(ref, label) {
     record(ref, label);
@@ -58,6 +58,8 @@ function evidenceReader(root) {
       label + '.sha256 must be a lowercase SHA-256 digest');
     const candidate = path.resolve(root, ref.path);
     requireThat(inside(root, candidate), label + '.path leaves the ledger directory');
+    // A strict append may reuse file checks from its independently trusted prefix.
+    if (!verifyBytes) return;
     let resolved;
     let hash;
     try {
@@ -84,6 +86,17 @@ async function checkSlice(slice, label, evidence) {
   words(slice.design, label + '.design');
   words(slice.outcome, label + '.outcome');
   revision(slice.revision, label + '.revision');
+
+  const sources = list(slice.sources, label + '.sources');
+  requireThat(slice.kind === 'documentation' || sources.length > 0,
+    label + ' requires at least one source receipt');
+  const sourceIds = new Set();
+  for (const source of sources) {
+    uniqueId(source, sourceIds, label + '.sources');
+    const key = label + '.sources[' + source.id + ']';
+    for (const field of ['locator', 'version', 'purpose']) words(source[field], key + '.' + field);
+    await evidence(source.evidence, key + '.evidence');
+  }
 
   const criteria = list(slice.criteria, label + '.criteria');
   requireThat(criteria.length > 0, label + ' needs at least one acceptance criterion');
@@ -164,6 +177,24 @@ function checkHandoff(ledger, previous, handoff) {
     requireThat(isDeepStrictEqual(handoff[field], slice[field]),
       'appended slice ' + field + ' differs from its approved handoff');
   }
+  const requirements = list(handoff.requiredSources, 'handoff.requiredSources');
+  const receipts = new Map();
+  for (const receipt of list(slice.sources, 'appended slice.sources')) {
+    record(receipt, 'appended slice source');
+    receipts.set(receipt.id, receipt);
+  }
+  const sourceIds = new Set();
+  for (const source of requirements) {
+    uniqueId(source, sourceIds, 'handoff.requiredSources');
+    const receipt = receipts.get(source.id);
+    requireThat(receipt, 'missing receipt for approved handoff source ' + source.id);
+    for (const field of ['locator', 'version', 'purpose']) {
+      words(source[field], 'handoff.requiredSources[' + source.id + '].' + field);
+      requireThat(source[field] === receipt[field],
+        'source ' + source.id + ' ' + field + ' differs from its approved handoff');
+    }
+  }
+  requireThat(sourceIds.size === receipts.size, 'appended slice has sources outside its approved handoff');
   const expectedIds = list(handoff.assetIds, 'handoff.assetIds');
   const actualIds = list(slice.assets, 'appended slice.assets').map((asset, index) => {
     record(asset, 'appended slice.assets[' + index + ']');
@@ -189,18 +220,26 @@ export async function validateLedger(file, previousFile, handoffFile) {
   ledgerShape(ledger, 'ledger');
   requireThat(handoffFile === undefined || previousFile !== undefined,
     'acceptance against a handoff requires a trusted previous ledger');
+  let trustedSlices = 0;
+  let trustedPlaytests = 0;
   if (previousFile !== undefined) {
     const previous = await jsonFile(previousFile);
     checkPrefix(ledger, previous);
-    if (handoffFile !== undefined) checkHandoff(ledger, previous, await jsonFile(handoffFile));
+    if (handoffFile !== undefined) {
+      checkHandoff(ledger, previous, await jsonFile(handoffFile));
+      trustedSlices = previous.slices.length;
+      trustedPlaytests = previous.checkpoints.length;
+    }
   }
 
-  const evidence = evidenceReader(path.dirname(canonicalFile));
+  const root = path.dirname(canonicalFile);
+  const verifyEvidence = evidenceReader(root, true);
+  const reuseEvidence = evidenceReader(root, false);
   const ids = new Set();
   const counted = [];
   for (const [index, slice] of ledger.slices.entries()) {
     uniqueId(slice, ids, 'slices[' + index + ']');
-    await checkSlice(slice, 'slice ' + slice.id, evidence);
+    await checkSlice(slice, 'slice ' + slice.id, index < trustedSlices ? reuseEvidence : verifyEvidence);
     if (slice.kind !== 'documentation') counted.push(slice);
   }
 
@@ -219,6 +258,7 @@ export async function validateLedger(file, previousFile, handoffFile) {
     requireThat(point.decision === 'passed', label + ' requires an explicit designer decision of passed');
     for (const field of ['scenario', 'designer', 'observations']) words(point[field], label + '.' + field);
     requireThat(list(point.blockers, label + '.blockers').length === 0, label + ' has unresolved blocking findings');
+    const evidence = index < trustedPlaytests ? reuseEvidence : verifyEvidence;
     for (const field of ['build', 'automation', 'review']) await evidence(point[field], label + '.' + field);
   }
   return { slices: ledger.slices.length, counted: counted.length, playtests: due };

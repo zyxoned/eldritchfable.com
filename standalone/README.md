@@ -2,6 +2,8 @@
 
 Independent React/Vite storefront with a Node 24 API and SQLite customer accounts. The running application has no Base44 dependency. Checkout remains disabled; the catalog is empty until products are imported.
 
+For a local two-player game session, see [Play the Hollowbell expedition](HOLLOWBELL.md).
+
 Run these commands inside `standalone/`:
 
 ```sh

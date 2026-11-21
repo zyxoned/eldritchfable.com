@@ -5,6 +5,7 @@ import { adminSettings } from './admin.mjs';
 import { createSkillsService, SkillsError } from './skills.mjs';
 import { createAuthoredEngine, AuthoredError } from './authored-engine.mjs';
 import { createExpeditionRoutes, ExpeditionError } from './expedition-routes.mjs';
+import { createQuarry } from './quarry-expedition.mjs';
 import { reply, readJson, sameOriginJson } from './request-security.mjs';
 import { developmentFor, validDevelopmentChoice, outgoingDamage, incomingDamage } from '../shared/character-development.mjs';
 import { REGIONS, DEFAULT_REGION_ID, regionById, regionWalkable } from '../shared/world-catalog.mjs';
@@ -51,6 +52,9 @@ export function createGameService(db, options = {}) {
       damage: outgoingDamage(CLASSES[row.hero_class].damage + Math.floor((db.prepare('SELECT lifetime_xp FROM game_wallets WHERE user_id=?').get(row.user_id)?.lifetime_xp || 0) / 100) * 2, row.battle_stance) }) });
   const expeditions = createExpeditionRoutes(db, { content: authored.content || {}, combat: authored.combat,
     recordVictory: authored.recordVictory });
+  const quarry = createQuarry(db, { credit, combat,
+    error: (message, status, code) => new GameError(message, status, code),
+    equipItem: (userId, itemId, time) => authored.act(userId, { kind: 'equip', itemId }, time) });
   const streams = new Set();
   const streamInterval = options.sseIntervalMs || 15000;
   const XP_PER_GOLD = 1250;
@@ -66,17 +70,20 @@ export function createGameService(db, options = {}) {
     return { ...publicCharacter(row), maxHp: combat(row).maxHp };
   }
 
-  const away = userId => authored.isLocked(userId) || expeditions.locking(userId);
+  const away = userId => authored.isLocked(userId) || expeditions.locking(userId) || Boolean(quarry.scope(userId));
   function currentScope(userId, regionId, time) {
     const event = authored.projection(userId, time)?.encounter;
     const location = expeditions.location(userId);
-    return event ? 'event:' + event.id : location ? location.scopeId : 'region:' + regionId;
+    return event ? 'event:' + event.id : location ? location.scopeId : quarry.scope(userId) || 'region:' + regionId;
   }
   function resumeScenes(partyId, time) {
     if (!partyId) return;
     for (const row of db.prepare('SELECT user_id FROM game_characters WHERE party_id=?').all(partyId)) {
-      if (authored.isLocked(row.user_id)) expeditions.release(row.user_id);
-      authored.resume(row.user_id, time);
+      if (authored.isLocked(row.user_id)) {
+        expeditions.release(row.user_id);
+        quarry.depart(row.user_id);
+      }
+      if (!quarry.scope(row.user_id)) authored.resume(row.user_id, time);
     }
   }
 
@@ -142,7 +149,7 @@ export function createGameService(db, options = {}) {
   }
 
   function expireAndRespawn(world, time) {
-    let changed = false;
+    let changed = quarry.tick(world.id, time);
     const expiredCondition = 'party_id=? AND active_until>0 AND (active_until<=? OR user_id IN '
       + '(SELECT id FROM account_users WHERE disabled_at IS NOT NULL OR email_verified_at IS NULL))';
     const expired = db.prepare('SELECT name FROM game_characters WHERE ' + expiredCondition).all(world.id, time);
@@ -236,12 +243,14 @@ export function createGameService(db, options = {}) {
     ).all(world.id, time, new Date(time).toISOString()) : [];
     const journey = viewerId ? expeditions.projection(viewerId, time) : null;
     const authoredView = viewerId ? authored.projection(viewerId, time) : null;
+    const quarryView = viewerId && world ? quarry.projection(viewerId, world.id, time) : null;
     const privateLocation = viewerId && away(viewerId);
     const scopeId = authoredView?.encounter ? 'event:' + authoredView.encounter.id
-      : journey?.active ? journey.active.scopeId : 'region:' + regionId;
+      : journey?.active ? journey.active.scopeId : (quarryView && quarry.scope(viewerId)) || 'region:' + regionId;
     return {
       regionId, region: regionById(regionId),
-      scopeId, journey, authored: authoredView,
+      scopeId, journey, authored: authoredView, quarry: quarryView,
+      quarryAvailable: !privateLocation && rows.some(row => row.user_id === viewerId),
       partyId: world?.id || null, partyMode: world?.mode || null,
       maxPlayers: MAX_PLAYERS, maxVisitors: MAX_VISITORS,
       revision: world?.revision || 0,
@@ -431,7 +440,10 @@ export function createGameService(db, options = {}) {
         .run(userId, randomUUID(), name, input.heroClass, SPAWN.x, SPAWN.y, time + LEASE_MS, world.id);
       db.prepare('INSERT OR IGNORE INTO game_wallets(user_id) VALUES(?)').run(userId);
       row = character(userId);
-    } else updateCharacter(row, 'active_until=?,party_id=?', time + LEASE_MS, world.id);
+    } else {
+      if (row.party_id !== world.id) quarry.depart(userId);
+      updateCharacter(row, 'active_until=?,party_id=?', time + LEASE_MS, world.id);
+    }
     db.prepare('UPDATE game_admin_characters SET active_until=0 WHERE user_id=?').run(userId);
     authored.joined(userId, world.id, time);
     systemMessage(world, row.name + ' arrived in the glade.', time);
@@ -558,6 +570,11 @@ export function createGameService(db, options = {}) {
     if ((away(userId) || input.scopeId !== undefined) && input.scopeId !== currentScope(userId, p.region_id, time)) {
       throw new GameError('Your adventure moved on. Refresh before continuing.', 409, 'SCOPE_CHANGED');
     }
+    if (input.kind === 'quarry') {
+      if (authored.isLocked(userId) || expeditions.locking(userId)) throw new GameError('Return from your current journey before taking the quarry road.', 409, 'ACTION_UNAVAILABLE');
+      return quarry.act(p, input, time);
+    }
+    if (quarry.scope(userId) && input.kind !== 'chat') throw new GameError('Return from the quarry before acting in the open realm.', 409, 'ACTION_UNAVAILABLE');
     if (['encounterAttack', 'encounterSkill', 'encounterContinue', 'encounterWitness', 'encounterReturn', 'equip'].includes(input.kind)) {
       if (p.is_admin) throw new GameError('Support visitors cannot perform this action.', 403, 'ACTION_UNAVAILABLE');
       if (input.kind === 'equip' && expeditions.locking(userId)) throw new GameError('Return to the open road before changing equipment.', 409, 'ACTION_UNAVAILABLE');

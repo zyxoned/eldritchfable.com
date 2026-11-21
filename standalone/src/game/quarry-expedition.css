@@ -1,0 +1,105 @@
+.quarry-opening {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 16px 20px; border: 1px solid #67553c; border-radius: 8px;
+  background: linear-gradient(120deg,#302921,#1b1a1a); color: #f2e8d2;
+}
+.quarry-opening strong { font: 600 21px Georgia,serif; }
+.quarry-opening p { margin: 5px 0 0; font-size: 13px; color: #cec5b9; }
+.quarry-opening button { white-space: nowrap; }
+
+.ef-quarry {
+  --ink: #eee3cb; --dim: #c1b4a0; --line: #565046; --gold: #ddbd86;
+  width: 100%; min-height: 100svh; color-scheme: dark; color: var(--ink);
+  background: radial-gradient(ellipse at 17% 17%,#333535 0,transparent 43%),linear-gradient(125deg,#202125,#18191a 67%,#212020);
+  font-family: Inter,system-ui,sans-serif; line-height: 1.5;
+}
+.ef-quarry *, .ef-quarry *::before, .ef-quarry *::after { box-sizing: border-box; }
+.quarry-wrap { max-width: 1510px; margin: 0 auto; padding: 0 clamp(14px,3.7vw,65px) 48px; }
+.ef-quarry h1,.ef-quarry h2,.ef-quarry p { margin: 0; }
+.ef-quarry h1,.ef-quarry h2,.quarry-brand { font-family: Georgia,'Times New Roman',serif; font-weight: 500; }
+.ef-quarry button { touch-action: manipulation; cursor: pointer; font: inherit; color: inherit; }
+.ef-quarry button:disabled { opacity: .48; cursor: default; }
+.ef-quarry :focus-visible { outline: 2px solid #ffe2a8; outline-offset: 3px; }
+.quarry-mast { min-height: 64px; display: flex; justify-content: space-between; align-items: center; gap: 15px; border-bottom: 1px solid var(--line); }
+.quarry-brand { display: flex; align-items: center; gap: 10px; font-size: clamp(18px,2vw,26px); letter-spacing: -.055em; }
+.quarry-seal { border: 1px solid #a88e5d; color: #e2ca92; line-height: 28px; width: 30px; text-align: center; border-radius: 50%; font: 24px Georgia,serif; }
+.quarry-header-actions,.quarry-stage-top,.quarry-title,.quarry-walk { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.quarry-header-actions button,.quarry-link { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 0; padding: 10px 0; color: var(--dim); font-size: 13px; }
+.quarry-header-actions button:hover,.quarry-link:hover { color: var(--ink); text-decoration: underline; }
+.quarry-title { padding: clamp(18px,2.9vw,40px) 0 clamp(16px,2.2vw,30px); align-items: end; }
+.quarry-folio { display: flex; align-items: center; gap: 6px; color: var(--gold); font-size: 11px; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; }
+.ef-quarry h1 { font-size: clamp(31px,4.4vw,73px); line-height: 1.08; margin-top: 4px; letter-spacing: -.047em; scroll-margin: 12px; }
+.ef-quarry h2 { font-size: clamp(21px,2vw,29px); line-height: 1.2; letter-spacing: -.035em; }
+.quarry-self { text-align: right; flex-shrink: 0; }
+.quarry-self strong { display: block; font: 18px Georgia,serif; }
+.quarry-self span { display: block; color: var(--dim); font-size: 12px; }
+.quarry-self i { color: var(--gold); padding: 0 3px; }
+.quarry-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(240px,23%); gap: clamp(17px,2.5vw,36px); align-items: start; }
+.quarry-stage-column { min-width: 0; }
+.quarry-frame { position: relative; overflow: hidden; border: 1px solid #8b7857; background: #25242a; box-shadow: 0 9px 25px #03040444; }
+.quarry-field { display: block; width: 100%; aspect-ratio: 5 / 3; height: auto; max-height: 67svh; min-height: 330px; touch-action: manipulation; }
+.quarry-stage-top { position: absolute; inset: 12px 12px auto; pointer-events: none; }
+.quarry-stage-top span,.quarry-stage-top button,.quarry-foe { color: #f9eedc; background: #151719eb; border: 1px solid #8d7d62; box-shadow: 0 1px 4px #0006; }
+.quarry-stage-top span,.quarry-stage-top button { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; padding: 6px 9px; border-radius: 3px; }
+.quarry-stage-top span svg { color: #f59e88; }
+.quarry-stage-top button { pointer-events: auto; min-height: 33px; }
+.quarry-foe { position: absolute; top: 13px; left: 50%; transform: translateX(-50%); max-width: 48%; padding: 6px 10px; border-radius: 3px; }
+.quarry-foe span { display: flex; justify-content: space-between; gap: 9px; font-size: 12px; }
+.quarry-foe b { font-size: 10px; font-weight: normal; white-space: nowrap; color: #ddc9ad; }
+.quarry-foe meter { display: block; width: 100%; height: 7px; accent-color: #e69b74; }
+.quarry-foe strong { font-size: 12px; color: #ffc3ae; }
+.quarry-walk { padding: 9px 0; border-bottom: 1px solid var(--line); }
+.quarry-walk span,.quarry-equipped,.quarry-rarity,.quarry-journal h2,.quarry-link { display: inline-flex; align-items: center; gap: 7px; }
+.quarry-walk span { font-size: 12px; color: var(--dim); }
+.quarry-walk > div,.quarry-notes { display: flex; gap: 4px; }
+.quarry-walk button,.quarry-notes button { display: grid; place-content: center; background: #292b2d; border: 1px solid #59554e; border-radius: 3px; min-width: 36px; min-height: 33px; font-size: 13px; }
+.quarry-walk button:hover,.quarry-notes button:hover { background: #424038; }
+.quarry-status,.quarry-feedback { min-height: 26px; padding: 4px 0; color: #ddc9a4; font-size: 13px; }
+.quarry-warning { margin: 0 0 10px; padding: 9px 14px; border-left: 3px solid #db997c; background: #482f2d; }
+.quarry-warning button { margin-left: 1em; color: #fff; background: #56433d; }
+.quarry-side { border-top: 1px solid var(--line); }
+.quarry-side > section { border-bottom: 1px solid var(--line); padding: 16px 0 19px; }
+.quarry-side > section:first-child { padding-top: 13px; }
+.quarry-side p,.quarry-journal p,.quarry-journal li { color: var(--dim); font-size: 13px; }
+.quarry-side h2 + p,.quarry-journal h2 + p { padding-top: 9px; }
+.quarry-commands { display: grid; gap: 5px; margin-top: 12px; }
+.ef-quarry .quarry-command { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-height: 41px; padding: 9px 11px; text-align: left; background: #2d2e2e; border: 1px solid #534f47; color: #f1e6d0; font-size: 13px; border-radius: 3px; }
+.quarry-command svg { flex-shrink: 0; color: #baa681; }
+.ef-quarry .quarry-command-strong { border-color: #927956; background: #423c31; }
+.ef-quarry .quarry-command:enabled:hover { border-color: var(--gold); background: #463f32; }
+.quarry-notes { margin: 12px 0 5px; }
+.quarry-notes button { padding: 6px 11px; flex: 1; }
+.quarry-score ol { display: flex; flex-wrap: wrap; padding: 0; margin: 8px 0 0; list-style: none; }
+.quarry-score li { color: #f1d6a3; font: italic 18px Georgia,serif; }
+.quarry-score li + li::before { content: ' / '; color: #93856e; padding: 0 3px; }
+.quarry-kit > div { margin-top: 13px; }
+.quarry-kit p.quarry-rarity { font-size: 11px; font-weight: 600; color: #aad0e4; letter-spacing: .075em; text-transform: uppercase; }
+.quarry-kit strong { display: block; font: 19px Georgia,serif; margin: 3px 0; }
+.quarry-kit .quarry-command,.quarry-equipped { margin-top: 7px; }
+.quarry-equipped { color: var(--gold); font-size: 12px; }
+.quarry-journal { padding: 5px 0 13px; }
+.quarry-journal ul { margin: 10px 0; padding-left: 19px; }
+.quarry-journal li { margin: 4px 0; }
+@media(max-width: 850px) {
+  .quarry-layout { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .quarry-stage-column { display: contents; }
+  .quarry-frame { grid-row: 1; } .quarry-walk { grid-row: 2; } .quarry-status { grid-row: 3; min-height: 0; }
+  .quarry-side { grid-row: 4; } .quarry-journal { grid-row: 5; }
+  .quarry-commands { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .quarry-walk button,.quarry-notes button,.quarry-command { min-height: 44px; min-width: 42px; }
+}
+@media(max-width: 520px) {
+  .quarry-opening { flex-direction: column; align-items: stretch; }
+  .quarry-wrap { padding: 0 12px 24px; }
+  .quarry-mast { min-height: 52px; gap: 7px; }
+  .quarry-brand { font-size: 19px; gap: 4px; }
+  .quarry-seal { display: none; }
+  .quarry-header-actions { gap: 9px; } .quarry-header-actions button { font-size: 11px; }
+  .quarry-title { flex-wrap: wrap; gap: 6px; padding-top: 16px; }
+  .quarry-self { text-align: left; display: flex; align-items: baseline; gap: 7px; }
+  .quarry-self strong { font-size: 14px; }
+  .quarry-field { min-height: 290px; height: min(47svh,365px); }
+  .quarry-walk span { max-width: 135px; }
+  .quarry-foe { max-width: 47%; }
+  .quarry-foe span { font-size: 11px; gap: 5px; }
+}

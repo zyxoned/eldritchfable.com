@@ -13,6 +13,7 @@ import {
   type HeroClass, type Realm, type Appearance, type GatheringProfile,
 } from './shared/game';
 import GameCanvas from './GameCanvas';
+import QuarryExpedition from './QuarryExpedition';
 import AppearanceEditor from './AppearanceEditor';
 import FieldNotes from './FieldNotes';
 import SkillsPanel from './SkillsPanel';
@@ -183,7 +184,8 @@ export default function Mossvale({ user, onSessionExpired }: {
   const { crystals: CRYSTALS, enemies: ENEMIES, shrine: SHRINE, spawn: SPAWN } = region;
   const count = realm?.players.length || 0;
   const adminActive = !!profile?.adminActive;
-  const sceneActive = !!realm?.authored?.encounter || !!realm?.journey?.active;
+  const quarry = realm?.quarry;
+  const sceneActive = !!quarry || !!realm?.authored?.encounter || !!realm?.journey?.active;
   const query = new URLSearchParams(location.search);
   const wantsVisitor = query.get('visitor') === '1' || query.get('seventh') === '1';
   const invitedParty = query.get('party');
@@ -654,7 +656,7 @@ export default function Mossvale({ user, onSessionExpired }: {
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      if (!(target instanceof HTMLElement) || target.closest('input, textarea, select, [contenteditable]') || guide || leaving || appearanceOpen || adminToolsOpen || introOpen || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (quarry || !(target instanceof HTMLElement) || target.closest('input, textarea, select, [contenteditable]') || guide || leaving || appearanceOpen || adminToolsOpen || introOpen || event.altKey || event.ctrlKey || event.metaKey) return;
       const directions: Record<string, [number, number]> = {
         ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1],
         ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0],
@@ -676,7 +678,7 @@ export default function Mossvale({ user, onSessionExpired }: {
     };
     window.addEventListener('keydown', keydown);
     return () => window.removeEventListener('keydown', keydown);
-  }, [guide, leaving, appearanceOpen, adminToolsOpen, introOpen, me?.heroClass]);
+  }, [guide, leaving, appearanceOpen, adminToolsOpen, introOpen, me?.heroClass, !!quarry]);
 
   async function leaveRealm() {
     destination.current = null;
@@ -726,6 +728,14 @@ export default function Mossvale({ user, onSessionExpired }: {
     const crystal = CRYSTALS.find(c => !me?.gathered.includes(c.id)) || CRYSTALS[0];
     if (crystal) go(crystal.x, crystal.y); else setNotice('Moon crystals grow in Whispering Glade. Follow the crossings west to return.');
   };
+
+  if (quarry && me && !adminActive && !introOpen) {
+    return <QuarryExpedition key={realm?.partyId + ':' + me.id} quarry={quarry} playerId={me.id}
+      heroName={me.name} canPlay={connected && !adminToolsOpen && !joining && !visitorBusy}
+      partyId={realm?.partyMode === 'open' ? realm.partyId : null} connected={connected}
+      send={(verb, extra) => act('quarry', { verb, ...extra })} serverTime={realm?.serverTime}
+      error={error} notice={notice} reconnect={() => setSocketEpoch(value => value + 1)} />;
+  }
 
   return (
     <div className="ef-rpg"><div className="site-shell">
@@ -835,6 +845,11 @@ export default function Mossvale({ user, onSessionExpired }: {
 
           <section className="world-column" aria-label="Game world">
             {me && !adminActive && sceneActive && <JourneyPanel journey={realm?.journey} authored={realm?.authored} player={me} enabled={sceneCanAct} serverTime={realm?.serverTime} onAction={(kind, extra) => void act(kind, extra)} />}
+            {me && !adminActive && !sceneActive && realm?.quarryAvailable && <section className="quarry-opening" aria-label="Hollowbell expedition">
+              <div><strong>Hollowbell quarry market</strong><p>The quarry carts are loading. Take the road with your party.</p></div>
+              <button type="button" className="secondary-button" data-quarry-action="enter" disabled={!sceneCanAct}
+                onClick={() => void act('quarry', { verb: 'enter' })}>Travel to Hollowbell <ArrowUpRight size={15} /></button>
+            </section>}
             <div hidden={sceneActive} className={"world-card region-" + regionId}>
               <div className="world-heading">
                 <div><div className="section-kicker">ELDRITCH FABLE · {realm?.partyMode === 'solo' ? 'SOLO ADVENTURE' : 'PARTY REALM'}</div><h2>{region.name}</h2></div>

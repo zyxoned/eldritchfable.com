@@ -7,6 +7,7 @@
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "test": "node --test tests/*.test.mjs",
     "test:browser": "playwright test",
+    "play:quarry": "npm run build && node scripts/play-quarry.mjs",
     "db:migrate": "node --env-file-if-exists=.env server/database-tools.mjs migrate",
     "db:backup": "node --env-file-if-exists=.env server/database-tools.mjs backup",
     "db:restore": "node --env-file-if-exists=.env server/database-tools.mjs restore",

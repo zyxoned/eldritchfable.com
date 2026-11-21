@@ -1,5 +1,11 @@
 # Eldritch Fable project state
 
+## Hollowbell expedition candidate — 2026-11-21
+
+The optional authenticated `/play` expedition starts from application revision `b807e92703bebfdcd7725ca7adffd0b84d1d5100` (GitHub remote tree observed 2026-11-21 14:15:52 UTC). The [frozen handoff](docs/superpowers/plans/hollowbell-expedition-handoff.json) precedes implementation on the feature branch. The candidate adds schema 10 quarry state, reuses existing game wallets, party authority and owned equipment, and includes [a disposable two-player playtest](standalone/HOLLOWBELL.md). Its companion [world implementation skill](.agents/skills/build-isometric-mmorpg-world/SKILL.md) uses the existing planning and acceptance workflow.
+
+The named graphics review items and human playtest are pending designer evidence. CI for the candidate is the source for executed checks. This entry records remote source only. Local unpublished work and production runtime identities were unavailable; rollout and live data operations are separate.
+
 ## MMORPG planning skill — 2026-11-21
 
 The repo-local `$plan-eldritch-fable` skill targets planning and evidence review for `standalone/` and its `/play` entry. See [the skill](.agents/skills/plan-eldritch-fable/SKILL.md) for the handoff, asset reviews and five-slice playtest cadence. Its Node 24 regression suite runs through the existing standalone test harness. This tooling change starts from application revision `805c5e9444868fb602c1cc8d0bb9190e11d87f1b` (GitHub `main` observed 2026-11-21 13:33:26 UTC). Only the remote tree was accessible during preparation. Unpublished worktree state and runtime release identities were not inspected. The working acceptance ledger and designer decisions belong in their authorized evidence location.

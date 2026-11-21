@@ -1,3 +1,4 @@
+import type { QuarryView } from '../QuarryExpedition';
 import { REGIONS, DEFAULT_REGION_ID, regionById, regionTile, regionWalkable } from '../../../shared/world-catalog.mjs';
 export { REGIONS, DEFAULT_REGION_ID, regionById };
 export type RegionId = 'glade' | 'amberReach' | 'mistHarbor';
@@ -86,6 +87,8 @@ export type GatheringProfile = {
 };
 
 export type Realm = {
+  quarry?: QuarryView | null;
+  quarryAvailable?: boolean;
   scopeId?: string;
   journey?: any;
   authored?: any;

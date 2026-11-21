@@ -24,10 +24,11 @@ async function use(page, verb) {
   await action(page, verb).click({ timeout: 12000 });
 }
 
-async function capture(page, info, filename, attach = false) {
+async function capture(page, info, area, filename, attach = false) {
   const canvas = scene(page).locator('canvas').first();
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveAttribute('data-painted', 'true', { timeout: 15000 });
+  await expect(canvas).toHaveAttribute('data-painted-scene', area, { timeout: 15000 });
   const path = info.outputPath(filename);
   await canvas.screenshot({ path });
   if (attach) await info.attach(filename, { path, contentType: 'image/png' });
@@ -90,7 +91,7 @@ test('two authenticated adventurers play the quarry, cross independently and ret
     await use(friend, 'enter');
     await reach(friend, 'market');
     await expect.poll(async () => (await quarry(page)).actors.map(actor => actor.name)).toContain(heroes[1].name);
-    await capture(page, info, 'quarry-market.png', true);
+    await capture(page, info, 'market', 'quarry-market.png', true);
     const initial = await quarry(friend);
 
     await use(page, 'talk');
@@ -110,7 +111,7 @@ test('two authenticated adventurers play the quarry, cross independently and ret
     await use(friend, 'travel');
     await reach(friend, 'gate');
     await expect.poll(async () => (await quarry(page)).actors.length).toBeGreaterThanOrEqual(2);
-    await capture(friend, info, 'quarry-gate.png', true);
+    await capture(friend, info, 'gate', 'quarry-gate.png', true);
 
     const xpBefore = await Promise.all([world(page), world(friend)]);
     await strikeOnce(page);
@@ -139,7 +140,7 @@ test('two authenticated adventurers play the quarry, cross independently and ret
     // A companion may cross an opened passage without acquiring the opener's notes.
     await use(friend, 'descend');
     await reach(friend, 'deep');
-    await capture(page, info, 'private-quarry-deep.png');
+    await capture(page, info, 'deep', 'private-quarry-deep.png');
     await use(page, 'pulse');
     await expect.poll(async () => (await quarry(friend)).primed).toBe(true);
     await use(friend, 'return');

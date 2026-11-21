@@ -1,5 +1,9 @@
 # Eldritch Fable project state
 
+## MMORPG planning skill — 2026-11-21
+
+The repo-local `$plan-eldritch-fable` skill targets planning and evidence review for `standalone/` and its `/play` entry. See [the skill](.agents/skills/plan-eldritch-fable/SKILL.md) for the handoff, asset reviews and five-slice playtest cadence. Its Node 24 regression suite runs through the existing standalone test harness. This tooling change starts from application revision `805c5e9444868fb602c1cc8d0bb9190e11d87f1b` (GitHub `main` observed 2026-11-21 13:33:26 UTC). Only the remote tree was accessible during preparation. Unpublished worktree state and runtime release identities were not inspected. The working acceptance ledger and designer decisions belong in their authorized evidence location.
+
 ## Baseline observation — November 20, 2026
 
 Read-only audit from a clean shallow worktree on branch `literate-barnacle`,

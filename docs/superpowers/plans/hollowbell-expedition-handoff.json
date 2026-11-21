@@ -1,0 +1,89 @@
+{
+  "id": "hollowbell-two-hero-expedition",
+  "kind": "gameplay",
+  "design": "EF-QUARRY-SLICE-01",
+  "outcome": "Two regular heroes enter Hollowbell from /play, learn a passage through play, grow stronger, and return from the landing independently with their characters saved.",
+  "baseline": "b807e92703bebfdcd7725ca7adffd0b84d1d5100",
+  "entry": "An optional expedition from the existing authenticated /play realm, within its party. The default opening remains the approved game opening.",
+  "milestone": "playable beta",
+  "limits": "One market, one stronghold encounter and one short far-side landing. World naming outside this excursion and full-world counts remain separate designer decisions.",
+  "criteria": [
+    {
+      "id": "two-travelers",
+      "method": "runtime",
+      "expected": "Two independent signed-in ordinary heroes join the same isolated party through /play. Each sees their companion on the same expedition scene, can choose to move or wait, and keeps individual knowledge and position across reconnect."
+    },
+    {
+      "id": "market-and-evidence",
+      "method": "runtime",
+      "expected": "Observe the repairer's work and use their service. A second traveler can discover the same usable information independently at the quarry works. Observe personalized cues in the game without inspecting source or using an admin action."
+    },
+    {
+      "id": "encounter-and-reward",
+      "method": "runtime",
+      "expected": "Play one shared telegraphed encounter. A fresh eligible hero levels up, gains a usable expedition ability, claims and equips a named rare drop, observes its gameplay effect and retains it across reconnect. Retry and support-visitor actions cannot mint repeat or visitor rewards."
+    },
+    {
+      "id": "out-and-home",
+      "method": "runtime",
+      "expected": "Open the freight passage using evidence, descend by individual choice, operate the return mechanism using the earned ability, and ride the counterweight home. A companion remaining behind keeps their position and can join later."
+    },
+    {
+      "id": "graphics",
+      "method": "visual",
+      "expected": "At normal gameplay zoom inspect both hero forms, repairer at work, anticipating crawler and all three scenes in motion. Review silhouettes, feet against the ground, controls at desktop/mobile sizes and reduced motion. Obtain per-version designer approval."
+    }
+  ],
+  "assetIds": [
+    "quarry-warden",
+    "quarry-seer",
+    "quarry-repairer",
+    "quarry-crawler",
+    "quarry-market",
+    "quarry-gate",
+    "quarry-landing",
+    "quarry-interface"
+  ],
+  "requiredSources": [
+    {
+      "id": "world-brief",
+      "locator": "private:EF-QUARRY-SLICE-01",
+      "version": "designer-brief-v1",
+      "purpose": "Use the authorized world brief for route feel and portal discovery; keep authored solutions in the private source."
+    },
+    {
+      "id": "canon",
+      "locator": "docs/superpowers/specs/2026-10-30-eldritch-expeditions-design.md",
+      "version": "b807e92703bebfdcd7725ca7adffd0b84d1d5100",
+      "purpose": "Protect free exploration, illustrated top-down direction and individual travel."
+    },
+    {
+      "id": "realm",
+      "locator": "standalone/server/game.mjs",
+      "version": "b807e92703bebfdcd7725ca7adffd0b84d1d5100",
+      "purpose": "Reuse authenticated party authority, request receipts, XP and shared-state delivery."
+    },
+    {
+      "id": "entry",
+      "locator": "standalone/src/game/Mossvale.tsx",
+      "version": "b807e92703bebfdcd7725ca7adffd0b84d1d5100",
+      "purpose": "Integrate into existing movement, realm heartbeat, accounts and HUD."
+    },
+    {
+      "id": "characters",
+      "locator": "standalone/shared/appearance-catalog.mjs",
+      "version": "b807e92703bebfdcd7725ca7adffd0b84d1d5100",
+      "purpose": "Preserve player-selected appearance in the illustrated expedition."
+    },
+    {
+      "id": "playtests",
+      "locator": "standalone/playwright.config.mjs",
+      "version": "b807e92703bebfdcd7725ca7adffd0b84d1d5100",
+      "purpose": "Exercise the existing isolated desktop and mobile test harness."
+    }
+  ],
+  "decisionQueue": [
+    "EF-WORLD-01: reconcile world-wide realm nomenclature and total counts in the private designer review before changing the release atlas. This optional trip needs no global rename."
+  ],
+  "replanWhen": "Revisit this slice if travel conflicts with existing party rules or source changes the authenticated save contract. Review new shipping asset identities before acceptance."
+}

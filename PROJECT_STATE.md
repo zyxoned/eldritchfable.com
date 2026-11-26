@@ -1,5 +1,32 @@
 # Eldritch Fable project state
 
+## Integration observation — November 26, 2026
+
+At approximately 16:58 UTC, the Hollowbell candidate head
+`107bc0f8b32daa789f1a20e248842b8ff0d7691e` and fetched main
+`603b8734e68c6ead03bfd52edfbef0af91cd6073` were reconciled in this checkout.
+The source observations below are retained; production deployment and the
+resulting integration's hosted checks remain unverified.
+
+## Adventure entry gate refresh — November 26, 2026
+
+Local source update prepared in worktree branch `supreme-memory` from base commit
+`b807e92703bebfdcd7725ca7adffd0b84d1d5100` (not merged/published by this record).
+The `/play` and `/stash` unauthenticated account gate in
+`standalone/src/pages/Adventure.jsx` now renders a new ornate split layout that
+preserves the existing server-authoritative account check and redirects, adds an
+optional newsletter subscribe form against `/api/newsletter/subscribe`, and shows
+a basic map panel labeled **Èterna**. Authenticated users still hand off directly
+to `Mossvale`/`SecretStash` unchanged.
+
+Supporting styles were added in `standalone/src/game/game.css`, and browser
+expectations were updated in `standalone/tests/browser/adventure.spec.mjs` to
+assert the new headings plus newsletter/map presence and subscription response.
+Validation in that checkout: `npm run build` passed; targeted Playwright run
+`npm run test:browser -- tests/browser/adventure.spec.mjs` passed (4/4 desktop
+and mobile scenarios). Browser binaries were installed locally with
+`npx playwright install chromium` after initial launch errors in this workspace.
+
 ## Hollowbell expedition candidate — 2026-11-21
 
 The optional authenticated `/play` expedition starts from application revision `b807e92703bebfdcd7725ca7adffd0b84d1d5100` (GitHub remote tree observed 2026-11-21 14:15:52 UTC). The [frozen handoff](docs/superpowers/plans/hollowbell-expedition-handoff.json) precedes implementation on the feature branch. The candidate adds schema 10 quarry state, reuses existing game wallets, party authority and owned equipment, and includes [a disposable two-player playtest](standalone/HOLLOWBELL.md). Its companion [world implementation skill](.agents/skills/build-isometric-mmorpg-world/SKILL.md) uses the existing planning and acceptance workflow.

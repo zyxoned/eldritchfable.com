@@ -444,6 +444,34 @@
 .ef-rpg .stash-history li > span { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .ef-rpg .stash-history time, .ef-rpg .stash-history small { font-size: 11px; color: #aaa0ad; }
 .ef-rpg .stash-history b { color: #c79b55; white-space: nowrap; }
+.ef-rpg .adventure-entry-shell { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: clamp(14px, 3vw, 36px); }
+.ef-rpg .adventure-entry { position: relative; width: min(1180px, 100%); background: linear-gradient(130deg, #100f14, #191521 58%, #11131a); border: 1px solid #644a2d; box-shadow: 0 18px 52px #000a; overflow: hidden; }
+.ef-rpg .adventure-entry-frame { position: absolute; inset: 0; pointer-events: none; background-image: url('/tavern-reference/corner-tl.svg'), url('/tavern-reference/corner-tr.svg'), url('/tavern-reference/corner-bl.svg'), url('/tavern-reference/corner-br.svg'); background-position: top left, top right, bottom left, bottom right; background-size: 72px 72px; background-repeat: no-repeat; opacity: .93; }
+.ef-rpg .adventure-entry-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, .95fr); gap: clamp(20px, 3vw, 36px); padding: clamp(24px, 4vw, 48px); }
+.ef-rpg .adventure-entry-copy { position: relative; z-index: 1; }
+.ef-rpg .adventure-entry-copy .eyebrow { margin-bottom: 10px; letter-spacing: .17em; }
+.ef-rpg .adventure-entry-copy h1 { font: 400 clamp(34px, 5.5vw, 66px)/1.06 Georgia, serif; margin: 9px 0 18px; color: #f6e4bf; letter-spacing: -.02em; }
+.ef-rpg .adventure-entry-copy p { margin: 0 0 12px; color: #c7bfcd; font-size: 14px; line-height: 1.75; max-width: 68ch; }
+.ef-rpg .adventure-entry .gate-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 20px 0 18px; }
+.ef-rpg .adventure-entry .gate-actions a { min-height: 44px; }
+.ef-rpg .adventure-newsletter { border: 1px solid #624c35; border-radius: 8px; background: #160f14b8; padding: 14px 14px 12px; margin-top: 10px; }
+.ef-rpg .adventure-newsletter h2 { margin: 0 0 9px; font: 400 20px/1.2 Georgia, serif; display: flex; align-items: center; gap: 8px; color: #efd8aa; }
+.ef-rpg .adventure-newsletter p { margin: 0 0 8px; font-size: 12px; color: #bcb2bf; line-height: 1.6; }
+.ef-rpg .adventure-newsletter label { display: block; font-size: 11px; color: #decaa3; margin-bottom: 6px; }
+.ef-rpg .adventure-newsletter-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ef-rpg .adventure-newsletter-actions input { flex: 1 1 220px; min-width: 0; min-height: 44px; border: 1px solid #6a5a5f; background: #0f0c13; color: #f3eee4; border-radius: 5px; padding: 10px; font-size: 14px; }
+.ef-rpg .adventure-newsletter-actions button { min-height: 44px; white-space: nowrap; }
+.ef-rpg .adventure-entry-footer { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 9px 16px; }
+.ef-rpg .adventure-entry-footer .gate-home { color: #dcb16f; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.ef-rpg .adventure-entry-footer > span { color: #9d95a2; font-size: 11px; line-height: 1.6; }
+.ef-rpg .adventure-entry-map { position: relative; z-index: 1; border: 1px solid #8f734b; background: radial-gradient(ellipse at top, #213b4b 0%, #162737 45%, #0e1b28 100%); border-radius: 8px; padding: 14px 14px 12px; box-shadow: inset 0 0 0 1px #d8b9802b; }
+.ef-rpg .adventure-map-title { font: 400 21px/1.2 Georgia, serif; color: #f2ddb3; margin: 2px 0 10px; display: flex; align-items: center; gap: 8px; }
+.ef-rpg .adventure-entry-map svg { width: 100%; height: auto; display: block; border: 1px solid #c6aa752f; border-radius: 6px; background: linear-gradient(180deg, #18384a, #102838); }
+.ef-rpg .adventure-entry-map svg path { fill: #b59f74; stroke: #dac491; stroke-width: 3; opacity: .92; }
+.ef-rpg .adventure-entry-map p { margin: 11px 0 2px; color: #cfbf9a; font-size: 11px; line-height: 1.65; display: flex; align-items: flex-start; gap: 7px; }
+.ef-rpg .adventure-entry-map p svg { width: 13px; height: 13px; border: 0; border-radius: 0; background: none; color: #e8c179; margin-top: 2px; flex-shrink: 0; }
+
+/* Legacy class retained for stale in-browser snapshots and deep links. */
 .ef-rpg .account-gate { min-height: 85dvh; display: grid; place-content: center; padding: 35px 22px; text-align: center; max-width: 600px; margin: auto; }
 .ef-rpg .account-gate > svg { color: #c79b55; width: 40px; height: 40px; margin: 0 auto 25px; }
 .ef-rpg .account-gate h1 { font: 400 40px/1.1 Georgia, serif; margin: 15px 0; }
@@ -451,6 +479,14 @@
 .ef-rpg .gate-actions { display: flex; justify-content: center; gap: 12px; margin: 25px 0; }
 .ef-rpg .gate-home { color: #c79b55; font-size: 12px; margin-top: 10px; }
 @media (max-width: 760px) {
+  .ef-rpg .adventure-entry-layout { grid-template-columns: 1fr; padding: 18px 15px 17px; }
+  .ef-rpg .adventure-entry-frame { background-size: 58px 58px; }
+  .ef-rpg .adventure-entry-map { order: -1; }
+  .ef-rpg .adventure-map-title { font-size: 18px; margin-bottom: 8px; }
+  .ef-rpg .adventure-newsletter-actions { flex-direction: column; align-items: stretch; }
+  .ef-rpg .adventure-newsletter-actions input { flex: auto; }
+  .ef-rpg .adventure-entry-footer { display: grid; gap: 4px; }
+  .ef-rpg .adventure-entry-copy p { font-size: 13px; }
   .ef-rpg .site-header nav { gap: 14px; }
   .ef-rpg .site-header nav .nav-active, .ef-rpg .site-header nav button { display: none; }
   .ef-rpg .site-header nav a { font-size: 10px; }

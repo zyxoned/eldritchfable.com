@@ -4,12 +4,18 @@ import { openDatabase } from '../../server/database.mjs';
 
 test('adventure and stash require the existing site account', async ({ page }) => {
   await page.goto('/play');
-  await expect(page.getByRole('heading', { name: 'Every legend needs a name.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Enter Èterna' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Optional weekly newsletter' })).toBeVisible();
+  await expect(page.getByLabel('Basic map view of Èterna')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Sign in to Eldritch Fable' })).toHaveAttribute('href', '/login?next=%2Fplay');
+  const newsletterEmail = 'gate-' + Date.now() + '@example.test';
+  await page.getByLabel('Email', { exact: true }).fill(newsletterEmail);
+  await page.getByRole('button', { name: 'Subscribe', exact: true }).click();
+  await expect(page.locator('.adventure-newsletter [role="status"]')).toContainText('confirmation email');
   const denied = await page.request.get('/api/game/stash');
   expect(denied.status()).toBe(401);
   await page.goto('/stash');
-  await expect(page.getByRole('heading', { name: 'Your treasures are yours alone.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'The Secret Stash awaits.' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Exchange XP', exact: true })).toHaveCount(0);
 });
 

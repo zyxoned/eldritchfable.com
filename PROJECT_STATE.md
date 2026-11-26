@@ -1,5 +1,24 @@
 # Eldritch Fable project state
 
+## Adventure entry gate refresh — November 26, 2026
+
+Local source update prepared in worktree branch `supreme-memory` from base commit
+`b807e92703bebfdcd7725ca7adffd0b84d1d5100` (not merged/published by this record).
+The `/play` and `/stash` unauthenticated account gate in
+`standalone/src/pages/Adventure.jsx` now renders a new ornate split layout that
+preserves the existing server-authoritative account check and redirects, adds an
+optional newsletter subscribe form against `/api/newsletter/subscribe`, and shows
+a basic map panel labeled **Èterna**. Authenticated users still hand off directly
+to `Mossvale`/`SecretStash` unchanged.
+
+Supporting styles were added in `standalone/src/game/game.css`, and browser
+expectations were updated in `standalone/tests/browser/adventure.spec.mjs` to
+assert the new headings plus newsletter/map presence and subscription response.
+Validation in this checkout: `npm run build` passed; targeted Playwright run
+`npm run test:browser -- tests/browser/adventure.spec.mjs` passed (4/4 desktop
+and mobile scenarios). Browser binaries were installed locally with
+`npx playwright install chromium` after initial launch errors in this workspace.
+
 ## MMORPG planning skill — 2026-11-21
 
 The repo-local `$plan-eldritch-fable` skill targets planning and evidence review for `standalone/` and its `/play` entry. See [the skill](.agents/skills/plan-eldritch-fable/SKILL.md) for the handoff, asset reviews and five-slice playtest cadence. Its Node 24 regression suite runs through the existing standalone test harness. This tooling change starts from application revision `805c5e9444868fb602c1cc8d0bb9190e11d87f1b` (GitHub `main` observed 2026-11-21 13:33:26 UTC). Only the remote tree was accessible during preparation. Unpublished worktree state and runtime release identities were not inspected. The working acceptance ledger and designer decisions belong in their authorized evidence location.

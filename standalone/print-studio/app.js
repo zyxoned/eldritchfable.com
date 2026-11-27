@@ -103,7 +103,7 @@ const design=$('designer');
 function generatedFile(){
   if(!design.reportValidity())return;
   const f=fields(design);
-  return new File([tokenOBJ(f.shape,Number(f.width),Number(f.height))],[f.shape,f.width+'mm',f.height+'mm'].join('-')+'.obj',{type:'text/plain'});
+  return new File([tokenOBJ(f.shape,Number(f.width),Number(f.height))],[f.shape,f.width+'mm',f.height+'mm'].join('-')+'.obj',{type:'model/obj'});
 }
 function draw(){
   if(!design.checkValidity())return;
@@ -118,23 +118,32 @@ form('designer',()=>{
 $('use').onclick=()=>{
   generated=generatedFile();if(!generated)return;
   const f=$('uploadForm').elements;f.file.value='';f.name.value=design.elements.shape.selectedOptions[0].textContent+' tabletop print';f.mm.value=design.elements.width.value;
-  message('chosen','Selected '+generated.name);$('upload').scrollIntoView();
+  message('uploadFeedback','');message('chosen','Selected '+generated.name);$('upload').scrollIntoView();
 };
-$('uploadForm').elements.file.onchange=()=>{generated=null;message('chosen','');};
+// Some Android browsers append .txt when downloading a text-based Wavefront OBJ.
+const printFilename = name => name.replace(/\.obj\.txt$/i,'.obj');
+$('uploadForm').elements.file.onchange=()=>{
+  generated=null;
+  const file=$('uploadForm').elements.file.files[0];
+  message('chosen',file && printFilename(file.name)!==file.name ? 'Using '+printFilename(file.name)+' as a 3D model.' : '');
+  message('uploadFeedback','');
+};
 let pendingUpload;
 form('uploadForm',async f=>{
   if(!me)throw Error('Open Account and sign in, then return here.');
   if(!catalog.uploads)throw Error('OTTO uploads are awaiting merchant setup.');
   const file=generated||$('uploadForm').elements.file.files[0];
   if(!file || file.size>50_000_000)throw Error('Choose a supported file under 50 MB.');
-  const args={filename:file.name,bytes:file.size,name:f.name,mm:Number(f.mm),rights:f.rights==='on'};
+  const filename=printFilename(file.name);
+  if(!/\.(obj|3mf|glb|zip)$/i.test(filename))throw Error('Choose an OBJ, GLB, 3MF or ZIP model. Plain text files cannot be printed.');
+  const args={filename,bytes:file.size,name:f.name,mm:Number(f.mm),rights:f.rights==='on'};
   const fingerprint=JSON.stringify(args);
   if(!pendingUpload || pendingUpload.file!==file || pendingUpload.key!==fingerprint)pendingUpload={key:fingerprint,file,id:crypto.randomUUID(),sent:false};
   const job=pendingUpload;
   if(!job.sent){
     const {upload}=await api('uploads',{...args,requestId:job.id});
-    const data=new FormData();Object.entries(upload.fields).forEach(([k,v])=>data.append(k,v));data.append('file',file);
-    message('uploadFeedback','Uploading '+file.name+'…');
+    const data=new FormData();Object.entries(upload.fields).forEach(([k,v])=>data.append(k,v));data.append('file',file,filename);
+    message('uploadFeedback','Uploading '+filename+'…');
     const r=await fetch(upload.url,{method:'POST',body:data,credentials:'omit',referrerPolicy:'no-referrer'});
     if(!r.ok){pendingUpload=null;throw Error('Storage did not accept the upload. Please submit again.');}job.sent=true;
   }

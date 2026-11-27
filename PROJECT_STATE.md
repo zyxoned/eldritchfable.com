@@ -9,6 +9,8 @@ At 14:00 UTC, the public print page, catalog, account proxy and both webhook rec
 
 Later on November 27, the running print release was 70d3d4ef5be327f81075f56c725ecf0c7bf3f48e. The supplier authenticated, returned ready figure MD-QB1X6D8M and listed the configured saved method. The print database had no orders, published models or signed provider deliveries and checkout was paused. The subsequent bank-deposit change on PR #29 puts captured customer payments in a merchant release queue. Release records manual confirmation of a posted deposit, checks the customer payment again and caps the supplier charge at the original quote. Test payments use fixtures.
 
+At the storefront entry update on November 27 the print service reported signed OTTO and Stripe deliveries, uploads open and checkout paused. The public frontend release identified 8e6139d567058d755c04c093b91907821766a002, while the print application ran c11b3050ae53c9d32f065c23850c1745390aee4a on PR #29. The navigation update adds homepage, shop and menu links to the print service. The upload form accepts browser-suffixed OBJ downloads and shows the actual model filename used.
+
 ## Adventure entry gate refresh — November 26, 2026
 
 Local source update prepared in worktree branch `supreme-memory` from base commit

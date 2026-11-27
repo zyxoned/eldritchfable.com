@@ -67,9 +67,16 @@ export function receiveOtto(db, event) {
   try {
     const added = db.prepare('INSERT OR IGNORE INTO events VALUES(?,?,?,?)').run('otto:'+id,type,object,Date.now()).changes;
     if (added && object && ['order','model'].includes(data?.object) && Number.isSafeInteger(seq) && seq >= 0) {
-      db.prepare(`INSERT INTO snapshots VALUES(?,?,?,?) ON CONFLICT(object) DO UPDATE SET
+      const changed=db.prepare(`INSERT INTO snapshots VALUES(?,?,?,?) ON CONFLICT(object) DO UPDATE SET
         seq=excluded.seq,status=excluded.status,payment=excluded.payment WHERE excluded.seq>snapshots.seq`)
-        .run(object,seq,String(data.status || ''),String(data.payment?.status || ''));
+        .run(object,seq,String(data.status || ''),String(data.payment?.status || '')).changes;
+      if(changed && data.object==='order'){
+        const payment=data.payment?.status;
+        if(['failed','requires_action','refunded','refund_pending','cancelled'].includes(payment) || ['on_hold','cancelled','expired'].includes(data.status))
+          db.prepare("UPDATE orders SET state='review',hold=1 WHERE otto_id=? AND intent IS NOT NULL").run(object);
+        else if(['paid','on_account'].includes(payment))
+          db.prepare("UPDATE orders SET state='submitted' WHERE otto_id=? AND intent IS NOT NULL AND hold=0").run(object);
+      }
     }
     db.exec('COMMIT');
   } catch (error) { db.exec('ROLLBACK'); throw error; }

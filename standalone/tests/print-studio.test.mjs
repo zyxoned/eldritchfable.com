@@ -31,6 +31,9 @@ test('merchant publication, private upload, both signed deliveries, checkout and
   let external,paid=0,ss,orderInput, quoteInput, orderId;
   const stripe={webhooks:new Stripe('sk_test_fake').webhooks,accounts:{retrieve:async()=>({id:config.account,charges_enabled:true})},tax:{settings:{retrieve:async()=>({status:'active'})}},
     customers:{create:async()=>({id:'cus_mock'})},checkout:{sessions:{create:async params=>{orderId=params.client_reference_id;return {livemode:true,id:'cs_fixture',url:'https://checkout.stripe.com/c/pay/fake'};},retrieve:async()=>ss}}};
+  let product;
+  stripe.products={retrieve:async()=>{if(!product)throw Object.assign(Error('missing'),{code:'resource_missing'});return product;},
+    create:async params=>{product=params;return product;},update:async(id,params)=>Object.assign(product,params)};
   const factory=()=>({id:'OR-test',quote_id:'quote_mock',currency:'usd',external_id:external,status:paid?'confirmed':'awaiting_payment',shipping_option:{id:'ground'},payment:{amount:2400,status:paid?'paid':'unpaid'},shipping_address:customer});
   const otto=async(path,body,requestId)=>{
     if(path.startsWith('/payment-methods'))return {data:[{id:'pm_test'}]};
@@ -76,7 +79,11 @@ test('merchant publication, private upload, both signed deliveries, checkout and
   for(const seq of [2,2,1])assert.equal((await ottoDelivery(seq)).status,204);
   assert.equal(db.prepare('SELECT seq FROM snapshots').get().seq,2);
   async function stripeDelivery(evt){const sig=stripe.webhooks.generateTestHeaderString({payload:JSON.stringify(evt),secret:config.stripeHook});return req('stripe-webhook',null,evt,{'stripe-signature':sig});}
-  assert.equal((await stripeDelivery({id:'evt_test',type:'ping',livemode:true,data:{object:{}}})).status,204);
+  assert.equal((await req('admin/stripe-product','alice',{})).status,403);
+  assert.equal((await req('admin/stripe-product','admin',{})).status,200);
+  assert.equal(product.id,'ef_custom_tabletop_print');
+  assert.equal((await (await req('admin/config','admin')).json()).stripeDelivery,false);
+  assert.equal((await stripeDelivery({id:'evt_product',type:'product.created',livemode:true,data:{object:product}})).status,204);
   assert.equal((await req('admin/sales','admin',{open:true})).status,200);
   assert.equal((await req('checkout','bob',{quote:quote.id,option:'ground'})).status,404);
   assert.equal((await req('checkout','alice',{quote:quote.id,option:'ground'})).status,200);

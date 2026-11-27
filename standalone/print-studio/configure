@@ -2,6 +2,8 @@
 """Install OTTO credentials interactively. Never pass secrets as shell arguments."""
 import getpass
 import os
+import json
+import urllib.request
 import pathlib
 import re
 import subprocess
@@ -26,6 +28,28 @@ fields = [
     ('EF_PRINT_OTTO_PAYMENT_METHOD', 'Approved OTTO supplier payment method ID (optional)'),
 ]
 for key, title in fields:
+    if key == 'EF_PRINT_OTTO_PAYMENT_METHOD' and current.get('OTTOMFG_API_KEY'):
+        request = urllib.request.Request('https://api.ottomfg.com/api/v1/payment-methods?limit=100',
+            headers={'Authorization': 'Bearer ' + current['OTTOMFG_API_KEY'], 'Accept': 'application/json'})
+        try:
+            with urllib.request.urlopen(request, timeout=12) as response:
+                cards = json.load(response)['data']
+            if cards:
+                print('Choose which saved card OTTO may charge for paid customer orders.')
+                for i, card in enumerate(cards, 1):
+                    print(f"  {i}. {card.get('brand', 'Card')} ending {card.get('last4', 'unknown')}")
+                selection = input('Card number on this list (Enter to keep or skip): ').strip()
+                if selection:
+                    if not selection.isdecimal() or not 1 <= int(selection) <= len(cards):
+                        raise SystemExit('Invalid selection. No settings saved.')
+                    method = cards[int(selection)-1]['id']
+                    if not re.fullmatch(r'pm_[A-Za-z0-9]+', method):
+                        raise SystemExit('Unexpected provider payment method. No settings saved.')
+                    current[key] = method
+                continue
+            print('OTTO returned no saved cards. Add a payment method in OTTO Billing when ready.')
+        except (OSError, ValueError, KeyError, TypeError):
+            print('OTTO could not list saved cards. Check the business key and its payment permissions.')
     value = getpass.getpass(f'{title} [{"set" if key in current else "unset"}]: ').strip()
     if not value:
         continue

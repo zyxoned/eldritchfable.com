@@ -37,12 +37,15 @@ export function sales(db, otto, stripe, config) {
     const a=supplier.shipping_address;
     const address={line1:a.line1,...(a.line2?{line2:a.line2}:{}),city:a.city,state:a.state,postal_code:a.postal_code,country:'US'};
     const buyer=await stripe.customers.create({email:user.email,name:a.name,address,shipping:{name:a.name,address}}, {idempotencyKey:order.id+'-buyer'});
+    const custom=db.prepare('SELECT owner FROM models WHERE id=?').get(q.model)?.owner;
+    const product=custom && db.prepare("SELECT value FROM settings WHERE name='stripe_product'").get()?.value;
+    const stripeItem=product?{product}:{product_data:{name:q.name,tax_code:'txcd_99999999'}};
     const session=await stripe.checkout.sessions.create({
       mode:'payment',customer:buyer.id,payment_method_types:['card'],currency:'usd',
       automatic_tax:{enabled:true},adaptive_pricing:{enabled:false},
       client_reference_id:order.id,metadata:{print_order:order.id},payment_intent_data:{metadata:{print_order:order.id}},
       line_items:[{quantity:1,price_data:{currency:'usd',unit_amount:order.retail,tax_behavior:'exclusive',
-        product_data:{name:q.name,tax_code:'txcd_99999999'}}}],
+        ...stripeItem}}],
       shipping_options:[{shipping_rate_data:{type:'fixed_amount',fixed_amount:{amount:order.shipping,currency:'usd'},
         display_name:option.name,tax_behavior:'exclusive',tax_code:'txcd_92010001'}}],
       expires_at:Math.floor(order.created/1000)+3600,

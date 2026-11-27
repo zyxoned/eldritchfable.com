@@ -97,6 +97,21 @@ export function studio({db,otto,config,stripe,identity}) {
         stripe:Boolean(stripe),stripeWebhook:Boolean(config.stripeHook),fulfillment:Boolean(config.method),markup:markups()??null,
         ottoDelivery:seen('otto'),stripeDelivery:seen('stripe'),sales:sells(),
         review:db.prepare("SELECT id,otto_id,state FROM orders WHERE hold=1 OR state IN ('paid','supplier_processing') ORDER BY created DESC LIMIT 50").all()});
+      if(path===prefix+'/admin/stripe-product' && post){
+        if(!stripe || !config.stripeHook) fail(503,'Enter the live Stripe key and endpoint signing secret on the server first.');
+        const account=await stripe.accounts.retrieve();
+        if(account.id!==config.account || !account.charges_enabled) fail(409,'Check the merchant Stripe account.');
+        const id='ef_custom_tabletop_print';
+        let product;
+        try{product=await stripe.products.retrieve(id);}
+        catch(e){if(e.code!=='resource_missing') throw e;}
+        if(product && (product.deleted || product.metadata?.studio!=='eldritch_fable_print')) fail(409,'The Stripe product identifier is already in use.');
+        const metadata={studio:'eldritch_fable_print',delivery_check:randomUUID()};
+        if(product) await stripe.products.update(id,{metadata});
+        else await stripe.products.create({id,name:'Custom tabletop print',tax_code:'txcd_99999999',metadata},{idempotencyKey:config.account+'-studio-product'});
+        db.prepare("INSERT INTO settings VALUES('stripe_product',?) ON CONFLICT(name) DO UPDATE SET value=excluded.value").run(id);
+        return json(200,{requested:true});
+      }
       if(path===prefix+'/admin/sales' && post){
         if(typeof b.open!=='boolean') fail(400,'Choose open or paused.');
         if(b.open){

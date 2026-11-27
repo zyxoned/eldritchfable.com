@@ -4,6 +4,8 @@
 
 The studio branch starts at GitHub main 603b8734e68c6ead03bfd52edfbef0af91cd6073. The live storefront and API identified release 8e6139d567058d755c04c093b91907821766a002. The print service can be installed independently at /print-studio/ with its own private order database. Supplier credentials, signed deliveries, a merchant-approved price or custom markup, and activation are separate from deployment. See standalone/print-studio/README.md for configuration. The existing storefront sandbox and game are independent.
 
+At 14:00 UTC, the public print page, catalog, account proxy and both webhook receiver paths responded on eldritchfable.com. The first print service source was 9dd14588f23e58728fe80db50f174b99026e4b74. The independent feature is tracked in PR #29. The merchant Stripe and OTTO webhook destinations are registered. OTTO listed the existing business API key as active and never used. The host had no supplier or Stripe runtime secrets for this service, the public catalog was empty and sales were paused. The studio was exercised from the public designer through selection of a generated Seer OBJ. Mock payment, privacy, event replay and mesh tests ran locally; real provider delivery, payment and fulfillment remain unverified.
+
 
 ## Adventure entry gate refresh — November 26, 2026
 

@@ -152,5 +152,9 @@ async function listModels(next){
 $('load').onclick=()=>action($('load'),()=>listModels(false),'adminFeedback');
 $('more').onclick=()=>action($('more'),()=>listModels(true),'adminFeedback');
 form('markup',async f=>{await api('admin/markup',{cents:Math.round(Number(f.amount)*100)});await refreshAdmin();message('adminFeedback','Custom print markup saved.');},'adminFeedback');
+$('verifyStripe').onclick=()=>action($('verifyStripe'),async()=>{
+  await api('admin/stripe-product',{});
+  message('adminFeedback','Requested a Stripe event for the custom print product. Refresh this page to see the signed delivery.');
+},'adminFeedback');
 for(const [id,open] of [['open',true],['pause',false]])$(id).onclick=()=>action($(id),async()=>{await api('admin/sales',{open});await refresh();message('adminFeedback',open?'Customer checkout opened.':'Customer checkout paused.');},'adminFeedback');
 refresh().catch(e=>message('status',e.message));

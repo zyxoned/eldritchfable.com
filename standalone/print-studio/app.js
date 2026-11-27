@@ -47,7 +47,7 @@ async function refresh(){
   $('list').replaceChildren();
   catalog.models.forEach(m=>showModel($('list'),m,true));
   if(!catalog.models.length)add($('list'),'p','The first collection is being prepared.');
-  $('library').hidden=!me;$('merchant').hidden=!me?.admin;
+  $('libraryLogin').hidden=Boolean(me);$('privatePrints').hidden=!me;$('merchant').hidden=!me?.admin;
   if(!me)return;
   $('myModels').replaceChildren();$('orders').replaceChildren();
   me.models.forEach(m=>showModel($('myModels'),m,false));
@@ -141,14 +141,25 @@ form('uploadForm',async f=>{
   if(!pendingUpload || pendingUpload.file!==file || pendingUpload.key!==fingerprint)pendingUpload={key:fingerprint,file,id:crypto.randomUUID(),sent:false};
   const job=pendingUpload;
   if(!job.sent){
-    const {upload}=await api('uploads',{...args,requestId:job.id});
-    const data=new FormData();Object.entries(upload.fields).forEach(([k,v])=>data.append(k,v));data.append('file',file,filename);
+    let id;
+    try { ({id}=await api('uploads',{...args,requestId:job.id,transfer:'studio'})); }
+    catch(error){if(error.status===409)pendingUpload=null;throw error;}
     message('uploadFeedback','Uploading '+filename+'…');
-    const r=await fetch(upload.url,{method:'POST',body:data,credentials:'omit',referrerPolicy:'no-referrer'});
-    if(!r.ok){pendingUpload=null;throw Error('Storage did not accept the upload. Please submit again.');}job.sent=true;
+    let response;
+    try {
+      response=await fetch('/api/otto/uploads/'+encodeURIComponent(id)+'/content',{
+        method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file
+      });
+    } catch { throw Error('The connection to Eldritch Fable was interrupted. Tap Submit for inspection again to retry.'); }
+    if(!response.ok){
+      const problem=await response.json().catch(()=>({}));
+      if(response.status===410)pendingUpload=null;
+      throw Error(problem.error||'File transfer interrupted. Submit the same file again.');
+    }
+    job.sent=true;
   }
   const m=await api('uploads/finish',{id:job.id});
-  pendingUpload=null;await refresh();message('uploadFeedback','Submitted '+m.id+'. Check inspection under My prints.');
+  message('uploadFeedback','Submitted '+m.id+'. Check inspection under My prints.');await refresh();
 },'uploadFeedback');
 form('address',async a=>{
   const model=selected;

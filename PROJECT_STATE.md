@@ -11,6 +11,8 @@ Later on November 27, the running print release was 70d3d4ef5be327f81075f56c725e
 
 At the storefront entry update on November 27 the print service reported signed OTTO and Stripe deliveries, uploads open and checkout paused. The public frontend release identified 8e6139d567058d755c04c093b91907821766a002, while the print application ran c11b3050ae53c9d32f065c23850c1745390aee4a on PR #29. The navigation update adds homepage, shop and menu links to the print service. The upload form accepts browser-suffixed OBJ downloads and shows the actual model filename used.
 
+The subsequent Warden upload report was traced to two registered files without a corresponding model. OTTO storage rejected browser-origin access from the storefront. The repair sends model bytes through the authenticated, same-origin Print Studio, retains a successful transfer across retries and links the preview bag to private print orders. Production frontend parent 3204cbd7b0584bbce29171ffb34ee86276b0b17b and studio parent cdd17ae48228cfbef2177e31811cd642bd94b00a were verified independently. This change preserves customer checkout activation and bank-deposit release settings.
+
 ## Adventure entry gate refresh — November 26, 2026
 
 Local source update prepared in worktree branch `supreme-memory` from base commit

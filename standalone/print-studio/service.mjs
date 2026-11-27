@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { fail, eligible, initialize, ottoClient, receiveOtto, verifyOtto } from './provider.mjs';
+import { finishUpload, transferUpload } from './transfer.mjs';
 import { sales } from './sales.mjs';
 
 const prefix='/api/otto';
@@ -22,7 +23,7 @@ async function bytes(req,max) {
   for await(const part of req){size+=part.length;if(size>max) fail(413,'Request is too large.');parts.push(part);}
   return Buffer.concat(parts);
 }
-export function studio({db,otto,config,stripe,identity}) {
+export function studio({db,otto,config,stripe,identity,sendStorage}) {
   initialize(db);
   const commerce=sales(db,otto,stripe,config);
   async function user(req,admin=false) {
@@ -37,6 +38,7 @@ export function studio({db,otto,config,stripe,identity}) {
   const sells = () => wired() && db.prepare("SELECT value FROM settings WHERE name='open'").get()?.value===1;
   const statement=(sql,...args)=>db.prepare(sql).get(...args);
   const limited = new Map();
+  const transfers = new Set();
   function limit(owner) {
     const now=Date.now();
     if(limited.size>4096) for(const [k,v] of limited) if(v.until<now) limited.delete(k);
@@ -75,6 +77,22 @@ export function studio({db,otto,config,stripe,identity}) {
       if(!path.startsWith(prefix+'/')) fail(404,'Page not found.');
       const u=await user(req,path.startsWith(prefix+'/admin/'));limit(u.id);
       const post=req.method==='POST';
+      const content = path.match(/^\/api\/otto\/uploads\/([a-f0-9-]{36})\/content$/);
+      if (post && content) {
+        if (req.headers.origin !== config.origin || req.headers['content-type'] !== 'application/octet-stream')
+          fail(403, 'Origin or file type not accepted.');
+        const row = statement('SELECT * FROM uploads WHERE id=? AND owner=?', content[1], u.id);
+        if (!row) fail(404, 'Upload not found.');
+        if (row.file_id) { req.resume(); return json(200, {stored:true}); }
+        if (Date.now()-row.created > 3_600_000) fail(410, 'Upload expired. Submit the file again.');
+        if (transfers.has(row.id) || transfers.size >= 4) fail(429, 'Another upload is in progress. Try again in a moment.');
+        transfers.add(row.id);
+        try {
+          const file = await transferUpload(req, row, otto, sendStorage);
+          db.prepare('UPDATE uploads SET file_id=? WHERE id=?').run(file, row.id);
+          return json(200, {stored:true});
+        } finally { transfers.delete(row.id); }
+      }
       let b={};
       if(post){
         if(req.headers.origin!==config.origin || req.headers['content-type']?.split(';')[0]!=='application/json') fail(403,'Origin not accepted.');
@@ -157,6 +175,7 @@ export function studio({db,otto,config,stripe,identity}) {
         return json(200,{saved:true});
       }
       if(path===prefix+'/uploads' && post){
+        if(b.transfer!=='studio') fail(409,'Refresh the Print Studio and submit your model again.');
         if(!config.ottoKey) fail(503,'OTTO uploads are awaiting setup.');
         if(!string(b.name,90)||!string(b.filename,160)||!/^[-\w .]+\.(3mf|glb|obj|zip)$/i.test(b.filename)||
           !Number.isSafeInteger(b.bytes)||b.bytes<=0||b.bytes>50_000_000||!Number.isInteger(b.mm)||b.mm<30||b.mm>200||b.rights!==true) fail(400,'Check the name, file, size and print permission.');
@@ -169,26 +188,9 @@ export function studio({db,otto,config,stripe,identity}) {
           row=statement('SELECT * FROM uploads WHERE id=?',id);
         }
         if(row.owner!==u.id||row.bytes!==b.bytes||row.filename!==b.filename||row.name!==b.name.trim()||row.mm!==b.mm||Date.now()-row.created>3600000) fail(409,'Start a fresh upload.');
-        const f=await otto('/files',{filename:row.filename,size_bytes:row.bytes},id+'-file');
-        if(!/^file_[0-9a-f]{32}$/.test(f.id)||f.upload?.method!=='POST'||new URL(f.upload.url).protocol!=='https:') fail(502,'Invalid upload instructions.');
-        db.prepare('UPDATE uploads SET file_id=? WHERE id=?').run(f.id,id);
-        return json(200,{id,upload:f.upload});
+        return json(200,{id});
       }
-      if(path===prefix+'/uploads/finish' && post){
-        const row=statement('SELECT * FROM uploads WHERE id=? AND owner=?',b.id,u.id);
-        if(!row?.file_id) fail(404,'Upload not found.');
-        if(row.model_id) return json(200,{id:row.model_id});
-        if(Date.now()-row.created>86400000) fail(409,'Upload expired.');
-        const m=await otto('/models',{name:row.name,source:{file_id:row.file_id},longest_dimension_mm:row.mm,external_id:'ef-custom-'+row.id},row.id+'-model');
-        if(!validId(m.id)) fail(502,'Model registration failed.');
-        db.exec('BEGIN IMMEDIATE');
-        try{
-          db.prepare('INSERT OR IGNORE INTO models(id,owner,name,mm) VALUES(?,?,?,?)').run(m.id,u.id,row.name,row.mm);
-          if(statement('SELECT owner FROM models WHERE id=?',m.id)?.owner!==u.id) fail(409,'Model ownership conflict.');
-          db.prepare('UPDATE uploads SET model_id=? WHERE id=?').run(m.id,row.id);db.exec('COMMIT');
-        }catch(e){db.exec('ROLLBACK');throw e;}
-        return json(200,{id:m.id});
-      }
+      if(path===prefix+'/uploads/finish' && post) return json(200,await finishUpload(db,otto,u.id,b.id));
       if((path===prefix+'/model' && req.method==='GET')||(path===prefix+'/quotes' && post)){
         const id=post?b.model:url.searchParams.get('id');
         if(!validId(id)) fail(400,'Invalid model.');
@@ -240,6 +242,6 @@ if(process.argv[1] && import.meta.url===pathToFileURL(realpathSync(process.argv[
     const response=await fetch('http://127.0.0.1:3102/api/auth/me',{headers:{Cookie:match[1]},signal:AbortSignal.timeout(4000),redirect:'error'});
     return response.ok?(await response.json()).user:null;
   }});
-  server.requestTimeout=30000;
+  server.requestTimeout=300_000;
   server.listen(Number(e.EF_PRINT_PORT||3118),'127.0.0.1');
 }

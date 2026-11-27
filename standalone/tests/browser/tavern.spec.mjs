@@ -13,6 +13,13 @@ const products = [
     variants: [{ id: 'default', label: 'Default', price_cents: 1599 }] }
 ];
 
+test('the preview bag links directly to private print orders', async ({page})=>{
+  await page.goto('/bag');
+  const prints=page.getByRole('link',{name:'View my prints and orders'});
+  await expect(prints).toBeVisible();
+  await expect(prints).toHaveAttribute('href','/print-studio/#library');
+});
+
 test('Tavern home works with the empty production catalog and keeps navigation accessible', async ({ page }, testInfo) => {
   await page.route('**/api/catalog', route => route.fulfill({ json: { products: [], collections: [] } }));
   await page.goto('/');

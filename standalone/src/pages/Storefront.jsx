@@ -223,7 +223,7 @@ function Product() {
 }
 function Bag() {
   const cart = usePreview();
-  return <div className="ef-page"><p className="eyebrow">Your next adventure</p><h1>Your bag</h1><p className="ef-notice">Preview bag · Sample prices · Checkout disabled</p>{cart.notice && <p role="status">{cart.notice}</p>}
+  return <div className="ef-page"><p className="eyebrow">Your next adventure</p><h1>Your bag</h1><p className="ef-notice">This bag holds preview merchandise at sample prices. For custom models, check inspection, shipping and orders in the Print Studio.</p><a className="ef-button outline" href="/print-studio/#library">View my prints and orders</a>{cart.notice && <p role="status">{cart.notice}</p>}
     {!cart.ready ? <p role="status">Loading your bag…</p> : !cart.lines.length ? <div className="ef-state"><ShoppingBag /><p>Your bag is empty.</p><Link className="ef-button" to={`${ROOT}/shop`}>Explore the collection</Link></div> : <><div className="ef-cart-list">{cart.lines.map(line => {
       const product = cart.products.find(p => p.id === line.productId);
       const variant = product?.variants.find(v => v.id === line.variantId);

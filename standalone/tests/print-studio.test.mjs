@@ -49,7 +49,9 @@ test('merchant publication, private upload, both signed deliveries, checkout and
     if(path==='/models')return {id:privateId};
     assert.fail(path);
   };
-  const server=studio({db,otto,stripe,config,identity:async(req)=>req.headers.actor?{id:req.headers.actor,email:'test@example.test',role:req.headers.actor==='admin'?'admin':'customer'}:null});
+  let storeAttempts=0;
+  const sendStorage=async()=>new Response(null,{status:++storeAttempts===1?503:204});
+  const server=studio({db,otto,stripe,config,sendStorage,identity:async(req)=>req.headers.actor?{id:req.headers.actor,email:'test@example.test',role:req.headers.actor==='admin'?'admin':'customer'}:null});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(async()=>{await new Promise(r=>server.close(r));db.close();});
   const root='http://127.0.0.1:'+server.address().port+'/api/otto/';
   async function req(path,actor,body,headers={}){return fetch(root+path,{method:body?'POST':'GET',headers:{origin,'content-type':'application/json',...(actor?{actor}:{}),...headers},body:body?JSON.stringify(body):undefined});}
@@ -61,7 +63,16 @@ test('merchant publication, private upload, both signed deliveries, checkout and
   assert.equal((await req('admin/listing','admin',{id,published:true,retail:1000})).status,409);
   assert.equal((await req('admin/listing','admin',{id,published:true,retail:3000})).status,200);
   const requestId=randomUUID();
-  assert.equal((await req('uploads','alice',{requestId,name:'Mine',filename:'mine.obj',mm:80,bytes:50,rights:true})).status,200);
+  assert.equal((await req('uploads','alice',{requestId,transfer:'studio',name:'Mine',filename:'mine.obj',mm:80,bytes:50,rights:true})).status,200);
+  const transfer=(actor,bytes=50,site=origin)=>fetch(root+'uploads/'+requestId+'/content',{method:'POST',
+    headers:{origin:site, actor,'content-type':'application/octet-stream'},body:Buffer.alloc(bytes)});
+  assert.equal((await transfer('bob')).status,404);
+  assert.equal((await transfer('alice',50,'https://other.example')).status,403);
+  assert.equal((await transfer('alice',49)).status,400);
+  assert.equal((await transfer('alice')).status,502);
+  assert.equal((await req('uploads/finish','alice',{id:requestId})).status,409);
+  for(let i=0;i<2;i++)assert.equal((await transfer('alice')).status,200);
+  assert.equal(storeAttempts,2);
   assert.equal((await req('uploads/finish','bob',{id:requestId})).status,404);
   assert.equal((await req('uploads/finish','alice',{id:requestId})).status,200);
   assert.equal((await req('model?id='+privateId,'bob')).status,404);

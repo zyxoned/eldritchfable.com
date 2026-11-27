@@ -5,7 +5,7 @@ import {studio} from '../../print-studio/service.mjs';
 test('a customer can submit a built-in design and a Firefox OBJ download without renaming it',async({page})=>{
   const db=new DatabaseSync(':memory:');
   const config={ottoKey:'fixture',origin:''};
-  const registered=[];
+  const registered=[],sent=[];
   const otto=async(path,body)=>{
     if(path==='/files'){
       registered.push(body.filename);
@@ -14,15 +14,19 @@ test('a customer can submit a built-in design and a Firefox OBJ download without
     if(path==='/models')return {id:'MD-0000000'+registered.length};
     throw Error('Unexpected OTTO call '+path);
   };
-  const server=studio({db,otto,config,identity:async()=>({id:'test-buyer',role:'customer'})});
+  const sendStorage=async(url,options)=>{
+    expect(url).toBe('https://storage.example.test/upload');
+    const file=options.body.get('file');
+    expect(await file.text()).toContain('v ');
+    sent.push(file.name);
+    return new Response(null,{status:204});
+  };
+  const server=studio({db,otto,config,sendStorage,identity:async()=>({id:'test-buyer',role:'customer'})});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   config.origin='http://127.0.0.1:'+server.address().port;
   try{
-    const sent=[];
-    await page.route('https://storage.example.test/upload',route=>{
-      sent.push(route.request().postDataBuffer().toString().match(/filename="([^"]+)"/)[1]);
-      return route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':config.origin}});
-    });
+    const crossOrigin=[];
+    page.on('request',req=>{if(req.url().startsWith('https://storage.'))crossOrigin.push(req.url());});
     await page.goto(config.origin+'/print-studio/#design');
     await page.getByRole('combobox',{name:'Shape'}).selectOption('star');
     await page.getByRole('button',{name:'Use for my print'}).click();
@@ -37,6 +41,7 @@ test('a customer can submit a built-in design and a Firefox OBJ download without
     await expect(page.locator('#uploadFeedback')).toContainText('Submitted MD-00000002');
     expect(registered).toEqual(['star-40mm-6mm.obj','hexagon-40mm-6mm.obj']);
     expect(sent).toEqual(registered);
+    expect(crossOrigin).toEqual([]);
     await page.locator('input[type=file]').setInputFiles({name:'notes.txt',mimeType:'text/plain',buffer:Buffer.from('notes')});
     await page.getByRole('button',{name:'Submit for inspection'}).click();
     await expect(page.locator('#uploadFeedback')).toContainText('Plain text files cannot be printed');

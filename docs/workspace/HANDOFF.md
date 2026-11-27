@@ -1,5 +1,28 @@
 # Eldritch Fable shared workspace handoff
 
+## Adventure gate follow-up — November 26, 2026 (Eastern)
+
+The task branch `fix/supreme-memory-entry-gate` starts at the published
+`supreme-memory` head `aa5f6fecb6492eb44c494c70094ccef5528847c9`.
+At inspection, `main` at `603b8734e68c6ead03bfd52edfbef0af91cd6073`
+had the same file tree. A fresh isolated checkout of `zyxoned/eldritchfable.com`
+was clean at the start. The published application commit before this handoff
+is `cfbf13df3e25bdbb25152ced0d02382cb39f2c38`. Its tree matched the locally
+tested tree exactly.
+
+Changes are in `standalone/src/pages/Adventure.jsx`, `standalone/src/game/game.css`
+and `standalone/tests/browser/adventure.spec.mjs`. In Chromium at 320 × 568,
+the 15-pixel map icon keeps its size and the sign-in link spans y=221–265.
+The newsletter regression cases retain the address on an HTML fallback, a
+wrong-status JSON reply and an incomplete acknowledgement. Each then retries
+against the real local endpoint.
+
+From `standalone/`, `npm ci`, `npm run build`, `node --check server/index.mjs`
+and `npm test` passed (260 Node tests). `npm run test:browser` ran the locked
+Chromium version against a disposable database (85 passed, one touch-only case
+skipped on desktop). The next integration step is review against
+`supreme-memory`. Production was outside this development check.
+
 ## Stripe checkout draft published — November 6, 2026 (America/New_York)
 
 Task: add Payments and Tax to Eldritch Fable, including the requested prebuilt

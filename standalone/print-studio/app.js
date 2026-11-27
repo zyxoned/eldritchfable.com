@@ -1,4 +1,5 @@
 import {tokenGeometry,tokenOBJ} from './token.js';
+import {modelViewport} from './viewport.js';
 
 const $=id=>document.getElementById(id);
 const usd=cents=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
@@ -23,6 +24,35 @@ async function api(path,body){
   if(!r.ok)throw Object.assign(Error(data.error||'Request failed.'),{status:r.status});return data;
 }
 let catalog,me,generated,selected,cursor;
+const mode = new URLSearchParams(location.search).get('view');
+const guestPreview = mode === 'guest';
+const customerPreview = mode === 'customer' || guestPreview;
+const panels = ['design','upload','library','collection','delivery','merchant'];
+let identityReady = false;
+function currentPanel() {
+  const requested=location.hash.slice(1);
+  if(requested==='merchant' && (!me?.admin || customerPreview)) return 'design';
+  if(requested==='delivery' && !selected) return 'library';
+  return panels.includes(requested)?requested:'design';
+}
+function displayPanel(moveFocus=false) {
+  const panel=currentPanel();
+  for(const id of panels) $(id).hidden=id!==panel;
+  for(const link of $('sections').querySelectorAll('a')){
+    if(link.hash==='#'+(panel==='delivery'?'library':panel)) link.setAttribute('aria-current','page');
+    else link.removeAttribute('aria-current');
+  }
+  if(moveFocus) {
+    const heading=$(panel).querySelector('h2');
+    heading.tabIndex=-1;heading.focus({preventScroll:true});$('workspace').scrollIntoView();
+  }
+}
+window.addEventListener('hashchange',()=>{
+  displayPanel(true);
+  if(currentPanel()==='merchant' && identityReady) refreshAdmin().catch(e=>message('adminFeedback',e.message));
+});
+displayPanel();
+
 function form(id,fn,feedback='notice'){
   const f=$(id);
   f.addEventListener('submit',event=>{event.preventDefault();action(f.querySelector('button[type=submit],button:not([type])'),()=>fn(fields(f)),feedback);});
@@ -37,17 +67,24 @@ function showModel(parent,m,publicModel){
     details.textContent=data.printable?'Passed print inspection.':'Inspection status: '+data.status+'.';
     if(data.image && !card.querySelector('img')){const img=add(card,'img');img.alt=m.name;img.src=data.image;}
     if(!data.printable)return;
-    selected=m.id;message('selected',m.name+' · '+m.mm+' mm');$('delivery').hidden=false;$('rates').replaceChildren();$('delivery').scrollIntoView();
+    selected=m.id;message('selected',m.name+' · '+m.mm+' mm');$('rates').replaceChildren();message('quoteFeedback','');location.hash='delivery';
   });
 }
 async function refresh(){
   catalog=await api('catalog');
-  try{me=await api('me');}catch(e){if(e.status!==401)throw e;me=null;}
-  message('status',catalog.sales?'Custom prints and collection orders ship to U.S. addresses.':catalog.uploads?'Model submissions are open. Customer checkout is awaiting activation.':'You can design and download a figure or token today. Print orders and model submissions are awaiting merchant setup.');
+  if(!guestPreview){try{me=await api('me');}catch(e){if(e.status!==401)throw e;me=null;}}
+  identityReady=true;
+  message('status',catalog.sales?'U.S. shipping available.':catalog.uploads?'Uploads and quotes are open. Checkout is paused.':'Design and OBJ downloads are available. Submissions are paused.');
   $('list').replaceChildren();
   catalog.models.forEach(m=>showModel($('list'),m,true));
-  if(!catalog.models.length)add($('list'),'p','The first collection is being prepared.');
-  $('libraryLogin').hidden=Boolean(me);$('privatePrints').hidden=!me;$('merchant').hidden=!me?.admin;
+  if(!catalog.models.length){
+    const empty=add($('list'),'div');empty.className='empty';
+    add(empty,'p','No collection models are on sale yet.');
+    const designLink=add(empty,'a','Design your own model');designLink.href='#design';
+  }
+  $('libraryLogin').hidden=Boolean(me);$('privatePrints').hidden=!me;
+  $('merchantLink').hidden=!me?.admin || customerPreview;
+  displayPanel();
   if(!me)return;
   $('myModels').replaceChildren();$('orders').replaceChildren();
   me.models.forEach(m=>showModel($('myModels'),m,false));
@@ -63,7 +100,7 @@ async function refresh(){
     });
   });
   if(!me.orders.length)add($('orders'),'p','No print orders yet.');
-  if(me.admin)await refreshAdmin();
+  if(currentPanel()==='merchant')await refreshAdmin();
 }
 async function refreshAdmin(){
   const v=await api('admin/config');
@@ -105,10 +142,15 @@ function generatedFile(){
   const f=fields(design);
   return new File([tokenOBJ(f.shape,Number(f.width),Number(f.height))],[f.shape,f.width+'mm',f.height+'mm'].join('-')+'.obj',{type:'model/obj'});
 }
+const renderMesh=modelViewport($('drawing'),{wire:$('wire'),zoomIn:$('zoomIn'),zoomOut:$('zoomOut'),resetView:$('resetView')});
 function draw(){
   if(!design.checkValidity())return;
-  const f=fields(design),g=tokenGeometry(f.shape,Number(f.width),Number(f.height));
-  $('silhouette').setAttribute('points',g.contour.map(([x,y])=>[50*x,-50*y].join(',')).join(' '));
+  const {shape,width,height}=fields(design);
+  const figure=shape==='warden'||shape==='seer';
+  renderMesh(tokenGeometry(shape,Number(width),Number(height)),Number(width),figure);
+  message('widthLabel',figure?'Figure height':'Token width');
+  message('heightLabel',figure?'Base thickness':'Token thickness');
+  message('dimensions',design.elements.shape.selectedOptions[0].textContent+' · '+width+' mm');
 }
 design.addEventListener('input',draw);draw();
 form('designer',()=>{
@@ -118,12 +160,12 @@ form('designer',()=>{
 $('use').onclick=()=>{
   generated=generatedFile();if(!generated)return;
   const f=$('uploadForm').elements;f.file.value='';f.name.value=design.elements.shape.selectedOptions[0].textContent+' tabletop print';f.mm.value=design.elements.width.value;
-  message('uploadFeedback','');message('chosen','Selected '+generated.name);$('upload').scrollIntoView();
+  $('submittedLink').hidden=true;message('uploadFeedback','');message('chosen','Selected '+generated.name);location.hash='upload';
 };
 // Some Android browsers append .txt when downloading a text-based Wavefront OBJ.
 const printFilename = name => name.replace(/\.obj\.txt$/i,'.obj');
 $('uploadForm').elements.file.onchange=()=>{
-  generated=null;
+  generated=null;$('submittedLink').hidden=true;
   const file=$('uploadForm').elements.file.files[0];
   message('chosen',file && printFilename(file.name)!==file.name ? 'Using '+printFilename(file.name)+' as a 3D model.' : '');
   message('uploadFeedback','');
@@ -159,24 +201,51 @@ form('uploadForm',async f=>{
     job.sent=true;
   }
   const m=await api('uploads/finish',{id:job.id});
-  message('uploadFeedback','Submitted '+m.id+'. Check inspection under My prints.');await refresh();
+  message('uploadFeedback','Submitted '+m.id+'. Check inspection under My prints.');$('submittedLink').hidden=false;await refresh();
 },'uploadFeedback');
+let addressVersion=0;
+$('address').addEventListener('input',()=>{addressVersion++;$('rates').replaceChildren();message('quoteFeedback','');});
 form('address',async a=>{
-  const model=selected;
-  a.state=a.state.toUpperCase();
+  const model=selected, version=addressVersion;
+  a.state=a.state.trim().toUpperCase();
   $('rates').replaceChildren();
   const q=await api('quotes',{model,address:a});
-  if(selected!==model)return;
+  if(selected!==model||version!==addressVersion)return;
+  const options=[...q.options].sort((first,second)=>first.shipping-second.shipping);
+  if(!options.length)throw Error('No shipping options are available for this address.');
+  const box=add($('rates'),'div');box.className='quote-card';
+  add(box,'h3','Your quote');
   const dest=q.address||a;
-  add($('rates'),'p','Ship to '+[dest.name,dest.line1,dest.line2,dest.city,dest.state,dest.postal_code].filter(Boolean).join(', '));
-  add($('rates'),'p','Your card is charged at checkout. Manufacturing starts after the payment reaches our bank and we release the order. Shipping transit follows manufacturing.');
-  for(const o of q.options){
-    const line=add($('rates'),'div');line.className='card';
-    add(line,'p',o.name+' · Print '+usd(q.retail)+' + shipping '+usd(o.shipping)+' = '+usd(q.retail+o.shipping)+' before tax.');
-    if(q.sales)button(line,'Continue to Stripe',async()=>{const result=await api('checkout',{quote:q.id,option:o.id});location.assign(result.url);});
+  add(box,'p','Shipping to '+[dest.city,dest.state,dest.postal_code].filter(Boolean).join(' ')).className='muted';
+  const choices=add(box,'fieldset');choices.className='rate-options';
+  add(choices,'legend','Shipping method');
+  const totals=add(box,'dl');totals.className='totals';
+  function amount(label){
+    const row=add(totals,'div');add(row,'dt',label);return add(row,'dd');
   }
-  if(!q.sales)add($('rates'),'p','Customer checkout is awaiting activation.');
-});
+  amount('Print').textContent=usd(q.retail);
+  const shipping=amount('Shipping'),subtotal=amount('Total before tax');
+  let chosen;
+  function select(option){
+    chosen=option;shipping.textContent=usd(option.shipping);subtotal.textContent=usd(q.retail+option.shipping);
+  }
+  for(const option of options){
+    const label=add(choices,'label');label.className='rate';
+    const radio=add(label,'input');radio.type='radio';radio.name='shipping-method';radio.value=option.id;
+    add(label,'span',option.name);add(label,'b',usd(option.shipping));
+    radio.onchange=()=>select(option);
+    if(!chosen){radio.checked=true;select(option);}
+  }
+  add(box,'p',q.sales?'Tax is calculated at checkout.':'Checkout is paused. You can compare shipping prices.').className='muted';
+  if(q.sales){
+    const buy=button(box,'Continue to Stripe',async()=>{
+      const result=await api('checkout',{quote:q.id,option:chosen.id});location.assign(result.url);
+    },'checkoutFeedback');
+    const feedback=add(box,'p');feedback.id='checkoutFeedback';feedback.setAttribute('role','status');
+    buy.className='buy';
+  }
+  $('rates').scrollIntoView({block:'nearest'});
+},'quoteFeedback');
 async function listModels(next){
   const data=await api('admin/models'+(next&&cursor?'?cursor='+encodeURIComponent(cursor):''));
   if(!next)$('supplier').replaceChildren();

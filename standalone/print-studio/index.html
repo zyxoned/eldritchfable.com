@@ -1,18 +1,71 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Print Studio | Eldritch Fable</title><link rel="stylesheet" href="/print-studio/style.css"><script type="module" src="/print-studio/app.js?v=studio-transfer"></script></head><body>
-<header><a href="/">Eldritch Fable</a><nav aria-label="Shop"><a href="#collection">Collection</a><a href="#design">Design a model</a><a href="#upload">Upload a model</a><a href="#library">My prints</a><a id="account" href="/account">Account</a></nav></header>
-<main><h1>Print Studio</h1><p id="status" role="status">Loading the studio…</p>
-<section id="collection"><h2>The collection</h2><div id="list"></div></section>
-<section id="design"><h2>Design a figure or token</h2><p>Choose a shape and size, then select <strong>Use for my print</strong> to send your design for inspection. Have a file already? <a href="#upload">Upload your model</a>.</p><div class="workbench"><div class="preview"><svg id="drawing" viewBox="-65 -65 130 130" role="img" aria-label="Model silhouette preview"><polygon id="silhouette" fill="#b99a63" stroke="#f3d397" stroke-width="1.5"></polygon></svg></div>
-<form id="designer"><label>Shape<select name="shape"><option value="warden">Warden figure</option><option value="seer">Seer figure</option><option value="hexagon">Hexagon</option><option value="octagon">Octagon</option><option value="star">Star</option><option value="circle">Circle</option></select></label>
-<label>Figure height or token width (mm)<input name="width" type="number" min="30" max="100" value="40" required></label><label>Base or token thickness (mm)<input name="height" type="number" min="4" max="15" value="6" required></label>
-<div class="actions"><button type="button" id="use">Use for my print</button><button type="submit">Download OBJ</button></div></form></div></section>
-<section id="upload"><h2>Print your own model</h2><form id="uploadForm"><p>Choose a 3MF, GLB, OBJ, or ZIP up to 50 MB. OTTO checks the model before quoting a print.</p>
-<label>File<input name="file" type="file" accept=".3mf,.glb,.obj,.zip,.txt"></label><p id="chosen"></p><label>Model name<input name="name" required maxlength="90"></label>
-<label>Longest dimension (mm)<input name="mm" type="number" min="30" max="200" value="80" required></label><label class="check"><input name="rights" type="checkbox" required> I have permission to print this model and send it to OTTO for manufacturing.</label>
-<button type="submit">Submit for inspection</button><p id="uploadFeedback" class="feedback" role="status"></p></form></section>
-<section id="library"><h2>My prints</h2><p id="libraryLogin"><a href="/login?next=%2Fprint-studio%2F%23library">Sign in</a> to see your submitted models and print orders.</p><div id="privatePrints" hidden><div id="myModels"></div><h3>My orders</h3><div id="orders"></div></div></section>
-<section id="delivery" hidden><h2>Shipping quote</h2><p id="selected"></p><form id="address"><label>Recipient name<input name="name" autocomplete="name" required></label><label>Street address<input name="line1" autocomplete="address-line1" required></label><label>Apartment or suite (optional)<input name="line2" autocomplete="address-line2"></label><label>City<input name="city" autocomplete="address-level2" required></label><label>State (two letters)<input name="state" autocomplete="address-level1" maxlength="2" required></label><label>ZIP code<input name="postal_code" autocomplete="postal-code" pattern="[0-9]{5}(-[0-9]{4})?" required></label><p>U.S. delivery. OTTO uses this address for your quote and shipment.</p><button>Get shipping options</button></form><div id="rates" aria-live="polite"></div></section>
-<section id="merchant" hidden><h2>Merchant workspace</h2><p id="connections"></p><div class="actions"><button id="load">Choose OTTO models</button><button id="more" hidden>Next models</button></div><div id="supplier"></div><div id="deposits"></div><div id="review"></div>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Print Studio | Eldritch Fable</title>
+  <link rel="stylesheet" href="/print-studio/style.css?v=workbench">
+  <script type="module" src="/print-studio/app.js?v=workbench"></script>
+</head>
+<body>
+  <a class="skip" href="#workspace">Skip to workspace</a>
+  <header class="topbar"><div class="shell top-inner">
+    <a class="brand" href="/" aria-label="Eldritch Fable storefront"><span aria-hidden="true">✦</span> Eldritch Fable</a>
+    <nav class="account-nav" aria-label="Account navigation"><a id="merchantLink" href="#merchant" hidden>Merchant workspace</a><a id="account" href="/account">Account</a></nav>
+  </div></header>
+  <main>
+    <div class="masthead"><div class="shell mast-inner">
+      <h1>Print Studio</h1>
+      <p>Shape a tabletop figure, bring your own model, or get a quote for a print.</p>
+    </div></div>
+    <div class="shell" id="workspace">
+      <nav id="sections" class="sections" aria-label="Print Studio sections">
+        <a href="#design" aria-current="page">Design</a><a href="#upload">Upload</a><a href="#library">My prints</a><a href="#collection">Collection</a>
+      </nav>
+      <p id="status" class="availability" role="status">Loading the studio…</p>
+      <section id="design" class="panel">
+        <div class="section-heading"><h2>Model workbench</h2><a class="quiet" href="#upload">Upload your model</a></div>
+        <div class="workbench">
+          <div class="viewport">
+            <div class="viewbar"><span class="view-title">3D preview</span><button type="button" id="wire" class="tool" aria-pressed="false">Wireframe</button></div>
+            <canvas id="drawing" tabindex="0" aria-label="3D model preview. Drag or use arrow keys to rotate.">Use the shape and size controls to configure the model.</canvas>
+            <div class="viewfoot"><span id="dimensions"></span><div class="view-tools"><button id="zoomOut" type="button" class="tool" aria-label="Zoom out">−</button><button id="zoomIn" type="button" class="tool" aria-label="Zoom in">+</button><button id="resetView" type="button" class="tool">Reset view</button></div></div>
+            <div class="view-caption">Drag to rotate <span aria-hidden="true">·</span> Arrow keys also rotate</div>
+          </div>
+          <form id="designer" class="settings">
+            <h3>Model settings</h3>
+            <label>Shape<select name="shape"><option value="warden">Warden figure</option><option value="seer">Seer figure</option><option value="hexagon">Hexagon</option><option value="octagon">Octagon</option><option value="star">Star</option><option value="circle">Circle</option></select></label>
+            <div class="pair"><label><span id="widthLabel">Figure height</span> (mm)<input name="width" type="number" min="30" max="100" value="40" required></label><label><span id="heightLabel">Base thickness</span> (mm)<input name="height" type="number" min="4" max="15" value="6" required></label></div>
+            <div class="settings-actions"><button type="button" id="use">Use for my print</button><button type="submit" class="secondary">Download OBJ</button></div>
+          </form>
+        </div>
+      </section>
+      <section id="upload" class="panel" hidden><div class="section-heading"><h2>Submit a model</h2></div>
+        <form id="uploadForm" class="form-card"><p class="intro">Choose a 3MF, GLB, OBJ, or ZIP up to 50 MB. OTTO checks the model before pricing your print.</p>
+        <label>Model file<input name="file" type="file" accept=".3mf,.glb,.obj,.zip,.txt"></label><p id="chosen" class="selection"></p>
+        <div class="pair"><label>Model name<input name="name" required maxlength="90"></label><label>Longest dimension (mm)<input name="mm" type="number" min="30" max="200" value="80" required></label></div>
+        <label class="check"><input name="rights" type="checkbox" required> I have permission to print this model and send it to OTTO for manufacturing.</label>
+        <button type="submit">Submit for inspection</button><p id="uploadFeedback" class="feedback" role="status"></p><a id="submittedLink" class="quiet" href="#library" hidden>View in My prints</a></form>
+      </section>
+      <section id="collection" class="panel" hidden><div class="section-heading"><h2>The collection</h2></div><div id="list" class="cards"></div></section>
+      <section id="library" class="panel" hidden><div class="section-heading"><h2>My prints</h2><a class="quiet" href="#upload">Submit a model</a></div>
+        <p id="libraryLogin" class="empty"><a href="/login?next=%2Fprint-studio%2F%23library">Sign in</a> to see your submitted models and print orders.</p>
+        <div id="privatePrints" hidden><div id="myModels" class="cards"></div><h3>My orders</h3><div id="orders"></div></div>
+      </section>
+      <section id="delivery" class="panel" hidden><div class="section-heading"><h2>Shipping quote</h2><a class="quiet" href="#library">Back to my prints</a></div>
+        <p id="selected" class="selection"></p><div class="delivery-grid">
+        <form id="address" class="form-card"><h3>Delivery address</h3>
+          <label>Recipient name<input name="name" autocomplete="name" required></label><label>Street address<input name="line1" autocomplete="address-line1" required></label><label>Apartment or suite (optional)<input name="line2" autocomplete="address-line2"></label>
+          <label>City<input name="city" autocomplete="address-level2" required></label><div class="pair"><label>State (two letters)<input name="state" autocomplete="address-level1" autocapitalize="characters" maxlength="2" required></label><label>ZIP code<input name="postal_code" autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{5}(-[0-9]{4})?" required></label></div>
+          <p class="muted">U.S. delivery. Shipping transit begins after manufacturing.</p><button>Get shipping options</button><p id="quoteFeedback" role="status" class="feedback"></p>
+        </form>
+        <div id="rates" aria-live="polite"></div></div>
+      </section>
+      <section id="merchant" class="panel" hidden><div class="section-heading"><h2>Merchant workspace</h2><div class="actions"><a class="secondary link-button" href="?view=customer#design">View as customer</a><a class="quiet" href="?view=guest#design">View as guest</a></div></div><p id="connections"></p><div class="actions"><button id="load">Choose OTTO models</button><button id="more" hidden>Next models</button></div><div id="supplier"></div><div id="deposits"></div><div id="review"></div>
 <form id="markup"><label>Custom print markup per item (USD)<input name="amount" type="number" min="0" max="10000" step=".01" required></label><p>Add this many dollars to OTTO’s manufacturing price for each customer design. Shipping and tax are calculated separately.</p><button>Save markup</button></form>
 <button id="verifyStripe">Verify Stripe delivery</button><button id="open">Open customer checkout</button><button id="pause">Pause customer checkout</button><p id="adminFeedback" role="status"></p></section>
-<p id="notice" role="status"></p></main><footer><a href="/">Return to Eldritch Fable</a></footer></body></html>
+
+      <p id="notice" class="feedback" role="status"></p>
+    </div>
+  </main>
+  <footer><div class="shell"><a href="/">Return to Eldritch Fable</a></div></footer>
+</body></html>

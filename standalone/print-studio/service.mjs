@@ -16,7 +16,8 @@ const string = (value,max) => typeof value==='string' && value.trim() && value.l
 const cleanModel = m => ({id:m.id,name:m.name || 'Untitled model',mm:m.longest_dimension_mm,status:m.status,printable:eligible(m),
   image:m.preview?.thumbnails?.angled || null});
 const staticFiles = new Map([['/print-studio/',['index.html','text/html']],['/print-studio/app.js',['app.js','text/javascript']],
-  ['/print-studio/style.css',['style.css','text/css']],['/print-studio/token.js',['token.js','text/javascript']]]);
+  ['/print-studio/style.css',['style.css','text/css']],['/print-studio/token.js',['token.js','text/javascript']],
+  ['/print-studio/viewport.js',['viewport.js','text/javascript']]]);
 
 async function bytes(req,max) {
   let size=0;const parts=[];

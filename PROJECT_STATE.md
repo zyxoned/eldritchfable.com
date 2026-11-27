@@ -13,6 +13,8 @@ At the storefront entry update on November 27 the print service reported signed 
 
 The subsequent Warden upload report was traced to two registered files without a corresponding model. OTTO storage rejected browser-origin access from the storefront. The repair sends model bytes through the authenticated, same-origin Print Studio, retains a successful transfer across retries and links the preview bag to private print orders. Production frontend parent 3204cbd7b0584bbce29171ffb34ee86276b0b17b and studio parent cdd17ae48228cfbef2177e31811cd642bd94b00a were verified independently. This change preserves customer checkout activation and bank-deposit release settings.
 
+The customer studio redesign uses the exported mesh for a rotatable 3D preview, separates design, file submission, prints and collection into navigable views, and displays one shipping selection and pre-tax total. The merchant workspace links to the signed-in customer view and a guest view that skips account and merchant API requests. The service was based on 073fe765c751276a2985cbb476bcd12969d56a80 and the live storefront identified 9a13035ddb108e39512f48fbf30a51fa8679fb61 at inspection.
+
 ## Adventure entry gate refresh — November 26, 2026
 
 Local source update prepared in worktree branch `supreme-memory` from base commit

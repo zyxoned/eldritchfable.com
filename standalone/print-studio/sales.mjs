@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { fail } from './provider.mjs';
+import { releaseAfterDeposit } from './release.mjs';
 
 export function sales(db, otto, stripe, config) {
   const byId = id => db.prepare('SELECT * FROM orders WHERE id=?').get(id);
-  const setState = (id, state) => db.prepare('UPDATE orders SET state=? WHERE id=? AND hold=0').run(state,id);
   const hold = id => db.prepare("UPDATE orders SET state='review',hold=1 WHERE id=?").run(id);
 
   async function checkout(user, quoteId, shippingId) {
@@ -67,38 +67,37 @@ export function sales(db, otto, stripe, config) {
       return;
     }
     if (!event.type.startsWith('checkout.session.') || !body.metadata?.print_order) return;
-    let o=byId(body.metadata.print_order);
-    if (!o || !o.otto_id) return;
-    // A webhook can beat persistence of the Checkout creation response.
-    if (o.checkout && body.id!==o.checkout) return;
-    const session=await stripe.checkout.sessions.retrieve(body.id,{expand:['payment_intent.latest_charge']});
-    if (session.client_reference_id!==o.id || session.metadata?.print_order!==o.id || !session.livemode) return;
-    if (session.status==='expired') {if(o.state==='pending') setState(o.id,'expired');return;}
-    if (session.status!=='complete' || session.payment_status!=='paid') return;
-    const payment=session.payment_intent, charge=payment?.latest_charge;
-    if (session.currency!=='usd'||session.amount_subtotal!==o.retail||session.shipping_cost?.amount_subtotal!==o.shipping ||
-        session.automatic_tax?.status!=='complete'||session.amount_total!==o.retail+o.shipping+session.total_details?.amount_tax ||
-        payment?.amount_received!==session.amount_total || payment?.status!=='succeeded' || !charge?.paid ||
-        charge.amount_refunded!==0 || charge.disputed || payment.metadata?.print_order!==o.id) {hold(o.id); return;}
-    db.prepare('UPDATE orders SET intent=?,checkout=? WHERE id=?').run(payment.id,body.id,o.id);
-    o=byId(o.id);
-    if (o.hold || ['submitted','review'].includes(o.state)) return;
-    setState(o.id,'paid');
-    const factory=await otto('/orders/'+encodeURIComponent(o.otto_id));
-    if (factory.external_id!==o.id || factory.currency!=='usd'||factory.payment?.amount!==o.supplier) {hold(o.id);return;}
-    if (['paid','on_account'].includes(factory.payment.status) && !['expired','cancelled'].includes(factory.status)) {
-      setState(o.id,'submitted'); return;
+    const order = byId(body.metadata.print_order);
+    if (!order || (order.checkout && body.id !== order.checkout)) return;
+    const result = await verifyRetail(order, body.id);
+    if (result === 'expired') {
+      db.prepare("UPDATE orders SET state='expired' WHERE id=? AND state='pending' AND hold=0").run(order.id);
+    } else if (result) {
+      // A captured payment enters the bank-deposit queue. No webhook can call OTTO payments.
+      db.prepare(`UPDATE orders SET intent=?,checkout=?,state='awaiting_bank_deposit'
+        WHERE id=? AND hold=0 AND state IN ('pending','paid')`).run(result.id, body.id, order.id);
     }
-    if (factory.payment.status==='processing') {setState(o.id,'supplier_processing'); return;}
-    if (factory.status!=='awaiting_payment'||factory.payment.status!=='unpaid'||!config.method) {hold(o.id);return;}
-    if (Date.now()-o.created >= 24*3600_000 || (factory.expires_at && Date.parse(factory.expires_at)<=Date.now())) {hold(o.id);return;}
-    if (byId(o.id).hold) return;
-    const result=await otto('/orders/'+encodeURIComponent(o.otto_id)+'/payments',
-      {type:'saved_method',payment_method_id:config.method},o.id+'-supplier-payment');
-    if (result.order_id!==o.otto_id) {hold(o.id);return;}
-    if (result.payment?.status==='paid') setState(o.id,'submitted');
-    else if (result.payment?.status==='processing') setState(o.id,'supplier_processing');
-    else hold(o.id);
   }
-  return {checkout,stripeEvent};
+
+  async function verifyRetail(order, checkoutId) {
+    const session = await stripe.checkout.sessions.retrieve(checkoutId, {expand:['payment_intent.latest_charge']});
+    if (!session.livemode || session.client_reference_id !== order.id || session.metadata?.print_order !== order.id) return null;
+    if (session.status === 'expired') return 'expired';
+    if (session.status !== 'complete' || session.payment_status !== 'paid') return null;
+    const intent = session.payment_intent;
+    const charge = intent?.latest_charge;
+    if (session.currency !== 'usd' || session.amount_subtotal !== order.retail ||
+        session.shipping_cost?.amount_subtotal !== order.shipping || session.automatic_tax?.status !== 'complete' ||
+        session.amount_total !== order.retail + order.shipping + session.total_details?.amount_tax ||
+        intent?.amount_received !== session.amount_total || intent?.status !== 'succeeded' ||
+        !charge?.paid || charge.amount_refunded !== 0 || charge.disputed || intent.metadata?.print_order !== order.id ||
+        (order.intent && order.intent !== intent.id)) {
+      hold(order.id);
+      return null;
+    }
+    return intent;
+  }
+
+  const release = releaseAfterDeposit({db, otto, stripe, config, byId, hold, verifyRetail});
+  return {checkout, stripeEvent, release};
 }

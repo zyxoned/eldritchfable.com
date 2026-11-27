@@ -7,6 +7,8 @@ The studio branch starts at GitHub main 603b8734e68c6ead03bfd52edfbef0af91cd6073
 At 14:00 UTC, the public print page, catalog, account proxy and both webhook receiver paths responded on eldritchfable.com. The first print service source was 9dd14588f23e58728fe80db50f174b99026e4b74. The independent feature is tracked in PR #29. The merchant Stripe and OTTO webhook destinations are registered. OTTO listed the existing business API key as active and never used. The host had no supplier or Stripe runtime secrets for this service, the public catalog was empty and sales were paused. The studio was exercised from the public designer through selection of a generated Seer OBJ. Mock payment, privacy, event replay and mesh tests ran locally; real provider delivery, payment and fulfillment remain unverified.
 
 
+Later on November 27, the running print release was 70d3d4ef5be327f81075f56c725ecf0c7bf3f48e. The supplier authenticated, returned ready figure MD-QB1X6D8M and listed the configured saved method. The print database had no orders, published models or signed provider deliveries and checkout was paused. The subsequent bank-deposit change on PR #29 puts captured customer payments in a merchant release queue. Release records manual confirmation of a posted deposit, checks the customer payment again and caps the supplier charge at the original quote. Test payments use fixtures.
+
 ## Adventure entry gate refresh — November 26, 2026
 
 Local source update prepared in worktree branch `supreme-memory` from base commit

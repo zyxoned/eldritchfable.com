@@ -35,7 +35,7 @@ for key, title in fields:
             with urllib.request.urlopen(request, timeout=12) as response:
                 cards = json.load(response)['data']
             if cards:
-                print('Choose which saved card OTTO may charge for paid customer orders.')
+                print('Choose the saved card OTTO may charge after you confirm a bank deposit and release the order.')
                 for i, card in enumerate(cards, 1):
                     print(f"  {i}. {card.get('brand', 'Card')} ending {card.get('last4', 'unknown')}")
                 selection = input('Card number on this list (Enter to keep or skip): ').strip()

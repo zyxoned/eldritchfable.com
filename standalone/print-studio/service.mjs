@@ -93,10 +93,14 @@ export function studio({db,otto,config,stripe,identity}) {
         return json(200,{status:factory.status,carrier:shipment?.carrier,tracking:shipment?.tracking_number,
           url:typeof shipment?.tracking_url==='string' && /^https:\/\//.test(shipment.tracking_url)?shipment.tracking_url:null});
       }
+      if(path===prefix+'/admin/release' && post) return json(200,await commerce.release(u,b));
       if(path===prefix+'/admin/config' && req.method==='GET') return json(200,{api:Boolean(config.ottoKey),ottoWebhook:Boolean(config.ottoHook),
         stripe:Boolean(stripe),stripeWebhook:Boolean(config.stripeHook),fulfillment:Boolean(config.method),markup:markups()??null,
         ottoDelivery:seen('otto'),stripeDelivery:seen('stripe'),sales:sells(),
-        review:db.prepare("SELECT id,otto_id,state FROM orders WHERE hold=1 OR state IN ('paid','supplier_processing') ORDER BY created DESC LIMIT 50").all()});
+        deposits:db.prepare(`SELECT o.id,o.name,o.intent,o.supplier,o.retail,o.shipping,r.payout
+          FROM orders o LEFT JOIN bank_releases r ON r.order_id=o.id
+          WHERE o.hold=0 AND o.state IN ('awaiting_bank_deposit','paid') ORDER BY o.created LIMIT 100`).all(),
+        review:db.prepare("SELECT id,otto_id,state FROM orders WHERE hold=1 OR state='supplier_processing' ORDER BY created DESC LIMIT 50").all()});
       if(path===prefix+'/admin/stripe-product' && post){
         if(!stripe || !config.stripeHook) fail(503,'Enter the live Stripe key and endpoint signing secret on the server first.');
         const account=await stripe.accounts.retrieve();

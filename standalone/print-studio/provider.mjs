@@ -51,6 +51,9 @@ export function initialize(db) {
       option TEXT NOT NULL, name TEXT NOT NULL, retail INTEGER NOT NULL, shipping INTEGER NOT NULL,
       supplier INTEGER NOT NULL, created INTEGER NOT NULL, otto_id TEXT UNIQUE, checkout TEXT UNIQUE,
       checkout_url TEXT, intent TEXT, state TEXT NOT NULL DEFAULT 'pending', hold INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS bank_releases(
+      order_id TEXT PRIMARY KEY, payout TEXT NOT NULL, actor TEXT NOT NULL, recorded INTEGER NOT NULL,
+      original_otto TEXT NOT NULL, fresh_quote TEXT, fresh_option TEXT, fresh_cost INTEGER, payment_order TEXT);
     CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, type TEXT NOT NULL, object TEXT NOT NULL, received INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS snapshots(object TEXT PRIMARY KEY, seq INTEGER NOT NULL, status TEXT, payment TEXT);
     CREATE TABLE IF NOT EXISTS settings(name TEXT PRIMARY KEY, value INTEGER);
@@ -72,7 +75,9 @@ export function receiveOtto(db, event) {
         .run(object,seq,String(data.status || ''),String(data.payment?.status || '')).changes;
       if(changed && data.object==='order'){
         const payment=data.payment?.status;
-        if(['failed','requires_action','refunded','refund_pending','cancelled'].includes(payment) || ['on_hold','cancelled','expired'].includes(data.status))
+        const expiredReservation = data.status==='expired' && ['unpaid','cancelled'].includes(payment);
+        // Release obtains a fresh quote if the unpaid reservation expired while waiting.
+        if(!expiredReservation && (['failed','requires_action','refunded','refund_pending','cancelled'].includes(payment) || ['on_hold','cancelled','expired'].includes(data.status)))
           db.prepare("UPDATE orders SET state='review',hold=1 WHERE otto_id=? AND intent IS NOT NULL").run(object);
         else if(['paid','on_account'].includes(payment))
           db.prepare("UPDATE orders SET state='submitted' WHERE otto_id=? AND intent IS NOT NULL AND hold=0").run(object);

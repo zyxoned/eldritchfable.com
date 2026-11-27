@@ -19,6 +19,41 @@ test('adventure and stash require the existing site account', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Exchange XP', exact: true })).toHaveCount(0);
 });
 
+test('the map title icon and sign-in fit phone screens in portrait and landscape', async ({ page }) => {
+  for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 667, height: 375 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/play');
+    const icon = page.locator('.adventure-map-title svg');
+    await expect(icon).toHaveCSS('width', '15px');
+    await expect(icon).toHaveCSS('height', '15px');
+    await expect(page.getByRole('link', { name: 'Sign in to Eldritch Fable' })).toBeInViewport({ ratio: 1 });
+  }
+});
+
+for (const [scenario, response] of [
+  ['HTML fallback', { status: 200, contentType: 'text/html', body: '<html></html>' }],
+  ['unexpected status', { status: 200, json: { message: 'Unexpected acknowledgement' } }],
+  ['missing acknowledgement', { status: 202, json: {} }],
+]) {
+  test('newsletter keeps the address and permits retry after ' + scenario, async ({ page }) => {
+    await page.goto('/play');
+    const form = page.locator('.adventure-newsletter');
+    const email = form.getByLabel('Email');
+    const address = 'retry-' + randomUUID() + '@example.test';
+    await email.fill(address);
+    await page.route('**/api/newsletter/subscribe', route => route.fulfill(response), { times: 1 });
+    const subscribe = form.getByRole('button', { name: 'Subscribe', exact: true });
+    await subscribe.click();
+    await expect(form.getByRole('alert')).toBeVisible();
+    await expect(form.getByRole('status')).toHaveCount(0);
+    await expect(email).toHaveValue(address);
+    await subscribe.click();
+    await expect(form.getByRole('status')).toContainText('confirmation email');
+    await expect(email).toHaveValue('');
+    await expect(form.getByRole('alert')).toHaveCount(0);
+  });
+}
+
 test('a verified adventurer earns private XP, exchanges it, and keeps progress after leaving', async ({ page }, testInfo) => {
   const email = 'adventure-' + testInfo.project.name + '@example.test';
   const password = 'a-browser-adventure-passphrase-2026';

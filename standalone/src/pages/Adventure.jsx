@@ -48,9 +48,12 @@ export default function Adventure({ stash = false }) {
         credentials: 'same-origin',
         body: JSON.stringify({ email: newsletter.email.trim(), consent: true }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Newsletter request failed.');
-      setNewsletter({ email: '', busy: false, status: data.message || 'Check your inbox to confirm your subscription.', error: '' });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || 'Newsletter request failed.');
+      if (res.status !== 202 || typeof data?.message !== 'string' || !data.message.trim()) {
+        throw new Error('We could not confirm your newsletter request. Please try again.');
+      }
+      setNewsletter({ email: '', busy: false, status: data.message, error: '' });
     } catch (error) {
       setNewsletter(current => ({ ...current, busy: false, error: error.message || 'Newsletter request failed.' }));
     }
@@ -89,7 +92,7 @@ export default function Adventure({ stash = false }) {
                       <p>Get weekly stock updates, promotions, and world notes. Subscription requires inbox confirmation.</p>
                       <label htmlFor="adventure-newsletter-email">Email</label>
                       <div className="adventure-newsletter-actions">
-                        <input id="adventure-newsletter-email" type="email" autoComplete="email" required maxLength={254}
+                        <input id="adventure-newsletter-email" type="email" autoComplete="email" required maxLength={254} readOnly={newsletter.busy}
                           value={newsletter.email} onChange={event => setNewsletter(current => ({ ...current, email: event.target.value }))}
                           placeholder="you@example.com" />
                         <button className="secondary-button" type="submit" disabled={newsletter.busy}>{newsletter.busy ? 'Submitting…' : 'Subscribe'}</button>

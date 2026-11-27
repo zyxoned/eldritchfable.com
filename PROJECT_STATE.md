@@ -1,5 +1,19 @@
 # Eldritch Fable project state
 
+## Adventure entry gate follow-up — November 26, 2026
+
+Branch `fix/supreme-memory-entry-gate` continues PR #27 from `supreme-memory`
+at `aa5f6fecb6492eb44c494c70094ccef5528847c9`. Published application commit
+`cfbf13df3e25bdbb25152ced0d02382cb39f2c38` puts the sign-in controls before
+the map in the single-column layout and limits illustration styling to the world
+map. The newsletter form clears the address only after the endpoint returns 202
+and a nonempty JSON message. Failed requests keep the address for retry.
+
+The Node 24 build passed, all 260 Node tests passed, and the full Chromium suite
+passed 85 cases with one desktop skip for a touch-only test. The gate regression
+tests cover portrait and landscape, invalid subscription replies, and a successful
+retry against the disposable API. See the [workspace handoff](docs/workspace/HANDOFF.md).
+
 ## Adventure entry gate refresh — November 26, 2026
 
 Local source update prepared in worktree branch `supreme-memory` from base commit

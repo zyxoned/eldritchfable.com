@@ -1,0 +1,56 @@
+#!/usr/bin/python3
+"""Install OTTO credentials interactively. Never pass secrets as shell arguments."""
+import getpass
+import os
+import pathlib
+import re
+import subprocess
+import tempfile
+
+path = pathlib.Path('/etc/eldritch-fable/print-studio.env')
+if os.geteuid() != 0 or not os.isatty(0):
+    raise SystemExit('Run sudo eldritch-print-config from an interactive server terminal.')
+allowed = {'OTTOMFG_API_KEY', 'OTTOMFG_WEBHOOK_SECRET', 'EF_PRINT_STRIPE_KEY', 'EF_PRINT_STRIPE_WEBHOOK_SECRET', 'EF_PRINT_OTTO_PAYMENT_METHOD'}
+current = {}
+if path.exists():
+    for line in path.read_text().splitlines():
+        name, _, value = line.partition('=')
+        if name in allowed:
+            current[name] = value
+print('Press Enter to keep a current setting or skip it. Entries stay hidden.')
+fields = [
+    ('OTTOMFG_API_KEY', 'OTTO business API key'),
+    ('OTTOMFG_WEBHOOK_SECRET', 'OTTO webhook signing secret'),
+    ('EF_PRINT_STRIPE_KEY', 'Eldritch Fable live Stripe restricted key'),
+    ('EF_PRINT_STRIPE_WEBHOOK_SECRET', 'Print Studio Stripe webhook signing secret'),
+    ('EF_PRINT_OTTO_PAYMENT_METHOD', 'Approved OTTO supplier payment method ID (optional)'),
+]
+for key, title in fields:
+    value = getpass.getpass(f'{title} [{"set" if key in current else "unset"}]: ').strip()
+    if not value:
+        continue
+    if not re.fullmatch(r'[A-Za-z0-9_+/=.:-]{5,1024}', value):
+        raise SystemExit('Invalid characters or length. Nothing saved.')
+    if key.endswith('WEBHOOK_SECRET') and not value.startswith('whsec_'):
+        raise SystemExit('Expected a webhook signing secret. Nothing saved.')
+    if key == 'EF_PRINT_STRIPE_KEY' and not value.startswith('rk_live_'):
+        raise SystemExit('Use a live restricted key for this shop. Nothing saved.')
+    if key == 'EF_PRINT_OTTO_PAYMENT_METHOD' and not re.fullmatch(r'pm_[A-Za-z0-9]+',value):
+        raise SystemExit('Expected an OTTO saved payment method ID. Nothing saved.')
+    current[key] = value
+if not current:
+    raise SystemExit('No settings entered.')
+path.parent.mkdir(mode=0o750, parents=True, exist_ok=True)
+fd, tmp = tempfile.mkstemp(prefix='.print-studio-', dir=path.parent)
+try:
+    with os.fdopen(fd, 'w') as stream:
+        for key, value in current.items():
+            stream.write(f'{key}={value}\n')
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(tmp, path)
+finally:
+    pathlib.Path(tmp).unlink(missing_ok=True)
+if subprocess.run(['systemctl','is-active','--quiet','eldritch-print-studio.service']).returncode == 0:
+    subprocess.run(['systemctl','restart','eldritch-print-studio.service'],check=True)
+print('Saved privately. Only the print service uses these settings.')

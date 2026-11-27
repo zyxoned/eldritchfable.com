@@ -1,0 +1,26 @@
+[Unit]
+Description=Eldritch Fable print studio
+After=network-online.target
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=eldritch-print-studio
+StateDirectoryMode=0700
+UMask=0077
+WorkingDirectory=/opt/eldritch-print-studio/current
+Environment=ELDRITCH_ORIGIN=https://eldritchfable.com
+Environment=EF_PRINT_DB=/var/lib/eldritch-print-studio/studio.db
+EnvironmentFile=-/etc/eldritch-fable/print-studio.env
+ExecStart=/usr/bin/node /opt/eldritch-print-studio/current/service.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+[Install]
+WantedBy=multi-user.target

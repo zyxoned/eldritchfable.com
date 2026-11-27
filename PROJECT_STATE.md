@@ -1,5 +1,10 @@
 # Eldritch Fable project state
 
+## OTTO Print Studio — November 27, 2026
+
+The studio branch starts at GitHub main 603b8734e68c6ead03bfd52edfbef0af91cd6073. The live storefront and API identified release 8e6139d567058d755c04c093b91907821766a002. The print service can be installed independently at /print-studio/ with its own private order database. Supplier credentials, signed deliveries, a merchant-approved price or custom markup, and activation are separate from deployment. See standalone/print-studio/README.md for configuration. The existing storefront sandbox and game are independent.
+
+
 ## Adventure entry gate refresh — November 26, 2026
 
 Local source update prepared in worktree branch `supreme-memory` from base commit

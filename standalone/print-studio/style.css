@@ -97,3 +97,9 @@ footer {padding:1.2rem 0 1.7rem;border-top:1px solid var(--line);font-size:.9rem
 #submittedLink {display:inline-block;margin-top:.65rem}
 .buy {margin-top:1rem}
 .view-tools {flex:none;flex-wrap:nowrap;gap:.35rem}
+.brush-controls {display:flex;align-items:end;gap:.45rem;flex-wrap:wrap;padding:.4rem .8rem;border-block:1px solid #484148}
+.brush-controls label {margin:0 auto 0 0;display:flex;align-items:center;gap:.45rem;font-size:.78rem}
+.brush-controls select {font-size:.85rem;margin:0;padding:.45rem .35rem;min-height:40px;width:auto}
+.edit-status {color:var(--gold);font-size:.8rem;text-align:center}.edit-status:not(:empty){padding:0 .7rem .55rem}
+.viewport {grid-template-rows:auto 1fr auto auto auto auto}
+@media(max-width:450px){#drawing{height:clamp(14rem,63vw,18rem)}.viewbar{gap:.25rem}.view-tools .tool{padding-inline:.53rem}}

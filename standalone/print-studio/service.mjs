@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { fail, eligible, initialize, ottoClient, receiveOtto, verifyOtto } from './provider.mjs';
 import { finishUpload, transferUpload } from './transfer.mjs';
+import { sculptPresets } from './sculpt.js';
 import { sales } from './sales.mjs';
 
 const prefix='/api/otto';
@@ -18,6 +19,12 @@ const cleanModel = m => ({id:m.id,name:m.name || 'Untitled model',mm:m.longest_d
 const staticFiles = new Map([['/print-studio/',['index.html','text/html']],['/print-studio/app.js',['app.js','text/javascript']],
   ['/print-studio/style.css',['style.css','text/css']],['/print-studio/token.js',['token.js','text/javascript']],
   ['/print-studio/viewport.js',['viewport.js','text/javascript']]]);
+
+staticFiles.set('/print-studio/sculpt.js',['sculpt.js','text/javascript']);
+for(const name of sculptPresets){
+  const file='models/'+name+'.mesh';
+  staticFiles.set('/print-studio/'+file,[file,'application/octet-stream']);
+}
 
 async function bytes(req,max) {
   let size=0;const parts=[];
@@ -54,7 +61,7 @@ export function studio({db,otto,config,stripe,identity,sendStorage}) {
       if(req.method==='GET' && path==='/print-studio'){res.writeHead(308,{Location:'/print-studio/'});res.end();return;}
       if(req.method==='GET' && staticFiles.has(path)){
         const [name,mime]=staticFiles.get(path), file=await readFile(new URL(name,import.meta.url));
-        res.writeHead(200,{'Content-Type':mime+'; charset=utf-8','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin',
+        res.writeHead(200,{'Content-Type':mime.startsWith('text/')?mime+'; charset=utf-8':mime,'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin',
           'Cache-Control':'no-cache','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"});res.end(file);return;
       }
       if(path===prefix+'/webhook' || path===prefix+'/stripe-webhook'){

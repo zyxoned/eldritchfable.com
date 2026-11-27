@@ -1,11 +1,12 @@
 import {expect,test} from '@playwright/test';
+import {readFile} from 'node:fs/promises';
 import {DatabaseSync} from 'node:sqlite';
 import {studio} from '../../print-studio/service.mjs';
 
 test('a customer can submit a built-in design and a Firefox OBJ download without renaming it',async({page})=>{
   const db=new DatabaseSync(':memory:');
   const config={ottoKey:'fixture',origin:''};
-  const registered=[],sent=[];
+  const registered=[],sent=[],contents=[];
   const otto=async(path,body)=>{
     if(path==='/files'){
       registered.push(body.filename);
@@ -17,7 +18,7 @@ test('a customer can submit a built-in design and a Firefox OBJ download without
   const sendStorage=async(url,options)=>{
     expect(url).toBe('https://storage.example.test/upload');
     const file=options.body.get('file');
-    expect(await file.text()).toContain('v ');
+    const content=await file.text(); expect(content).toContain('v ');contents.push(content);
     sent.push(file.name);
     return new Response(null,{status:204});
   };
@@ -46,8 +47,34 @@ test('a customer can submit a built-in design and a Firefox OBJ download without
     await page.getByRole('button',{name:'Submit for inspection'}).click();
     await expect(page.locator('#uploadFeedback')).toContainText('Plain text files cannot be printed');
     expect(registered).toHaveLength(2);
+    await page.getByRole('link',{name:'Design',exact:true}).click();
+    const shapes=page.getByRole('combobox',{name:'Shape'});
+    await shapes.selectOption('briar-scout');
+    async function exported(){
+      const waiting=page.waitForEvent('download');
+      await page.getByRole('button',{name:'Download OBJ'}).click();
+      const download=await waiting;return readFile(await download.path(),'utf8');
+    }
+    const original=await exported();
+    await page.getByRole('button',{name:'Edit mesh'}).click();
+    const canvas=page.locator('#drawing');await canvas.scrollIntoViewIfNeeded();
+    const rect=await canvas.boundingBox(), x=rect.x+rect.width/2, y=rect.y+rect.height/2;
+    await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+26,y-7,{steps:4});await page.mouse.up();
+    await expect(page.locator('#undoEdit')).toBeEnabled();
+    const edited=await exported();expect(edited).not.toBe(original);
+    await page.getByRole('button',{name:'Undo',exact:true}).click();expect(await exported()).toBe(original);
+    await page.getByRole('button',{name:'Redo',exact:true}).click();expect(await exported()).toBe(edited);
+    await shapes.selectOption('cottage');await expect(page.locator('#dimensions')).toContainText('Timber cottage');
+    await shapes.selectOption('briar-scout');expect(await exported()).toBe(edited);
+    await page.getByRole('button',{name:'Use for my print'}).click();
+    await expect(page.locator('#chosen')).toContainText('briar-scout-40mm-6mm-edited.obj');
+    await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Submit for inspection'}).click();
+    await expect(page.locator('#uploadFeedback')).toContainText('Submitted MD-00000003');
+    expect(contents[2]).toBe(edited);
+
   }finally{
-    await new Promise(resolve=>server.close(resolve));db.close();
+    await page.close();
+    await new Promise(resolve=>{server.close(resolve);server.closeAllConnections();});db.close();
   }
 });
 
@@ -71,6 +98,7 @@ test('guests and customers use the same workbench, with private tools confined t
     await page.goto(config.origin+'/print-studio/?view=guest');
     await expect(page.locator('#status')).toContainText('Checkout is paused');
     const canvas=page.locator('#drawing');await canvas.focus();
+    await expect(canvas).toHaveAttribute('aria-description',/View angle/);
     const initial=await canvas.getAttribute('aria-description');await canvas.press('ArrowRight');
     await expect(canvas).not.toHaveAttribute('aria-description',initial);
     await page.getByRole('button',{name:'Zoom in'}).click();await expect(canvas).toHaveAttribute('aria-description',/120 percent/);
@@ -94,5 +122,5 @@ test('guests and customers use the same workbench, with private tools confined t
     await page.goto(config.origin+'/print-studio/#merchant');
     await expect(page.getByRole('link',{name:'View as customer'})).toBeVisible();
     await expect(page.locator('#connections')).toContainText('checkout paused');
-  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
+  }finally{await page.close();await new Promise(resolve=>{server.close(resolve);server.closeAllConnections();});db.close();}
 });

@@ -15,6 +15,8 @@ The subsequent Warden upload report was traced to two registered files without a
 
 The customer studio redesign uses the exported mesh for a rotatable 3D preview, separates design, file submission, prints and collection into navigable views, and displays one shipping selection and pre-tax total. The merchant workspace links to the signed-in customer view and a guest view that skips account and merchant API requests. The service was based on 073fe765c751276a2985cbb476bcd12969d56a80 and the live storefront identified 9a13035ddb108e39512f48fbf30a51fa8679fb61 at inspection.
 
+The mesh-editing update starts from verified studio revision bbdf922e57a376158e10d2af497c6580230d17ca. Seven original starter sculpts cover two humanoid styles, foliage, two trees and two buildings. The designer supports a local deformation brush, undo and redo, and exports the displayed shape through both download and the existing upload route. Templates live under standalone/print-studio/models with their reproducible source under model-source. Each customer's submissions still require OTTO inspection.
+
 ## Adventure entry gate refresh — November 26, 2026
 
 Local source update prepared in worktree branch `supreme-memory` from base commit

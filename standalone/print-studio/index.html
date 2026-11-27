@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Print Studio | Eldritch Fable</title>
-  <link rel="stylesheet" href="/print-studio/style.css?v=workbench">
-  <script type="module" src="/print-studio/app.js?v=workbench"></script>
+  <link rel="stylesheet" href="/print-studio/style.css?v=sculpt-1">
+  <script type="module" src="/print-studio/app.js?v=sculpt-1"></script>
 </head>
 <body>
   <a class="skip" href="#workspace">Skip to workspace</a>
@@ -26,16 +26,26 @@
         <div class="section-heading"><h2>Model workbench</h2><a class="quiet" href="#upload">Upload your model</a></div>
         <div class="workbench">
           <div class="viewport">
-            <div class="viewbar"><span class="view-title">3D preview</span><button type="button" id="wire" class="tool" aria-pressed="false">Wireframe</button></div>
-            <canvas id="drawing" tabindex="0" aria-label="3D model preview. Drag or use arrow keys to rotate.">Use the shape and size controls to configure the model.</canvas>
+            <div class="viewbar"><span class="view-title">3D preview</span><div class="view-tools"><button type="button" id="editMesh" class="tool" aria-pressed="false">Edit mesh</button><button type="button" id="wire" class="tool" aria-pressed="false">Wireframe</button></div></div>
+            <canvas id="drawing" tabindex="0" aria-label="3D model preview" aria-describedby="viewHint">Use the shape and size controls to configure the model.</canvas>
+            <div id="brushControls" class="brush-controls" hidden>
+              <label>Brush size<select id="brushSize"><option value=".15">Fine</option><option value=".28" selected>Medium</option><option value=".45">Broad</option></select></label>
+              <button type="button" id="undoEdit" class="tool" disabled>Undo</button><button type="button" id="redoEdit" class="tool" disabled>Redo</button>
+            </div>
             <div class="viewfoot"><span id="dimensions"></span><div class="view-tools"><button id="zoomOut" type="button" class="tool" aria-label="Zoom out">−</button><button id="zoomIn" type="button" class="tool" aria-label="Zoom in">+</button><button id="resetView" type="button" class="tool">Reset view</button></div></div>
-            <div class="view-caption">Drag to rotate <span aria-hidden="true">·</span> Arrow keys also rotate</div>
+            <div id="viewHint" class="view-caption">Drag to rotate <span aria-hidden="true">·</span> Arrow keys also rotate</div>
+            <p id="editStatus" class="edit-status" role="status"></p>
           </div>
           <form id="designer" class="settings">
             <h3>Model settings</h3>
-            <label>Shape<select name="shape"><option value="warden">Warden figure</option><option value="seer">Seer figure</option><option value="hexagon">Hexagon</option><option value="octagon">Octagon</option><option value="star">Star</option><option value="circle">Circle</option></select></label>
+            <label>Shape<select name="shape">
+              <optgroup label="Humanoids"><option value="oathkeeper" selected>Oathkeeper · armored knight</option><option value="briar-scout">Briar Scout · cartoon adventurer</option></optgroup>
+              <optgroup label="Foliage and trees"><option value="foliage">Ferns and mushrooms</option><option value="fir">Mountain fir</option><option value="elder">Elder oak</option></optgroup>
+              <optgroup label="Buildings"><option value="cottage">Timber cottage</option><option value="watchtower">Crenellated watchtower</option></optgroup>
+              <optgroup label="Pawns and tokens"><option value="warden">Warden figure</option><option value="seer">Seer figure</option><option value="hexagon">Hexagon</option><option value="octagon">Octagon</option><option value="star">Star</option><option value="circle">Circle</option></optgroup>
+            </select></label>
             <div class="pair"><label><span id="widthLabel">Figure height</span> (mm)<input name="width" type="number" min="30" max="100" value="40" required></label><label><span id="heightLabel">Base thickness</span> (mm)<input name="height" type="number" min="4" max="15" value="6" required></label></div>
-            <div class="settings-actions"><button type="button" id="use">Use for my print</button><button type="submit" class="secondary">Download OBJ</button></div>
+            <div class="settings-actions"><button type="button" id="use">Use for my print</button><button type="submit" class="secondary">Download OBJ</button></div><p id="keepDraft" class="view-caption" hidden>Download the OBJ to keep a copy of your edits.</p>
           </form>
         </div>
       </section>

@@ -26,7 +26,10 @@ export function tokenGeometry(shape, width, height) {
   return {vertices,faces,contour};
 }
 export function tokenOBJ(shape,width,height) {
-  const {vertices,faces}=tokenGeometry(shape,width,height);
+  return geometryOBJ(shape,tokenGeometry(shape,width,height));
+}
+
+export function geometryOBJ(shape,{vertices,faces}) {
   return ['# Eldritch Fable tabletop token. Dimensions in millimeters.','o '+shape,
     ...vertices.map(v=>'v '+v.map(n=>n.toFixed(5)).join(' ')),...faces.map(f=>'f '+f.map(i=>i+1).join(' ')),''].join('\n');
 }

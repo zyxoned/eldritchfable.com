@@ -1,5 +1,6 @@
-import {tokenGeometry,tokenOBJ} from './token.js';
-import {modelViewport} from './viewport.js';
+import {tokenGeometry,geometryOBJ} from './token.js?v=sculpt-1';
+import {sculptPresets,decodePreset,sizePreset,sculptedMesh} from './sculpt.js';
+import {modelViewport} from './viewport.js?v=sculpt-1';
 
 const $=id=>document.getElementById(id);
 const usd=cents=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
@@ -29,6 +30,7 @@ const guestPreview = mode === 'guest';
 const customerPreview = mode === 'customer' || guestPreview;
 const panels = ['design','upload','library','collection','delivery','merchant'];
 let identityReady = false;
+let startWorkbench;
 function currentPanel() {
   const requested=location.hash.slice(1);
   if(requested==='merchant' && (!me?.admin || customerPreview)) return 'design';
@@ -42,6 +44,7 @@ function displayPanel(moveFocus=false) {
     if(link.hash==='#'+(panel==='delivery'?'library':panel)) link.setAttribute('aria-current','page');
     else link.removeAttribute('aria-current');
   }
+  if(panel==='design')startWorkbench?.();
   if(moveFocus) {
     const heading=$(panel).querySelector('h2');
     heading.tabIndex=-1;heading.focus({preventScroll:true});$('workspace').scrollIntoView();
@@ -137,22 +140,82 @@ async function refreshAdmin(){
   if(v.markup!=null)$('markup').elements.amount.value=(v.markup/100).toFixed(2);
 }
 const design=$('designer');
+const loadedPresets=new Map(), drafts=new Map();
+let basis,visibleMesh,currentShape,designVersion=0;
+function draft(){
+  if(!drafts.has(currentShape))drafts.set(currentShape,{strokes:[],redo:[]});
+  return drafts.get(currentShape);
+}
+function redraw(temporary=null){
+  if(!basis)return;
+  const {strokes,redo}=draft();
+  const length=Number(design.elements.width.value);
+  visibleMesh=sculptedMesh(basis,temporary?[...strokes,temporary]:strokes,length);
+  const upright=currentShape==='warden'||currentShape==='seer'||sculptPresets.includes(currentShape);
+  renderMesh(visibleMesh,length,upright,currentShape);
+  $('keepDraft').hidden=!strokes.length;
+  $('undoEdit').disabled=!strokes.length;$('redoEdit').disabled=!redo.length;
+}
+const renderMesh=modelViewport($('drawing'),{
+  wire:$('wire'),edit:$('editMesh'),brush:$('brushControls'),hint:$('viewHint'),
+  zoomIn:$('zoomIn'),zoomOut:$('zoomOut'),resetView:$('resetView')
+},{
+  radius:()=>Number($('brushSize').value),note:text=>message('editStatus',text),
+  preview:redraw,commit:stroke=>{
+    if(!basis)return;
+    draft().strokes.push(stroke);draft().redo.length=0;redraw();message('editStatus','Mesh edited.');
+  }
+});
+$('undoEdit').onclick=()=>{
+  const d=draft();if(!d.strokes.length)return;
+  d.redo.push(d.strokes.pop());redraw();message('editStatus','Edit undone.');
+};
+$('redoEdit').onclick=()=>{
+  const d=draft();if(!d.redo.length)return;
+  d.strokes.push(d.redo.pop());redraw();message('editStatus','Edit restored.');
+};
+async function loadPreset(shape){
+  if(!loadedPresets.has(shape)){
+    const pending=fetch('/print-studio/models/'+shape+'.mesh').then(async r=>{
+      if(!r.ok)throw Error('Model download failed.');
+      return decodePreset(await r.arrayBuffer());
+    }).catch(error=>{loadedPresets.delete(shape);throw error;});
+    loadedPresets.set(shape,pending);
+  }
+  return loadedPresets.get(shape);
+}
 function generatedFile(){
-  if(!design.reportValidity())return;
-  const f=fields(design);
-  return new File([tokenOBJ(f.shape,Number(f.width),Number(f.height))],[f.shape,f.width+'mm',f.height+'mm'].join('-')+'.obj',{type:'model/obj'});
-}
-const renderMesh=modelViewport($('drawing'),{wire:$('wire'),zoomIn:$('zoomIn'),zoomOut:$('zoomOut'),resetView:$('resetView')});
-function draw(){
-  if(!design.checkValidity())return;
+  if(!design.reportValidity()||!visibleMesh)return;
   const {shape,width,height}=fields(design);
-  const figure=shape==='warden'||shape==='seer';
-  renderMesh(tokenGeometry(shape,Number(width),Number(height)),Number(width),figure);
-  message('widthLabel',figure?'Figure height':'Token width');
-  message('heightLabel',figure?'Base thickness':'Token thickness');
-  message('dimensions',design.elements.shape.selectedOptions[0].textContent+' · '+width+' mm');
+  const edited=draft().strokes.length?'-edited':'';
+  return new File([geometryOBJ(shape,visibleMesh)],shape+'-'+width+'mm-'+height+'mm'+edited+'.obj',{type:'model/obj'});
 }
-design.addEventListener('input',draw);draw();
+async function draw(){
+  const version=++designVersion;
+  const {shape,width,height}=fields(design), length=Number(width);
+  const preset=sculptPresets.includes(shape),figure=shape==='warden'||shape==='seer';
+  const next=shape!==currentShape;
+  if(next){currentShape=shape;message('editStatus','');}
+  const save=design.querySelector('button[type=submit]');
+  basis=null;visibleMesh=null;$('use').disabled=true;save.disabled=true;
+  message('widthLabel',preset?'Longest dimension':figure?'Figure height':'Token width');
+  message('heightLabel',figure||preset?'Base thickness':'Token thickness');
+  if(!design.checkValidity()){renderMesh(null,length,preset||figure,shape);message('dimensions','Enter a valid size.');return;}
+  if(next){renderMesh(null,length,preset||figure,shape);message('dimensions','Loading model…');}
+  try{
+    const model=preset?await loadPreset(shape):null;
+    if(version!==designVersion)return;
+    basis=preset?sizePreset(model,length,Number(height)):tokenGeometry(shape,length,Number(height));
+    redraw();message('dimensions',design.elements.shape.selectedOptions[0].textContent.split(' · ')[0]+' · '+width+' mm');
+    $('use').disabled=false;save.disabled=false;
+  }catch{
+    if(version!==designVersion)return;
+    message('dimensions','Could not load this model.');message('editStatus','Switch to another shape, then reselect this one to retry.');
+  }
+}
+design.addEventListener('input',draw);
+startWorkbench=()=>{startWorkbench=null;draw();};
+if(currentPanel()==='design')startWorkbench();
 form('designer',()=>{
   const file=generatedFile();if(!file)return;
   const link=document.createElement('a');link.download=file.name;link.href=URL.createObjectURL(file);link.click();setTimeout(()=>URL.revokeObjectURL(link.href),3000);

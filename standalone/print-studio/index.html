@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Print Studio | Eldritch Fable</title>
-  <link rel="stylesheet" href="/print-studio/style.css?v=sculpt-1">
-  <script type="module" src="/print-studio/app.js?v=sculpt-1"></script>
+  <link rel="stylesheet" href="/print-studio/style.css?v=workbench-2">
+  <script type="module" src="/print-studio/app.js?v=workbench-2"></script>
 </head>
 <body>
   <a class="skip" href="#workspace">Skip to workspace</a>
@@ -25,15 +25,17 @@
       <section id="design" class="panel">
         <div class="section-heading"><h2>Model workbench</h2><a class="quiet" href="#upload">Upload your model</a></div>
         <div class="workbench">
-          <div class="viewport">
-            <div class="viewbar"><span class="view-title">3D preview</span><div class="view-tools"><button type="button" id="editMesh" class="tool" aria-pressed="false">Edit mesh</button><button type="button" id="wire" class="tool" aria-pressed="false">Wireframe</button></div></div>
+          <div class="viewport" id="modelView">
+            <div class="viewbar"><span class="view-title">3D preview</span><div class="view-tools"><button type="button" id="expandView" class="tool" aria-expanded="false" aria-haspopup="dialog">Full screen</button><button type="button" id="editMesh" class="tool" aria-pressed="false">Edit mesh</button><button type="button" id="wire" class="tool" aria-pressed="false">Wireframe</button></div></div>
             <canvas id="drawing" tabindex="0" aria-label="3D model preview" aria-describedby="viewHint">Use the shape and size controls to configure the model.</canvas>
             <div id="brushControls" class="brush-controls" hidden>
               <label>Brush size<select id="brushSize"><option value=".15">Fine</option><option value=".28" selected>Medium</option><option value=".45">Broad</option></select></label>
+              <label>Move along<select id="editAxis"><option value="screen">Screen</option><option value="x">X axis</option><option value="y">Y axis</option><option value="z">Z axis</option></select></label>
               <button type="button" id="undoEdit" class="tool" disabled>Undo</button><button type="button" id="redoEdit" class="tool" disabled>Redo</button>
             </div>
             <div class="viewfoot"><span id="dimensions"></span><div class="view-tools"><button id="zoomOut" type="button" class="tool" aria-label="Zoom out">−</button><button id="zoomIn" type="button" class="tool" aria-label="Zoom in">+</button><button id="resetView" type="button" class="tool">Reset view</button></div></div>
-            <div id="viewHint" class="view-caption">Drag to rotate <span aria-hidden="true">·</span> Arrow keys also rotate</div>
+            <div class="camera-controls"><label>Camera<select id="cameraAngle"><option value="free">Free orbit</option><option value="front">Front</option><option value="right">Right</option><option value="back">Back</option><option value="top">Top</option><option value="angle">Angled</option></select></label><button type="button" id="panView" class="tool" aria-pressed="false">Pan</button></div>
+            <div id="viewHint" class="view-caption">Drag to orbit. Two fingers pan and zoom.</div>
             <p id="editStatus" class="edit-status" role="status"></p>
           </div>
           <form id="designer" class="settings">
@@ -77,5 +79,6 @@
       <p id="notice" class="feedback" role="status"></p>
     </div>
   </main>
+  <dialog id="expandedView" aria-label="Full-screen model workbench"></dialog>
   <footer><div class="shell"><a href="/">Return to Eldritch Fable</a></div></footer>
 </body></html>

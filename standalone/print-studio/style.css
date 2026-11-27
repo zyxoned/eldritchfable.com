@@ -103,3 +103,27 @@ footer {padding:1.2rem 0 1.7rem;border-top:1px solid var(--line);font-size:.9rem
 .edit-status {color:var(--gold);font-size:.8rem;text-align:center}.edit-status:not(:empty){padding:0 .7rem .55rem}
 .viewport {grid-template-rows:auto 1fr auto auto auto auto}
 @media(max-width:450px){#drawing{height:clamp(14rem,63vw,18rem)}.viewbar{gap:.25rem}.view-tools .tool{padding-inline:.53rem}}
+
+.camera-controls,.camera-controls label {display:flex;align-items:center;gap:.5rem}
+.camera-controls {padding:.15rem .8rem .55rem;flex-wrap:wrap}
+.camera-controls label {margin:0;font-size:.8rem}
+.camera-controls select {width:auto;margin:0;padding:.3rem .45rem;min-height:40px;font-size:.83rem}
+.brush-controls label {margin:0}
+.viewport {grid-template-rows:auto minmax(0,1fr) repeat(5,auto)}
+.viewbar {flex-wrap:wrap}
+.viewbar .view-tools {flex-wrap:wrap}
+html.workbench-open {overflow:hidden}
+#expandedView {position:fixed;inset:0;margin:0;border:0;padding:0;max-width:none;max-height:none;width:100%;height:100%;height:100dvh;color:var(--paper);background:var(--bg)}
+#expandedView::backdrop {background:var(--bg)}
+#expandedView .viewport {box-sizing:border-box;display:flex;flex-direction:column;border:0;width:100%;height:100%;overflow:auto;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#expandedView #drawing {min-height:5rem;flex:1 1 0;height:0}
+#expandedView .viewbar,#expandedView .viewfoot,#expandedView .camera-controls,#expandedView .brush-controls {flex-shrink:0}
+@media(max-width:550px){.viewbar .view-title{display:none}.viewbar .view-tools{width:100%;justify-content:flex-end}.viewbar #expandView{margin-right:auto}}
+@media(max-height:540px) and (orientation:landscape){
+  #expandedView .viewport {display:grid;grid-template-columns:minmax(0,1fr) minmax(13rem,29%);grid-template-rows:auto auto auto auto 1fr auto}
+  #expandedView #drawing {grid-column:1;grid-row:1/-1;width:100%;height:100%;min-height:0}
+  #expandedView .viewport>:not(canvas){grid-column:2}
+  #expandedView .viewbar .view-title{display:none}
+  #expandedView .viewbar .view-tools,#expandedView .viewfoot{flex-wrap:wrap}
+  #expandedView .brush-controls,#expandedView .viewbar,#expandedView .viewfoot,#expandedView .camera-controls {padding:.22rem .4rem}
+}

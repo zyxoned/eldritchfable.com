@@ -1,6 +1,6 @@
-import {tokenGeometry,geometryOBJ} from './token.js?v=sculpt-1';
+import {tokenGeometry,geometryOBJ} from './token.js?v=workbench-2';
 import {sculptPresets,decodePreset,sizePreset,sculptedMesh} from './sculpt.js';
-import {modelViewport} from './viewport.js?v=sculpt-1';
+import {expandableView,modelViewport} from './viewport.js?v=workbench-2';
 
 const $=id=>document.getElementById(id);
 const usd=cents=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
@@ -156,8 +156,10 @@ function redraw(temporary=null){
   $('keepDraft').hidden=!strokes.length;
   $('undoEdit').disabled=!strokes.length;$('redoEdit').disabled=!redo.length;
 }
+expandableView($('modelView'),$('expandedView'),$('expandView'));
 const renderMesh=modelViewport($('drawing'),{
   wire:$('wire'),edit:$('editMesh'),brush:$('brushControls'),hint:$('viewHint'),
+  pan:$('panView'),angle:$('cameraAngle'),axis:$('editAxis'),
   zoomIn:$('zoomIn'),zoomOut:$('zoomOut'),resetView:$('resetView')
 },{
   radius:()=>Number($('brushSize').value),note:text=>message('editStatus',text),

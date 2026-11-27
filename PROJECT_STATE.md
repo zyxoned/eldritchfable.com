@@ -17,6 +17,8 @@ The customer studio redesign uses the exported mesh for a rotatable 3D preview, 
 
 The mesh-editing update starts from verified studio revision bbdf922e57a376158e10d2af497c6580230d17ca. Seven original starter sculpts cover two humanoid styles, foliage, two trees and two buildings. The designer supports a local deformation brush, undo and redo, and exports the displayed shape through both download and the existing upload route. Templates live under standalone/print-studio/models with their reproducible source under model-source. Each customer's submissions still require OTTO inspection.
 
+The full-screen workbench update is based on verified running print release d9499d31f0ec6b60dcbbe000e4488acb3268738d. The same canvas supports native fullscreen or an expanded browser window, axis-constrained sculpting, camera presets, pan, and two-finger zoom. Private Blender authoring uses a separate seven-scene project built from the starter meshes; the source is model-source/blender_project.py. Desktop authoring and OBJ uploads use the existing model inspection process.
+
 ## Adventure entry gate refresh — November 26, 2026
 
 Local source update prepared in worktree branch `supreme-memory` from base commit

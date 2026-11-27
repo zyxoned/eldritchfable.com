@@ -56,11 +56,24 @@ test('a customer can submit a built-in design and a Firefox OBJ download without
       const download=await waiting;return readFile(await download.path(),'utf8');
     }
     const original=await exported();
-    await page.getByRole('button',{name:'Edit mesh'}).click();
+    await page.getByRole('button',{name:'Full screen',exact:true}).click();
+    const dialog=page.getByRole('dialog',{name:'Full-screen model workbench'});
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('combobox',{name:'Camera',exact:true}).selectOption('front');
+    await expect(dialog.locator('canvas')).toHaveAttribute('aria-description',/View angle 0 degrees/);
+    await dialog.getByRole('button',{name:'Pan',exact:true}).click();
+    await dialog.locator('canvas').press('ArrowRight');
+    await expect(dialog.locator('canvas')).toHaveAttribute('aria-description',/Pan 12, 0/);
+    await dialog.getByRole('button',{name:'Reset view'}).click();
+    await dialog.getByRole('button',{name:'Edit mesh'}).click();
+    await expect(dialog.getByRole('button',{name:'Pan',exact:true})).toHaveAttribute('aria-pressed','false');
+    await dialog.getByRole('combobox',{name:'Move along',exact:true}).selectOption('x');
     const canvas=page.locator('#drawing');await canvas.scrollIntoViewIfNeeded();
     const rect=await canvas.boundingBox(), x=rect.x+rect.width/2, y=rect.y+rect.height/2;
     await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+26,y-7,{steps:4});await page.mouse.up();
     await expect(page.locator('#undoEdit')).toBeEnabled();
+    await dialog.getByRole('button',{name:'Exit full screen'}).click();
+    await expect(dialog).toBeHidden();
     const edited=await exported();expect(edited).not.toBe(original);
     await page.getByRole('button',{name:'Undo',exact:true}).click();expect(await exported()).toBe(original);
     await page.getByRole('button',{name:'Redo',exact:true}).click();expect(await exported()).toBe(edited);
@@ -99,6 +112,12 @@ test('guests and customers use the same workbench, with private tools confined t
     await expect(page.locator('#status')).toContainText('Checkout is paused');
     const canvas=page.locator('#drawing');await canvas.focus();
     await expect(canvas).toHaveAttribute('aria-description',/View angle/);
+    await page.evaluate(()=>Object.defineProperty(document,'fullscreenEnabled',{value:false,configurable:true}));
+    await page.getByRole('button',{name:'Full screen',exact:true}).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await expect(page.getByRole('button',{name:'Full screen',exact:true})).toBeFocused();
     const initial=await canvas.getAttribute('aria-description');await canvas.press('ArrowRight');
     await expect(canvas).not.toHaveAttribute('aria-description',initial);
     await page.getByRole('button',{name:'Zoom in'}).click();await expect(canvas).toHaveAttribute('aria-description',/120 percent/);

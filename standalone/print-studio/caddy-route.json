@@ -1,0 +1,5 @@
+{
+  "match": [{"path": ["/print-studio", "/print-studio/*", "/api/otto/*"]}],
+  "handle": [{"handler": "reverse_proxy", "upstreams": [{"dial": "127.0.0.1:3118"}]}],
+  "terminal": true
+}

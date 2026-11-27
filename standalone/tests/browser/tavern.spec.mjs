@@ -13,10 +13,20 @@ const products = [
     variants: [{ id: 'default', label: 'Default', price_cents: 1599 }] }
 ];
 
+test('the preview bag links directly to private print orders', async ({page})=>{
+  await page.goto('/bag');
+  const prints=page.getByRole('link',{name:'View my prints and orders'});
+  await expect(prints).toBeVisible();
+  await expect(prints).toHaveAttribute('href','/print-studio/#library');
+});
+
 test('Tavern home works with the empty production catalog and keeps navigation accessible', async ({ page }, testInfo) => {
   await page.route('**/api/catalog', route => route.fulfill({ json: { products: [], collections: [] } }));
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Adventures Become Real');
+  const design = page.getByRole('link', {name:'Design or upload a model'});
+  await expect(design).toBeVisible();
+  await expect(design).toHaveAttribute('href','/print-studio/#design');
   await expect(page.getByRole('heading', { name: 'Legendary gear for stories yet to be told' })).toBeVisible();
   await expect(page.locator('#categories .tavern-category')).toHaveCount(6);
   await expect(page.getByRole('heading', { name: 'Find What You Seek' })).toBeVisible();
@@ -28,6 +38,8 @@ test('Tavern home works with the empty production catalog and keeps navigation a
     await page.getByRole('button', { name: 'Open menu' }).click();
     await expect(page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('link', { name: 'Account', exact: true })).toBeVisible();
   }
+  const nav = page.getByRole('navigation', {name:testInfo.project.name === 'mobile' ? 'Mobile navigation' : 'Shop categories'});
+  await expect(nav.getByRole('link',{name:'Print Studio'})).toHaveAttribute('href','/print-studio/');
   await page.getByRole('link', { name: 'Account', exact: true }).filter({ visible: true }).click();
   await expect(page).toHaveURL(/\/account$/);
   await expect(page.getByRole('heading', { name: 'Sign in to your account' })).toBeVisible();
@@ -37,6 +49,7 @@ test('Tavern home works with the empty production catalog and keeps navigation a
   await page.goto('/');
   await page.getByRole('link', { name: 'Enter the Loot Cache' }).click();
   await expect(page).toHaveURL(/\/shop$/);
+  await expect(page.getByRole('link',{name:'Custom prints & uploads'})).toHaveAttribute('href','/print-studio/');
   await page.getByLabel('Search the store', { exact: true }).fill('missing');
   await page.getByRole('button', { name: 'Search store', exact: true }).click();
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();

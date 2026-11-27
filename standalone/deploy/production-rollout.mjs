@@ -1,6 +1,7 @@
 // Roll out to the specific Linux production layout verified in production-check.
 // Run as root, preferably in a transient systemd service to survive SSH loss.
 import { backup } from 'node:sqlite';
+import { isDeepStrictEqual } from 'node:util';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, realpathSync, readlinkSync, readdirSync, lstatSync, statSync, statfsSync, mkdirSync, chmodSync, chownSync, cpSync, renameSync, symlinkSync, unlinkSync, openSync, readSync, closeSync } from 'node:fs';
 import { dirname, join, resolve, basename } from 'node:path';
@@ -117,7 +118,11 @@ export function productionConfig(original, releaseId) {
   for (const server of servers) {
     requireCondition(server.listen?.length && server.listen.every(value => /^127\.0\.0\.1:[0-9]+$/.test(value)), 'WEB_MUST_LISTEN_ONLY_ON_LOOPBACK');
     listeners.push(...server.listen);
-    walk(server.routes);
+    // The optional print service has a fixed listener and three narrowly scoped paths.
+    // All other proxies still pass through the existing account API validation.
+    const printRoute = { match: [{path: ['/print-studio', '/print-studio/*', '/api/otto/*']}],
+      handle: [{handler: 'reverse_proxy', upstreams: [{dial: '127.0.0.1:3118'}]}], terminal: true };
+    for (const route of server.routes || []) if (!isDeepStrictEqual(route, printRoute)) walk(route);
     server.routes ??= [];
     const first = server.routes[0];
     const generated = first?.handle?.length === 1 && first.handle[0].handler === 'headers' &&

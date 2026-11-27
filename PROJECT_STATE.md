@@ -1,5 +1,24 @@
 # Eldritch Fable project state
 
+## OTTO Print Studio — November 27, 2026
+
+The studio branch starts at GitHub main 603b8734e68c6ead03bfd52edfbef0af91cd6073. The live storefront and API identified release 8e6139d567058d755c04c093b91907821766a002. The print service can be installed independently at /print-studio/ with its own private order database. Supplier credentials, signed deliveries, a merchant-approved price or custom markup, and activation are separate from deployment. See standalone/print-studio/README.md for configuration. The existing storefront sandbox and game are independent.
+
+At 14:00 UTC, the public print page, catalog, account proxy and both webhook receiver paths responded on eldritchfable.com. The first print service source was 9dd14588f23e58728fe80db50f174b99026e4b74. The independent feature is tracked in PR #29. The merchant Stripe and OTTO webhook destinations are registered. OTTO listed the existing business API key as active and never used. The host had no supplier or Stripe runtime secrets for this service, the public catalog was empty and sales were paused. The studio was exercised from the public designer through selection of a generated Seer OBJ. Mock payment, privacy, event replay and mesh tests ran locally; real provider delivery, payment and fulfillment remain unverified.
+
+
+Later on November 27, the running print release was 70d3d4ef5be327f81075f56c725ecf0c7bf3f48e. The supplier authenticated, returned ready figure MD-QB1X6D8M and listed the configured saved method. The print database had no orders, published models or signed provider deliveries and checkout was paused. The subsequent bank-deposit change on PR #29 puts captured customer payments in a merchant release queue. Release records manual confirmation of a posted deposit, checks the customer payment again and caps the supplier charge at the original quote. Test payments use fixtures.
+
+At the storefront entry update on November 27 the print service reported signed OTTO and Stripe deliveries, uploads open and checkout paused. The public frontend release identified 8e6139d567058d755c04c093b91907821766a002, while the print application ran c11b3050ae53c9d32f065c23850c1745390aee4a on PR #29. The navigation update adds homepage, shop and menu links to the print service. The upload form accepts browser-suffixed OBJ downloads and shows the actual model filename used.
+
+The subsequent Warden upload report was traced to two registered files without a corresponding model. OTTO storage rejected browser-origin access from the storefront. The repair sends model bytes through the authenticated, same-origin Print Studio, retains a successful transfer across retries and links the preview bag to private print orders. Production frontend parent 3204cbd7b0584bbce29171ffb34ee86276b0b17b and studio parent cdd17ae48228cfbef2177e31811cd642bd94b00a were verified independently. This change preserves customer checkout activation and bank-deposit release settings.
+
+The customer studio redesign uses the exported mesh for a rotatable 3D preview, separates design, file submission, prints and collection into navigable views, and displays one shipping selection and pre-tax total. The merchant workspace links to the signed-in customer view and a guest view that skips account and merchant API requests. The service was based on 073fe765c751276a2985cbb476bcd12969d56a80 and the live storefront identified 9a13035ddb108e39512f48fbf30a51fa8679fb61 at inspection.
+
+The mesh-editing update starts from verified studio revision bbdf922e57a376158e10d2af497c6580230d17ca. Seven original starter sculpts cover two humanoid styles, foliage, two trees and two buildings. The designer supports a local deformation brush, undo and redo, and exports the displayed shape through both download and the existing upload route. Templates live under standalone/print-studio/models with their reproducible source under model-source. Each customer's submissions still require OTTO inspection.
+
+The full-screen workbench update is based on verified running print release d9499d31f0ec6b60dcbbe000e4488acb3268738d. The same canvas supports native fullscreen or an expanded browser window, axis-constrained sculpting, camera presets, pan, and two-finger zoom. Private Blender authoring uses a separate seven-scene project built from the starter meshes; the source is model-source/blender_project.py. Desktop authoring and OBJ uploads use the existing model inspection process.
+
 ## Adventure entry gate refresh — November 26, 2026
 
 Local source update prepared in worktree branch `supreme-memory` from base commit

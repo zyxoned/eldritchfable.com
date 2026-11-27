@@ -43,7 +43,7 @@ export function Account({ mode = 'login' }) {
   const [unverified, setUnverified] = useState(false);
   const register = mode === 'register';
   const requestedNext = new URLSearchParams(location.search).get('next');
-  const next = ['/play', '/stash'].includes(requestedNext) ? requestedNext : safeCheckoutNext(requestedNext) || '/account';
+  const next = ['/play', '/stash', '/print-studio/#library'].includes(requestedNext) ? requestedNext : safeCheckoutNext(requestedNext) || '/account';
   const nextQuery = next === '/account' ? '' : '?next=' + encodeURIComponent(next);
   async function submit(event) {
     event.preventDefault();
@@ -55,6 +55,7 @@ export function Account({ mode = 'login' }) {
       const result = await authRequest(mode, { email, password });
       setPassword(''); setConfirmation('');
       if (register) { setPending(true); setMessage(result.message); setWelcomeOpen(true); }
+      else if (next === '/print-studio/#library') window.location.replace(next);
       else navigate(next, { replace: true });
     } catch (failure) { setError(failure.message); setUnverified(failure.code === 'EMAIL_UNVERIFIED'); }
     finally { setBusy(false); }

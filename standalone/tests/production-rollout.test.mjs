@@ -507,3 +507,12 @@ test('schema 7 rehearsal and backup retain regional encounters and character cho
     assert.match(readFileSync(new URL('../deploy/' + script, import.meta.url), 'utf8'), /'game_parties', 'game_region_worlds'/);
   }
 });
+
+test('only the exact optional print studio route survives the production rollout', () => {
+  const config=caddy();
+  const route={match:[{path:['/print-studio','/print-studio/*','/api/otto/*']}],handle:[{handler:'reverse_proxy',upstreams:[{dial:'127.0.0.1:3118'}]}],terminal:true};
+  config.apps.http.servers.production.routes.unshift(route);
+  assert.ok(productionConfig(config,'print').config.apps.http.servers.production.routes.some(r=>r.handle?.[0]?.upstreams?.[0]?.dial==='127.0.0.1:3118'));
+  route.match[0].path=['/*'];
+  assert.throws(()=>productionConfig(config,'bad'),/UNEXPECTED_API_UPSTREAM/);
+});

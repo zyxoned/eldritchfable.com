@@ -79,7 +79,7 @@ function Header() {
     setSearchOpen(false);
     searchButton.current?.focus();
   }
-  const links = <><Link to="/">The Tavern</Link><Link to="/play">Adventure</Link><Link to="/shop?q=dice">Wares</Link><Link to="/shop?q=miniature">Miniatures</Link><Link to="/shop?q=map">Maps & Aids</Link><Link to="/shop?q=paint">Painting & Terrain</Link><Link to="/shop?q=tools">GM Tools</Link><Link to="/shop?q=cosplay">Cosplay & Digital</Link></>;
+  const links = <><Link to="/">The Tavern</Link><Link to="/play">Adventure</Link><Link to="/shop?q=dice">Wares</Link><a href="/print-studio/">Print Studio</a><Link to="/shop?q=miniature">Miniatures</Link><Link to="/shop?q=map">Maps & Aids</Link><Link to="/shop?q=paint">Painting & Terrain</Link><Link to="/shop?q=tools">GM Tools</Link><Link to="/shop?q=cosplay">Cosplay & Digital</Link></>;
   return <><a className="skip-link" href="#ef-main">Skip to content</a><div className="announcement">The next adventure is taking shape · Catalog preview · Checkout opening soon</div>
     <header className="site-header"><Brand /><nav className="reference-nav" aria-label="Shop categories">{links}</nav><form className="header-search" role="search" onKeyDown={closeSearch} onSubmit={event => { event.preventDefault(); navigate('/shop?q=' + encodeURIComponent(search.trim())); }}><button ref={searchButton} type={searchOpen ? "submit" : "button"} onClick={openSearch} aria-label="Search store" aria-expanded={searchOpen} aria-controls="ef-header-search"><Search aria-hidden="true" /></button><input ref={searchInput} id="ef-header-search" hidden={!searchOpen} aria-label="Search the store" placeholder="Search dice, miniatures, maps, and more..." value={search} onChange={event => setSearch(event.target.value)} /></form><div className="header-actions"><Link to="/account" className="header-account" aria-label="Account"><UserRound aria-hidden="true" /><span>Account</span></Link><Link to="/wishlist" className="header-wishlist" aria-label={`Wishlist with ${cart.wishlist.length} products`}><Heart aria-hidden="true" /> <span>Wishlist ({cart.wishlist.length})</span></Link>
       <button className="icon-button mobile-only" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} aria-controls="ef-mobile-menu">{menuOpen ? <X /> : <Menu />}</button>
@@ -150,6 +150,7 @@ function Home() {
         <p>Extraordinary wares for epic tables</p>
         <div className="hero-actions">
           <Link className="ef-button" data-slot="button" to="/shop">Enter the Loot Cache <ChevronRight aria-hidden="true" /></Link>
+          <a className="ef-button" href="/print-studio/#design">Design or upload a model <ChevronRight aria-hidden="true" /></a>
         </div>
       </div>
     </section>
@@ -192,7 +193,7 @@ function Home() {
   </>;
 }
 function Wishlist() { const cart=usePreview(); const saved=cart.products.filter(p=>cart.wishlist.includes(p.id)); return <><div className="ef-page"><p className="eyebrow">Saved for your adventure</p><h1>Your Wishlist</h1><p className="ef-notice">Saved on this device. Items shown are illustrative previews, not verified inventory.</p></div>{saved.length ? <div className="shop-section"><div className="product-grid">{saved.map(p=><ProductCard key={p.id} product={p}/>)}</div></div> : <div className="ef-state"><Heart/><p>Your wishlist is empty.</p><Link className="ef-button" to="/shop">Browse the shop</Link></div>}</>; }
-function Shop() { return <><div className="ef-page"><p className="eyebrow">The full collection</p><h1>Explore the archive.</h1></div><Catalog /></>; }
+function Shop() { return <><div className="ef-page"><p className="eyebrow">The full collection</p><h1>Explore the archive.</h1><a className="ef-button outline" href="/print-studio/">Custom prints &amp; uploads <ChevronRight aria-hidden="true" /></a></div><Catalog /></>; }
 function Collection() {
   const { slug } = useParams();
   const { collections } = usePreview();
@@ -222,7 +223,7 @@ function Product() {
 }
 function Bag() {
   const cart = usePreview();
-  return <div className="ef-page"><p className="eyebrow">Your next adventure</p><h1>Your bag</h1><p className="ef-notice">Preview bag · Sample prices · Checkout disabled</p>{cart.notice && <p role="status">{cart.notice}</p>}
+  return <div className="ef-page"><p className="eyebrow">Your next adventure</p><h1>Your bag</h1><p className="ef-notice">This bag holds preview merchandise at sample prices. For custom models, check inspection, shipping and orders in the Print Studio.</p><a className="ef-button outline" href="/print-studio/#library">View my prints and orders</a>{cart.notice && <p role="status">{cart.notice}</p>}
     {!cart.ready ? <p role="status">Loading your bag…</p> : !cart.lines.length ? <div className="ef-state"><ShoppingBag /><p>Your bag is empty.</p><Link className="ef-button" to={`${ROOT}/shop`}>Explore the collection</Link></div> : <><div className="ef-cart-list">{cart.lines.map(line => {
       const product = cart.products.find(p => p.id === line.productId);
       const variant = product?.variants.find(v => v.id === line.variantId);
@@ -247,7 +248,7 @@ export default function StorefrontPreview() {
   if (catalog.isError) return <div className="ef-storefront"><div className="ef-state"><h1>The collection is temporarily unavailable.</h1><p>Please try loading it again.</p><button className="ef-button" onClick={() => catalog.refetch()}>Retry</button></div></div>;
   return <div className="ef-storefront"><PreviewProvider products={catalog.data.products} collections={catalog.data.collections}><Header /><main id="ef-main" tabIndex={-1}><Routes><Route index element={<Home />} /><Route path="shop" element={<Shop />} /><Route path="collections/:slug" element={<Collection />} /><Route path="products/:slug" element={<Product />} /><Route path="bag" element={<Bag />} /><Route path="wishlist" element={<Wishlist />} /><Route path="*" element={<Missing />} /></Routes></main><footer className="tavern-footer"><span className="ornate-frame" aria-hidden="true" />
   <div className="footer-brand"><Brand /><p>Legendary gear for stories yet to be told.</p></div>
-  <nav aria-label="Shop footer"><h2>Shop</h2><Link to="/">The Tavern</Link><Link to="/shop">All wares</Link><Link to="/shop?q=miniature">Miniatures &amp; Encounters</Link><Link to="/shop?q=map">Maps &amp; Encounter Aids</Link><Link to="/shop?q=paint">Painting &amp; Terrain</Link><Link to="/shop?q=tools">GM Tools</Link></nav>
+  <nav aria-label="Shop footer"><h2>Shop</h2><Link to="/">The Tavern</Link><Link to="/shop">All wares</Link><a href="/print-studio/">Print Studio</a><Link to="/shop?q=miniature">Miniatures &amp; Encounters</Link><Link to="/shop?q=map">Maps &amp; Encounter Aids</Link><Link to="/shop?q=paint">Painting &amp; Terrain</Link><Link to="/shop?q=tools">GM Tools</Link></nav>
   <nav aria-label="Help footer"><h2>Help</h2><Link to="/account">Your account</Link><Link to="/bag">Your bag</Link><Link to="/wishlist">Wishlist</Link><Link to="/#story">Our promise</Link></nav>
   <div className="footer-update"><h2>Stay in the Know</h2><p>Our catalog is in preparation. Checkout remains unavailable until products and fulfillment are verified.</p><span>© 2026 Eldritch Fable</span></div>
 </footer></PreviewProvider></div>;
